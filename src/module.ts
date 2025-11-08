@@ -3,7 +3,7 @@ import { defu } from 'defu'
 import { resolve as resolvePath } from 'pathe'
 import { glob } from 'tinyglobby'
 
-const log = logger.withTag('docus:mcp')
+const log = logger.withTag('nuxt-mcp')
 
 export const { resolve } = createResolver(import.meta.url)
 
@@ -37,7 +37,7 @@ export interface ModuleOptions {
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'docus-mcp',
+    name: 'nuxt-mcp',
     configKey: 'mcp',
   },
   defaults: {
@@ -72,14 +72,14 @@ export default defineNuxtModule<ModuleOptions>({
 
     nuxt.hook('prepare:types', ({ references }) => {
       references.push({
-        path: resolver.resolve('./runtime/server/types.server.d.ts'),
+        path: resolver.resolve('runtime/server/types.server.d.ts'),
       })
     })
 
     nuxt.options.nitro.typescript ??= {}
     nuxt.options.nitro.typescript.tsConfig ??= {}
     nuxt.options.nitro.typescript.tsConfig.include ??= []
-    nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('./runtime/server/types.server.d.ts'))
+    nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
 
     addServerImports([
       {
@@ -87,16 +87,6 @@ export default defineNuxtModule<ModuleOptions>({
         from: resolver.resolve('runtime/server/utils/mcp'),
       },
     ])
-
-    // addServerHandler({
-    //   route: '/.docus-mcp/list-pages',
-    //   handler: resolve('runtime/server/api/list-pages.get.ts'),
-    // })
-
-    // addServerHandler({
-    //   route: '/.docus-mcp/get-page',
-    //   handler: resolve('runtime/server/api/get-page.get.ts'),
-    // })
 
     addServerHandler({
       route: options.route,
@@ -135,10 +125,10 @@ async function loadTools() {
   const overriddenCount = layerTools.length - totalTools
 
   if (overriddenCount > 0) {
-    log.info(`Found ${totalTools} MCP tool(s) (${layerTools.length} from layers, ${overriddenCount} overridden)`)
+    log.info(`Found ${totalTools} MCP tool(s) (${layerTools.length}, ${overriddenCount} overridden)`)
   }
   else {
-    log.info(`Found ${totalTools} MCP tool(s) (${layerTools.length} from layers)`)
+    log.info(`Found ${totalTools} MCP tool(s) (${layerTools.length})`)
   }
 
   addServerTemplate({

@@ -34,7 +34,7 @@
     "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.21.1",
     "@nuxt/kit": "^4.2.0",
     "chokidar": "^4.0.3",
     "tinyglobby": "^0.2.15",

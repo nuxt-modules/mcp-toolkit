@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: ^1.0.4
+        specifier: ^1.21.1
         version: 1.21.1
       '@nuxt/kit':
         specifier: ^4.2.0

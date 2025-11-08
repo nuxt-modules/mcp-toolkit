@@ -1,6 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import type { McpToolDefinition } from '../utils/mcp'
+import { registerToolFromDefinition } from '../utils/mcp'
+import { useRuntimeConfig } from '#imports'
 import type { H3Event } from 'h3'
 import { tools } from '#nuxt-mcp/tools.mjs'
 
@@ -15,14 +17,8 @@ async function createMcpServer(event: H3Event) {
 
   console.log('tools', tools)
 
-  // Register all detected tools
   for (const tool of tools as McpToolDefinition[]) {
-    server.tool(
-      tool.name,
-      tool.description,
-      tool.paramsSchema,
-      tool.handler,
-    )
+    registerToolFromDefinition(server, tool)
   }
 
   return server
