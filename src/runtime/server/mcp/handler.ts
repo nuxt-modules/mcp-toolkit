@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import type { McpToolDefinition } from '../utils/mcp'
 import { registerToolFromDefinition } from '../utils/mcp'
+import { sendRedirect, getHeader, readBody, defineEventHandler } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import type { H3Event } from 'h3'
 import { tools } from '#nuxt-mcp/tools.mjs'
@@ -24,7 +25,7 @@ async function createMcpServer(event: H3Event) {
   return server
 }
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event: H3Event) => {
   console.log('tools', tools)
 
   const { redirectTo } = useRuntimeConfig(event).mcp

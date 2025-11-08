@@ -37,8 +37,9 @@
     "@modelcontextprotocol/sdk": "^1.21.1",
     "@nuxt/kit": "^4.2.0",
     "chokidar": "^4.0.3",
-    "tinyglobby": "^0.2.15",
-    "pathe": "^2.0.3"
+    "defu": "^6.1.4",
+    "pathe": "^2.0.3",
+    "tinyglobby": "^0.2.15"
   },
   "devDependencies": {
     "@nuxt/devtools": "^2.7.0",
