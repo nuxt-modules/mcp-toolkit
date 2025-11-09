@@ -2,16 +2,17 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   name: 'example_tool',
+  title: 'Example Tool',
   description: 'An example custom tool to test auto-detection',
-  paramsSchema: {
+  inputSchema: {
     message: z.string().describe('A message to echo back'),
   },
-  handler: async (params) => {
+  handler: async ({ message }) => {
     return {
       content: [
         {
           type: 'text',
-          text: `Echo: ${params.message}`,
+          text: `Echo: ${message}`,
         },
       ],
     }

@@ -12,14 +12,21 @@ export type McpToolCallback<Args extends ZodRawShape = ZodRawShape> = (
 ) => CallToolResult | Promise<CallToolResult>
 
 /**
- * Definition of an MCP tool with proper typing
+ * Definition of an MCP tool matching the SDK's registerTool signature
+ * This structure is identical to what you'd pass to server.registerTool()
  */
-export interface McpToolDefinition<Args extends ZodRawShape = ZodRawShape, OutputArgs extends ZodRawShape = ZodRawShape> {
+export interface McpToolDefinition<
+  InputSchema extends ZodRawShape = ZodRawShape,
+  OutputSchema extends ZodRawShape = ZodRawShape,
+> {
   name: string
-  description: string
-  paramsSchema: Args
-  outputSchema?: OutputArgs
-  handler: McpToolCallback<Args>
+  title?: string
+  description?: string
+  inputSchema: InputSchema
+  outputSchema?: OutputSchema
+  annotations?: ToolAnnotations
+  _meta?: Record<string, unknown>
+  handler: McpToolCallback<InputSchema>
 }
 
 /**
@@ -27,20 +34,22 @@ export interface McpToolDefinition<Args extends ZodRawShape = ZodRawShape, Outpu
  * This provides better type inference when registering tools
  */
 export function registerToolFromDefinition<
-  Args extends ZodRawShape,
-  OutputArgs extends ZodRawShape = ZodRawShape,
+  InputSchema extends ZodRawShape,
+  OutputSchema extends ZodRawShape = ZodRawShape,
 >(
   server: McpServer,
-  tool: McpToolDefinition<Args, OutputArgs>,
+  tool: McpToolDefinition<InputSchema, OutputSchema>,
 ) {
-  return registerTypedTool<Args, OutputArgs>(
+  return registerTypedTool<InputSchema, OutputSchema>(
     server,
     tool.name,
     {
-      title: tool.name,
+      title: tool.title,
       description: tool.description,
-      inputSchema: tool.paramsSchema,
-      ...(tool.outputSchema && { outputSchema: tool.outputSchema }),
+      inputSchema: tool.inputSchema,
+      outputSchema: tool.outputSchema,
+      annotations: tool.annotations,
+      _meta: tool._meta,
     },
     tool.handler,
   )
@@ -85,26 +94,61 @@ export function registerTypedTool<
 /**
  * Define an MCP tool that will be automatically registered
  *
+ * This function matches the exact structure of server.registerTool() from the MCP SDK,
+ * making it easy to migrate code from the SDK to this module.
+ *
  * @example
  * ```ts
  * // server/mcp/tools/my-tool.ts
+ * import { z } from 'zod'
+ *
  * export default defineMcpTool({
- *   name: 'my_tool',
- *   description: 'Description of my tool',
- *   paramsSchema: {
- *     param1: z.string().describe('Parameter description'),
+ *   name: 'calculate-bmi',
+ *   title: 'BMI Calculator',
+ *   description: 'Calculate Body Mass Index',
+ *   inputSchema: {
+ *     weightKg: z.number(),
+ *     heightM: z.number()
  *   },
- *   handler: async (params) => {
- *     // Your tool logic here
+ *   outputSchema: { bmi: z.number() },
+ *   handler: async ({ weightKg, heightM }) => {
+ *     const output = { bmi: weightKg / (heightM * heightM) }
  *     return {
- *       content: [{ type: 'text', text: 'Result' }]
+ *       content: [{
+ *         type: 'text',
+ *         text: JSON.stringify(output)
+ *       }],
+ *       structuredContent: output
+ *     }
+ *   }
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Simple tool without outputSchema
+ * export default defineMcpTool({
+ *   name: 'echo',
+ *   description: 'Echo back a message',
+ *   inputSchema: {
+ *     message: z.string()
+ *   },
+ *   handler: async ({ message }) => {
+ *     return {
+ *       content: [{
+ *         type: 'text',
+ *         text: `Echo: ${message}`
+ *       }]
  *     }
  *   }
  * })
  * ```
  */
-export function defineMcpTool<Args extends ZodRawShape, OutputArgs extends ZodRawShape = ZodRawShape>(
-  definition: McpToolDefinition<Args, OutputArgs>,
-): McpToolDefinition<Args, OutputArgs> {
+export function defineMcpTool<
+  InputSchema extends ZodRawShape,
+  OutputSchema extends ZodRawShape = ZodRawShape,
+>(
+  definition: McpToolDefinition<InputSchema, OutputSchema>,
+): McpToolDefinition<InputSchema, OutputSchema> {
   return definition
 }
