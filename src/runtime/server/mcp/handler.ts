@@ -1,11 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import type { McpToolDefinition } from '../utils/mcp'
-import { registerToolFromDefinition } from '../utils/mcp'
+import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
+import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
 import { sendRedirect, getHeader, readBody, defineEventHandler } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import type { H3Event } from 'h3'
 import { tools } from '#nuxt-mcp/tools.mjs'
+import { resources } from '#nuxt-mcp/resources.mjs'
+import { prompts } from '#nuxt-mcp/prompts.mjs'
 
 async function createMcpServer(event: H3Event) {
   const config = useRuntimeConfig(event).mcp
@@ -16,18 +18,22 @@ async function createMcpServer(event: H3Event) {
     version,
   })
 
-  console.log('tools', tools)
-
   for (const tool of tools as McpToolDefinition[]) {
     registerToolFromDefinition(server, tool)
+  }
+
+  for (const resource of resources as McpResourceDefinition[]) {
+    registerResourceFromDefinition(server, resource)
+  }
+
+  for (const prompt of prompts as McpPromptDefinition[]) {
+    registerPromptFromDefinition(server, prompt)
   }
 
   return server
 }
 
 export default defineEventHandler(async (event: H3Event) => {
-  console.log('tools', tools)
-
   const { redirectTo } = useRuntimeConfig(event).mcp
 
   if (getHeader(event, 'accept')?.includes('text/html')) {

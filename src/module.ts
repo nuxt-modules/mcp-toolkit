@@ -1,7 +1,6 @@
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger, getLayerDirectories, addServerTemplate } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
 import { defu } from 'defu'
-import { resolve as resolvePath } from 'pathe'
-import { glob } from 'tinyglobby'
+import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 
 const log = logger.withTag('nuxt-mcp')
 
@@ -68,7 +67,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     log.info(`MCP server enabled at route: ${options.route}`)
 
-    await loadTools()
+    await loadAllDefinitions()
 
     nuxt.hook('prepare:types', ({ references }) => {
       references.push({
@@ -84,7 +83,15 @@ export default defineNuxtModule<ModuleOptions>({
     addServerImports([
       {
         name: 'defineMcpTool',
-        from: resolver.resolve('runtime/server/utils/mcp'),
+        from: resolver.resolve('runtime/server/mcp/definitions'),
+      },
+      {
+        name: 'defineMcpResource',
+        from: resolver.resolve('runtime/server/mcp/definitions'),
+      },
+      {
+        name: 'defineMcpPrompt',
+        from: resolver.resolve('runtime/server/mcp/definitions'),
       },
     ])
 
@@ -94,52 +101,3 @@ export default defineNuxtModule<ModuleOptions>({
     })
   },
 })
-
-async function loadTools() {
-  const layerDirectories = getLayerDirectories()
-  const toolPatterns = layerDirectories.map(layer => [
-    resolvePath(layer.server, 'mcp/tools/*.ts'),
-    resolvePath(layer.server, 'mcp/tools/*.js'),
-    resolvePath(layer.server, 'mcp/tools/*.mts'),
-    resolvePath(layer.server, 'mcp/tools/*.mjs'),
-  ]).flat()
-
-  const layerTools = await glob(toolPatterns, { absolute: true, onlyFiles: true })
-
-  const toolsMap = new Map<string, string>()
-
-  const toIdentifier = (filename: string) => {
-    return filename.replace(/\.(ts|js|mts|mjs)$/, '').replace(/\W/g, '_')
-  }
-
-  for (const toolPath of layerTools) {
-    const filename = toolPath.split('/').pop()!
-    const identifier = toIdentifier(filename)
-    if (toolsMap.has(identifier)) {
-      log.info(`Tool "${identifier}" overridden by project/layer version`)
-    }
-    toolsMap.set(identifier, toolPath)
-  }
-
-  const totalTools = toolsMap.size
-  const overriddenCount = layerTools.length - totalTools
-
-  if (overriddenCount > 0) {
-    log.info(`Found ${totalTools} MCP tool(s) (${layerTools.length}, ${overriddenCount} overridden)`)
-  }
-  else {
-    log.info(`Found ${totalTools} MCP tool(s) (${layerTools.length})`)
-  }
-
-  addServerTemplate({
-    filename: '#nuxt-mcp/tools.mjs',
-    getContents: () => {
-      const entries = Array.from(toolsMap.entries())
-      const imports = entries.map(([name, path]) =>
-        `import ${name.replace(/-/g, '_')} from '${path}'`,
-      ).join('\n')
-      const exports = entries.map(([name]) => name.replace(/-/g, '_')).join(', ')
-      return `${imports}\n\nexport const tools = [${exports}]\n`
-    },
-  })
-}

@@ -40,8 +40,7 @@ export function registerToolFromDefinition<
   server: McpServer,
   tool: McpToolDefinition<InputSchema, OutputSchema>,
 ) {
-  return registerTypedTool<InputSchema, OutputSchema>(
-    server,
+  return server.registerTool<InputSchema, OutputSchema>(
     tool.name,
     {
       title: tool.title,
@@ -51,43 +50,7 @@ export function registerToolFromDefinition<
       annotations: tool.annotations,
       _meta: tool._meta,
     },
-    tool.handler,
-  )
-}
-
-/**
- * Helper function to register a tool with improved type inference
- */
-export function registerTypedTool<
-  InputSchema extends ZodRawShape,
-  OutputSchema extends ZodRawShape = ZodRawShape,
->(
-  server: McpServer,
-  name: string,
-  config: {
-    title?: string
-    description?: string
-    inputSchema?: InputSchema
-    outputSchema?: OutputSchema
-    annotations?: ToolAnnotations
-    _meta?: Record<string, unknown>
-  },
-  cb: (
-    args: z.objectOutputType<InputSchema, ZodTypeAny>,
-    extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
-  ) => CallToolResult | Promise<CallToolResult>,
-) {
-  return server.registerTool<InputSchema, OutputSchema>(
-    name,
-    {
-      title: config.title,
-      description: config.description,
-      inputSchema: config.inputSchema,
-      outputSchema: config.outputSchema,
-      annotations: config.annotations,
-      _meta: config._meta,
-    },
-    cb as ToolCallback<InputSchema>,
+    tool.handler as ToolCallback<InputSchema>,
   )
 }
 
@@ -123,30 +86,10 @@ export function registerTypedTool<
  *   }
  * })
  * ```
- *
- * @example
- * ```ts
- * // Simple tool without outputSchema
- * export default defineMcpTool({
- *   name: 'echo',
- *   description: 'Echo back a message',
- *   inputSchema: {
- *     message: z.string()
- *   },
- *   handler: async ({ message }) => {
- *     return {
- *       content: [{
- *         type: 'text',
- *         text: `Echo: ${message}`
- *       }]
- *     }
- *   }
- * })
- * ```
  */
 export function defineMcpTool<
-  InputSchema extends ZodRawShape,
-  OutputSchema extends ZodRawShape = ZodRawShape,
+  const InputSchema extends ZodRawShape,
+  const OutputSchema extends ZodRawShape = ZodRawShape,
 >(
   definition: McpToolDefinition<InputSchema, OutputSchema>,
 ): McpToolDefinition<InputSchema, OutputSchema> {
