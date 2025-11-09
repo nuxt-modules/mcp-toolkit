@@ -32,6 +32,21 @@ export interface ModuleOptions {
    * @default '1.0.0'
    */
   version?: string
+  /**
+   * Custom path for MCP tools relative to server directory
+   * @default 'mcp/tools'
+   */
+  toolsPath?: string
+  /**
+   * Custom path for MCP resources relative to server directory
+   * @default 'mcp/resources'
+   */
+  resourcesPath?: string
+  /**
+   * Custom path for MCP prompts relative to server directory
+   * @default 'mcp/prompts'
+   */
+  promptsPath?: string
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -45,6 +60,9 @@ export default defineNuxtModule<ModuleOptions>({
     redirectTo: '/',
     name: '',
     version: '1.0.0',
+    toolsPath: 'mcp/tools',
+    resourcesPath: 'mcp/resources',
+    promptsPath: 'mcp/prompts',
   },
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
@@ -57,6 +75,9 @@ export default defineNuxtModule<ModuleOptions>({
         redirectTo: options.redirectTo,
         name: options.name,
         version: options.version,
+        toolsPath: options.toolsPath,
+        resourcesPath: options.resourcesPath,
+        promptsPath: options.promptsPath,
       },
     )
 
@@ -67,7 +88,11 @@ export default defineNuxtModule<ModuleOptions>({
 
     log.info(`MCP server enabled at route: ${options.route}`)
 
-    await loadAllDefinitions()
+    await loadAllDefinitions({
+      toolsPath: options.toolsPath ?? 'mcp/tools',
+      resourcesPath: options.resourcesPath ?? 'mcp/resources',
+      promptsPath: options.promptsPath ?? 'mcp/prompts',
+    })
 
     nuxt.hook('prepare:types', ({ references }) => {
       references.push({
