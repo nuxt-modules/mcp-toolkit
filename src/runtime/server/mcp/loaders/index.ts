@@ -6,20 +6,22 @@ const log = logger.withTag('nuxt-mcp')
 
 /**
  * Generic loader for MCP definitions (tools, resources, prompts)
+ * Supports multiple paths per type (from hook extensions)
  */
 async function loadMcpDefinitions(
   type: 'tools' | 'resources' | 'prompts',
   templateFilename: string,
-  customPath?: string,
+  paths: string[],
 ) {
   const layerDirectories = getLayerDirectories()
-  const pathPattern = customPath || `mcp/${type}`
-  const patterns = layerDirectories.map(layer => [
-    resolvePath(layer.server, `${pathPattern}/*.ts`),
-    resolvePath(layer.server, `${pathPattern}/*.js`),
-    resolvePath(layer.server, `${pathPattern}/*.mts`),
-    resolvePath(layer.server, `${pathPattern}/*.mjs`),
-  ]).flat()
+  const patterns = layerDirectories.flatMap(layer =>
+    paths.flatMap(pathPattern => [
+      resolvePath(layer.server, `${pathPattern}/*.ts`),
+      resolvePath(layer.server, `${pathPattern}/*.js`),
+      resolvePath(layer.server, `${pathPattern}/*.mts`),
+      resolvePath(layer.server, `${pathPattern}/*.mjs`),
+    ]),
+  )
 
   const files = await glob(patterns, { absolute: true, onlyFiles: true })
 
@@ -64,30 +66,30 @@ async function loadMcpDefinitions(
 }
 
 export interface LoaderPaths {
-  toolsPath: string
-  resourcesPath: string
-  promptsPath: string
+  tools: string[]
+  resources: string[]
+  prompts: string[]
 }
 
 /**
- * Load all MCP tools from server/mcp/tools/ or custom path
+ * Load all MCP tools from the specified paths
  */
-export async function loadTools(customPath?: string) {
-  return loadMcpDefinitions('tools', '#nuxt-mcp/tools.mjs', customPath)
+export async function loadTools(paths: string[]) {
+  return loadMcpDefinitions('tools', '#nuxt-mcp/tools.mjs', paths)
 }
 
 /**
- * Load all MCP resources from server/mcp/resources/ or custom path
+ * Load all MCP resources from the specified paths
  */
-export async function loadResources(customPath?: string) {
-  return loadMcpDefinitions('resources', '#nuxt-mcp/resources.mjs', customPath)
+export async function loadResources(paths: string[]) {
+  return loadMcpDefinitions('resources', '#nuxt-mcp/resources.mjs', paths)
 }
 
 /**
- * Load all MCP prompts from server/mcp/prompts/ or custom path
+ * Load all MCP prompts from the specified paths
  */
-export async function loadPrompts(customPath?: string) {
-  return loadMcpDefinitions('prompts', '#nuxt-mcp/prompts.mjs', customPath)
+export async function loadPrompts(paths: string[]) {
+  return loadMcpDefinitions('prompts', '#nuxt-mcp/prompts.mjs', paths)
 }
 
 /**
@@ -95,9 +97,9 @@ export async function loadPrompts(customPath?: string) {
  */
 export async function loadAllDefinitions(paths: LoaderPaths) {
   const [tools, resources, prompts] = await Promise.all([
-    loadTools(paths.toolsPath),
-    loadResources(paths.resourcesPath),
-    loadPrompts(paths.promptsPath),
+    loadTools(paths.tools),
+    loadResources(paths.resources),
+    loadPrompts(paths.prompts),
   ])
 
   return {

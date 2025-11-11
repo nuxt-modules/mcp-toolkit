@@ -52,9 +52,7 @@ export default defineNuxtConfig({
 | `browserRedirect` | `string` | `'/'` | Redirect URL when a browser accesses the MCP endpoint |
 | `name` | `string` | `''` | Name of the MCP server |
 | `version` | `string` | `'1.0.0'` | Version of the MCP server |
-| `toolsPath` | `string` | `'mcp/tools'` | Custom path for tools (relative to `server/`) |
-| `resourcesPath` | `string` | `'mcp/resources'` | Custom path for resources (relative to `server/`) |
-| `promptsPath` | `string` | `'mcp/prompts'` | Custom path for prompts (relative to `server/`) |
+| `dir` | `string` | `'mcp'` | Base directory for MCP definitions (relative to `server/`). The module will look for `tools/`, `resources/`, and `prompts/` subdirectories |
 
 ## 📚 Usage
 
@@ -143,16 +141,59 @@ export default defineMcpPrompt({
 
 ## 🔧 Custom Paths
 
-If you already have an existing MCP structure, you can customize the paths:
+### Changing the Base Directory
+
+If you want to use a different base directory instead of `mcp`, you can configure it:
 
 ```typescript
 // nuxt.config.ts
 export default defineNuxtConfig({
   modules: ['@hrcd/mcp'],
   mcp: {
-    toolsPath: 'server/my-tools',        // Instead of 'mcp/tools'
-    resourcesPath: 'server/my-resources', // Instead of 'mcp/resources'
-    promptsPath: 'server/my-prompts',     // Instead of 'mcp/prompts'
+    dir: './my-mcp', // Relative to server/ directory
+  },
+})
+```
+
+This will look for definitions in:
+- `server/my-mcp/tools/`
+- `server/my-mcp/resources/`
+- `server/my-mcp/prompts/`
+
+### Extending Paths with Hooks
+
+For more advanced use cases, you can use the `mcp:definitions:paths` hook to add additional directories to scan. This is useful when you want to share definitions across multiple modules or layers.
+
+You can use the hook in a custom Nuxt module:
+
+```typescript
+// my-module.ts
+export default defineNuxtModule({
+  setup(options, nuxt) {
+    nuxt.hook('mcp:definitions:paths', (paths) => {
+      // Add additional paths for tools
+      paths.tools.push('shared/tools')
+      // Add additional paths for resources
+      paths.resources.push('shared/resources')
+      // Add additional paths for prompts
+      paths.prompts.push('shared/prompts')
+    })
+  },
+})
+```
+
+Or in your `nuxt.config.ts`:
+
+```typescript
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['@hrcd/mcp'],
+  hooks: {
+    'mcp:definitions:paths'(paths) {
+      paths.tools.push('shared/tools')
+      paths.resources.push('shared/resources')
+      paths.prompts.push('shared/prompts')
+    },
   },
 })
 ```

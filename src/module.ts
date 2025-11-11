@@ -33,20 +33,11 @@ export interface ModuleOptions {
    */
   version?: string
   /**
-   * Custom path for MCP tools relative to server directory
-   * @default 'mcp/tools'
+   * Base directory for MCP definitions relative to server directory
+   * The module will look for tools, resources, and prompts in subdirectories
+   * @default 'mcp'
    */
-  toolsPath?: string
-  /**
-   * Custom path for MCP resources relative to server directory
-   * @default 'mcp/resources'
-   */
-  resourcesPath?: string
-  /**
-   * Custom path for MCP prompts relative to server directory
-   * @default 'mcp/prompts'
-   */
-  promptsPath?: string
+  dir?: string
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -60,9 +51,7 @@ export default defineNuxtModule<ModuleOptions>({
     browserRedirect: '/',
     name: '',
     version: '1.0.0',
-    toolsPath: 'mcp/tools',
-    resourcesPath: 'mcp/resources',
-    promptsPath: 'mcp/prompts',
+    dir: 'mcp',
   },
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
@@ -75,9 +64,7 @@ export default defineNuxtModule<ModuleOptions>({
         browserRedirect: options.browserRedirect,
         name: options.name,
         version: options.version,
-        toolsPath: options.toolsPath,
-        resourcesPath: options.resourcesPath,
-        promptsPath: options.promptsPath,
+        dir: options.dir,
       },
     )
 
@@ -88,10 +75,21 @@ export default defineNuxtModule<ModuleOptions>({
 
     log.info(`MCP server enabled at route: ${options.route}`)
 
-    await loadAllDefinitions({
-      toolsPath: options.toolsPath ?? 'mcp/tools',
-      resourcesPath: options.resourcesPath ?? 'mcp/resources',
-      promptsPath: options.promptsPath ?? 'mcp/prompts',
+    const mcpDir = options.dir ?? 'mcp'
+
+    // Initialize paths arrays with default paths
+    const paths = {
+      tools: [`${mcpDir}/tools`],
+      resources: [`${mcpDir}/resources`],
+      prompts: [`${mcpDir}/prompts`],
+    }
+
+    // Load definitions after all modules are done to allow hook extensions
+    nuxt.hook('modules:done', async () => {
+      // Call hook to allow other modules to extend paths
+      await nuxt.callHook('mcp:definitions:paths', paths)
+
+      await loadAllDefinitions(paths)
     })
 
     nuxt.hook('prepare:types', ({ references }) => {

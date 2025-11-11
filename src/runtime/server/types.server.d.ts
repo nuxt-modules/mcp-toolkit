@@ -1,4 +1,5 @@
 import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './mcp/definitions'
+import './types/hooks'
 
 declare module '#nuxt-mcp/tools.mjs' {
   export const tools: McpToolDefinition[]
