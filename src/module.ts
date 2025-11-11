@@ -120,7 +120,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     addServerHandler({
       route: options.route,
-      handler: resolver.resolve('runtime/server/mcp/handler.ts'),
+      handler: resolver.resolve('runtime/server/mcp/handler'),
     })
   },
 })
