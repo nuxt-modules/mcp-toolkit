@@ -26,6 +26,9 @@ importers:
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       '@nuxt/devtools':
         specifier: ^2.7.0

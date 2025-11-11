@@ -1,6 +1,6 @@
 {
   "name": "@hrcd/mcp",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "My new Nuxt module",
   "repository": "HugoRCD/nuxt-mcp-module",
   "license": "MIT",
@@ -41,6 +41,14 @@
     "defu": "^6.1.4",
     "pathe": "^2.0.3",
     "tinyglobby": "^0.2.15"
+  },
+  "peerDependencies": {
+    "zod": "^3.24.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": false
+    }
   },
   "devDependencies": {
     "@nuxt/devtools": "^2.7.0",

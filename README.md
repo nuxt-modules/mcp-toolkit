@@ -19,14 +19,16 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 ## 🚀 Installation
 
 ```bash
-npm install @hrcd/mcp zod
+npm install @hrcd/mcp zod@3
 # or
-pnpm add @hrcd/mcp zod
+pnpm add @hrcd/mcp zod@3
 # or
-yarn add @hrcd/mcp zod
+yarn add @hrcd/mcp zod@3
 # or
-bun add @hrcd/mcp zod
+bun add @hrcd/mcp zod@3
 ```
+
+**Note:** This module requires Zod v3 as a peer dependency. Zod v4 is not compatible with the MCP SDK.
 
 ## 📖 Configuration
 
