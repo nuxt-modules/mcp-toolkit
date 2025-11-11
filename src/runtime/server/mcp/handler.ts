@@ -34,10 +34,10 @@ async function createMcpServer(event: H3Event) {
 }
 
 export default defineEventHandler(async (event: H3Event) => {
-  const { redirectTo } = useRuntimeConfig(event).mcp
+  const { browserRedirect } = useRuntimeConfig(event).mcp
 
   if (getHeader(event, 'accept')?.includes('text/html')) {
-    return sendRedirect(event, redirectTo)
+    return sendRedirect(event, browserRedirect)
   }
 
   const server = await createMcpServer(event)

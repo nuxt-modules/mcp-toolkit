@@ -21,7 +21,7 @@ export interface ModuleOptions {
    * URL to redirect to when a browser accesses the MCP endpoint
    * @default '/'
    */
-  redirectTo?: string
+  browserRedirect?: string
   /**
    * The name of the MCP server
    * @default Site name from site config or 'Docus Documentation'
@@ -57,7 +57,7 @@ export default defineNuxtModule<ModuleOptions>({
   defaults: {
     enabled: true,
     route: '/mcp',
-    redirectTo: '/',
+    browserRedirect: '/',
     name: '',
     version: '1.0.0',
     toolsPath: 'mcp/tools',
@@ -72,7 +72,7 @@ export default defineNuxtModule<ModuleOptions>({
       {
         enabled: options.enabled,
         route: options.route,
-        redirectTo: options.redirectTo,
+        browserRedirect: options.browserRedirect,
         name: options.name,
         version: options.version,
         toolsPath: options.toolsPath,

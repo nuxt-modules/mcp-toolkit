@@ -49,7 +49,7 @@ export default defineNuxtConfig({
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Enable or disable the MCP server |
 | `route` | `string` | `'/mcp'` | Path for the MCP endpoint |
-| `redirectTo` | `string` | `'/'` | Redirect URL for browsers |
+| `browserRedirect` | `string` | `'/'` | Redirect URL when a browser accesses the MCP endpoint |
 | `name` | `string` | `''` | Name of the MCP server |
 | `version` | `string` | `'1.0.0'` | Version of the MCP server |
 | `toolsPath` | `string` | `'mcp/tools'` | Custom path for tools (relative to `server/`) |
