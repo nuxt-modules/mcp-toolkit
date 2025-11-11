@@ -93,7 +93,7 @@ import { fileURLToPath } from 'node:url'
 export default defineMcpResource({
   name: 'readme',
   title: 'README',
-  uriOrTemplate: 'file:///README.md',
+  uri: 'file:///README.md',
   metadata: {
     description: 'Project README file',
     mimeType: 'text/markdown',

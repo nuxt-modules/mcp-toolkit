@@ -7,7 +7,7 @@ import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTem
 export interface McpResourceDefinition {
   name: string
   title?: string
-  uriOrTemplate: string | ResourceTemplate
+  uri: string | ResourceTemplate
   metadata?: ResourceMetadata
   handler: ReadResourceCallback | ReadResourceTemplateCallback
 }
@@ -19,10 +19,10 @@ export function registerResourceFromDefinition(
   server: McpServer,
   resource: McpResourceDefinition,
 ) {
-  if (typeof resource.uriOrTemplate === 'string') {
+  if (typeof resource.uri === 'string') {
     return server.registerResource(
       resource.name,
-      resource.uriOrTemplate,
+      resource.uri,
       resource.metadata || {},
       resource.handler as ReadResourceCallback,
     )
@@ -30,7 +30,7 @@ export function registerResourceFromDefinition(
   else {
     return server.registerResource(
       resource.name,
-      resource.uriOrTemplate,
+      resource.uri,
       resource.metadata || {},
       resource.handler as ReadResourceTemplateCallback,
     )
@@ -48,7 +48,7 @@ export function registerResourceFromDefinition(
  * export default defineMcpResource({
  *   name: 'readme',
  *   title: 'README',
- *   uriOrTemplate: 'file:///project/README.md',
+ *   uri: 'file:///project/README.md',
  *   metadata: {
  *     description: 'Project README file',
  *     mimeType: 'text/markdown'
@@ -74,7 +74,7 @@ export function registerResourceFromDefinition(
  * export default defineMcpResource({
  *   name: 'file',
  *   title: 'File Resource',
- *   uriOrTemplate: new ResourceTemplate('file:///project/{path}', {
+ *   uri: new ResourceTemplate('file:///project/{path}', {
  *     list: async () => {
  *       return {
  *         resources: [
