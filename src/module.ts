@@ -1,8 +1,7 @@
 import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
-
-export * from './runtime/server/types'
+import { defaultMcpConfig } from './runtime/server/mcp/config'
 
 const log = logger.withTag('nuxt-mcp')
 
@@ -47,14 +46,7 @@ export default defineNuxtModule<ModuleOptions>({
     name: 'nuxt-mcp',
     configKey: 'mcp',
   },
-  defaults: {
-    enabled: true,
-    route: '/mcp',
-    browserRedirect: '/',
-    name: '',
-    version: '1.0.0',
-    dir: 'mcp',
-  },
+  defaults: defaultMcpConfig,
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
 
@@ -77,21 +69,27 @@ export default defineNuxtModule<ModuleOptions>({
 
     log.info(`MCP server enabled at route: ${options.route}`)
 
-    const mcpDir = options.dir ?? 'mcp'
+    const mcpDir = options.dir ?? defaultMcpConfig.dir
 
-    // Initialize paths arrays with default paths
     const paths = {
       tools: [`${mcpDir}/tools`],
       resources: [`${mcpDir}/resources`],
       prompts: [`${mcpDir}/prompts`],
+      handlers: [mcpDir],
     }
 
-    // Load definitions after all modules are done to allow hook extensions
     nuxt.hook('modules:done', async () => {
-      // Call hook to allow other modules to extend paths
       await nuxt.callHook('mcp:definitions:paths', paths)
 
-      await loadAllDefinitions(paths)
+      const result = await loadAllDefinitions(paths)
+
+      if (result.handlers && result.handlers.count > 0) {
+        addServerHandler({
+          route: '/mcp/:handler',
+          handler: resolver.resolve('runtime/server/mcp/handler'),
+        })
+        log.info(`Registered ${result.handlers.count} custom MCP handler(s)`)
+      }
     })
 
     nuxt.hook('prepare:types', ({ references }) => {
@@ -117,6 +115,14 @@ export default defineNuxtModule<ModuleOptions>({
       {
         name: 'defineMcpPrompt',
         from: resolver.resolve('runtime/server/mcp/definitions'),
+      },
+      {
+        name: 'defineMcpHandler',
+        from: resolver.resolve('runtime/server/mcp/definitions'),
+      },
+      {
+        name: 'createMcpHandler',
+        from: resolver.resolve('runtime/server/types'),
       },
     ])
 
