@@ -2,6 +2,8 @@ import { defineNuxtModule, addServerHandler, createResolver, addServerImports, l
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 
+export * from './runtime/server/types'
+
 const log = logger.withTag('nuxt-mcp')
 
 export const { resolve } = createResolver(import.meta.url)

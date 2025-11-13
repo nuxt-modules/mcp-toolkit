@@ -8,6 +8,7 @@
     "generate": "nuxi generate"
   },
   "dependencies": {
+    "@hrcd/mcp": "workspace:*",
     "nuxt": "^4.2.0",
     "zod": "^3.25.76"
   }
