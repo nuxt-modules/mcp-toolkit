@@ -54,25 +54,32 @@ async function loadMcpDefinitions(
 ): Promise<LoadResult> {
   const result = await loadDefinitionFiles(paths)
 
-  if (result.count > 0) {
-    addServerTemplate({
-      filename: templateFilename,
-      getContents: () => {
-        const entries = result.files.map((file) => {
-          const filename = file.split('/').pop()!
-          const identifier = toIdentifier(filename)
-          return [identifier, file] as [string, string]
-        })
-        return createTemplateContent(type, entries)
-      },
-    })
-  }
+  // Always generate the template file, even if empty (for imports)
+  addServerTemplate({
+    filename: templateFilename,
+    getContents: () => {
+      if (result.count === 0) {
+        return `export const ${type} = []\n`
+      }
+      const entries = result.files.map((file) => {
+        const filename = file.split('/').pop()!
+        const identifier = toIdentifier(filename)
+        return [identifier, file] as [string, string]
+      })
+      return createTemplateContent(type, entries)
+    },
+  })
 
   return result
 }
 
 async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
   if (paths.length === 0) {
+    // Always generate handlers file, even if empty (for imports)
+    addServerTemplate({
+      filename: '#nuxt-mcp/handlers.mjs',
+      getContents: () => `export const handlers = []\n`,
+    })
     return { count: 0, files: [], overriddenCount: 0 }
   }
 
@@ -87,19 +94,21 @@ async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
     },
   })
 
-  if (result.count > 0) {
-    addServerTemplate({
-      filename: '#nuxt-mcp/handlers.mjs',
-      getContents: () => {
-        const entries = result.files.map((file) => {
-          const filename = file.split('/').pop()!
-          const identifier = toIdentifier(filename)
-          return [identifier, file] as [string, string]
-        })
-        return createTemplateContent('handlers', entries)
-      },
-    })
-  }
+  // Always generate the template file, even if empty (for imports)
+  addServerTemplate({
+    filename: '#nuxt-mcp/handlers.mjs',
+    getContents: () => {
+      if (result.count === 0) {
+        return `export const handlers = []\n`
+      }
+      const entries = result.files.map((file) => {
+        const filename = file.split('/').pop()!
+        const identifier = toIdentifier(filename)
+        return [identifier, file] as [string, string]
+      })
+      return createTemplateContent('handlers', entries)
+    },
+  })
 
   return result
 }
