@@ -12,12 +12,13 @@ import { prompts } from '#nuxt-mcp/prompts.mjs'
 // @ts-expect-error - TODO: Fix this
 import { handlers } from '#nuxt-mcp/handlers.mjs'
 import { createMcpHandler } from './utils'
+import { getMcpConfig } from './config'
 
 export default createMcpHandler((event: H3Event) => {
-  const config = useRuntimeConfig(event).mcp
+  const runtimeConfig = useRuntimeConfig(event).mcp
+  const config = getMcpConfig(runtimeConfig)
   const handlerName = getRouterParam(event, 'handler')
 
-  // Custom handler route
   if (handlerName) {
     const handlerDef = (handlers as McpHandlerOptions[]).find(
       h => h.name === handlerName,
@@ -29,19 +30,18 @@ export default createMcpHandler((event: H3Event) => {
 
     return {
       name: handlerDef.name,
-      version: handlerDef.version || config.version || '1.0.0',
-      browserRedirect: handlerDef.browserRedirect ?? config.browserRedirect ?? '/',
+      version: handlerDef.version ?? config.version,
+      browserRedirect: handlerDef.browserRedirect ?? config.browserRedirect,
       tools: handlerDef.tools,
       resources: handlerDef.resources,
       prompts: handlerDef.prompts,
     }
   }
 
-  // Default handler
   return {
     name: config.name || 'MCP Server',
-    version: config.version || '1.0.0',
-    browserRedirect: config.browserRedirect || '/',
+    version: config.version,
+    browserRedirect: config.browserRedirect,
     tools: tools as McpToolDefinition[],
     resources: resources as McpResourceDefinition[],
     prompts: prompts as McpPromptDefinition[],

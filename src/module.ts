@@ -1,6 +1,7 @@
 import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
+import { defaultMcpConfig } from './runtime/server/mcp/config'
 
 const log = logger.withTag('nuxt-mcp')
 
@@ -45,14 +46,7 @@ export default defineNuxtModule<ModuleOptions>({
     name: 'nuxt-mcp',
     configKey: 'mcp',
   },
-  defaults: {
-    enabled: true,
-    route: '/mcp',
-    browserRedirect: '/',
-    name: '',
-    version: '1.0.0',
-    dir: 'mcp',
-  },
+  defaults: defaultMcpConfig,
   async setup(options, nuxt) {
     const resolver = createResolver(import.meta.url)
 
@@ -75,9 +69,8 @@ export default defineNuxtModule<ModuleOptions>({
 
     log.info(`MCP server enabled at route: ${options.route}`)
 
-    const mcpDir = options.dir ?? 'mcp'
+    const mcpDir = options.dir ?? defaultMcpConfig.dir
 
-    // Initialize paths arrays with default paths
     const paths = {
       tools: [`${mcpDir}/tools`],
       resources: [`${mcpDir}/resources`],
@@ -85,9 +78,7 @@ export default defineNuxtModule<ModuleOptions>({
       handlers: [mcpDir],
     }
 
-    // Load definitions after all modules are done to allow hook extensions
     nuxt.hook('modules:done', async () => {
-      // Call hook to allow other modules to extend paths
       await nuxt.callHook('mcp:definitions:paths', paths)
 
       const result = await loadAllDefinitions(paths)
