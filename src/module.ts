@@ -7,6 +7,8 @@ const log = logger.withTag('nuxt-mcp')
 
 export const { resolve } = createResolver(import.meta.url)
 
+export type * from './runtime/server/types'
+
 export interface ModuleOptions {
   /**
    * Enable or disable the MCP server
@@ -119,10 +121,6 @@ export default defineNuxtModule<ModuleOptions>({
       {
         name: 'defineMcpHandler',
         from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'createMcpHandler',
-        from: resolver.resolve('runtime/server/types'),
       },
     ])
 

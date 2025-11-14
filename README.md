@@ -15,6 +15,7 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 - 🔧 **Flexible configuration** - Customize paths and routes to fit your needs
 - 📝 **Native TypeScript** - Full TypeScript support with auto-completion
 - 🎯 **Auto-discovery** - Automatic discovery of definitions in your project
+- 🚀 **Multiple handlers** - Create multiple MCP endpoints in one application
 
 ## 🚀 Installation
 
@@ -30,7 +31,7 @@ bun add @hrcd/mcp zod@3
 
 **Note:** This module requires Zod v3 as a peer dependency. Zod v4 is not compatible with the MCP SDK.
 
-## 📖 Configuration
+## 📖 Quick Start
 
 Add the module to your `nuxt.config.ts`:
 
@@ -40,30 +41,13 @@ export default defineNuxtConfig({
   mcp: {
     name: 'My MCP Server',
     version: '1.0.0',
-    route: '/mcp', // Default route for the MCP server
   },
 })
 ```
 
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Enable or disable the MCP server |
-| `route` | `string` | `'/mcp'` | Path for the MCP endpoint |
-| `browserRedirect` | `string` | `'/'` | Redirect URL when a browser accesses the MCP endpoint |
-| `name` | `string` | `''` | Name of the MCP server |
-| `version` | `string` | `'1.0.0'` | Version of the MCP server |
-| `dir` | `string` | `'mcp'` | Base directory for MCP definitions (relative to `server/`). The module will look for `tools/`, `resources/`, and `prompts/` subdirectories |
-
-## 📚 Usage
-
-### Creating a Tool
-
-Create a file in `server/mcp/tools/` (or your custom path):
+Create your first tool in `server/mcp/tools/echo.ts`:
 
 ```typescript
-// server/mcp/tools/echo.ts
 import { z } from 'zod'
 
 export default defineMcpTool({
@@ -83,152 +67,41 @@ export default defineMcpTool({
 })
 ```
 
-### Creating a Resource
+## 📚 Documentation
 
-Create a file in `server/mcp/resources/`:
+📖 **[Full Documentation →](https://github.com/HugoRCD/nuxt-mcp-module/tree/main/docs)**
 
-```typescript
-// server/mcp/resources/readme.ts
-import { readFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
+The complete documentation includes:
 
-export default defineMcpResource({
-  name: 'readme',
-  title: 'README',
-  uri: 'file:///README.md',
-  metadata: {
-    description: 'Project README file',
-    mimeType: 'text/markdown',
-  },
-  handler: async (uri: URL) => {
-    const filePath = fileURLToPath(uri)
-    const content = await readFile(filePath, 'utf-8')
-    return {
-      contents: [{
-        uri: uri.toString(),
-        mimeType: 'text/markdown',
-        text: content,
-      }],
-    }
-  },
-})
-```
+- [Getting Started](docs/content/1.getting-started) - Installation and quick start guide
+- [Core Concepts](docs/content/2.core-concepts) - Tools, resources, prompts, and handlers
+- [Advanced Topics](docs/content/3.advanced) - Custom paths, multiple handlers, TypeScript, hooks
+- [Examples](docs/content/4.examples) - Real-world examples and patterns
+- [API Reference](docs/content/5.reference) - Complete API and configuration reference
 
-### Creating a Prompt
+## 🔧 Configuration
 
-Create a file in `server/mcp/prompts/`:
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Enable or disable the MCP server |
+| `route` | `string` | `'/mcp'` | Path for the MCP endpoint |
+| `browserRedirect` | `string` | `'/'` | Redirect URL when a browser accesses the MCP endpoint |
+| `name` | `string` | `''` | Name of the MCP server |
+| `version` | `string` | `'1.0.0'` | Version of the MCP server |
+| `dir` | `string` | `'mcp'` | Base directory for MCP definitions (relative to `server/`) |
 
-```typescript
-// server/mcp/prompts/greeting.ts
-export default defineMcpPrompt({
-  name: 'greeting',
-  title: 'Greeting',
-  description: 'Generate a personalized greeting message',
-  handler: async () => {
-    const hour = new Date().getHours()
-    const timeOfDay = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
+See the [Configuration Reference](docs/content/5.reference/2.configuration-reference) for detailed information.
 
-    return {
-      messages: [{
-        role: 'user',
-        content: {
-          type: 'text',
-          text: `Good ${timeOfDay}! How can I help you today?`,
-        },
-      }],
-    }
-  },
-})
-```
+## 📝 TypeScript Support
 
-## 🔧 Custom Paths
-
-### Changing the Base Directory
-
-If you want to use a different base directory instead of `mcp`, you can configure it:
-
-```typescript
-// nuxt.config.ts
-export default defineNuxtConfig({
-  modules: ['@hrcd/mcp'],
-  mcp: {
-    dir: './my-mcp', // Relative to server/ directory
-  },
-})
-```
-
-This will look for definitions in:
-- `server/my-mcp/tools/`
-- `server/my-mcp/resources/`
-- `server/my-mcp/prompts/`
-
-### Extending Paths with Hooks
-
-For more advanced use cases, you can use the `mcp:definitions:paths` hook to add additional directories to scan. This is useful when you want to share definitions across multiple modules or layers.
-
-You can use the hook in a custom Nuxt module:
-
-```typescript
-// my-module.ts
-export default defineNuxtModule({
-  setup(options, nuxt) {
-    nuxt.hook('mcp:definitions:paths', (paths) => {
-      // Add additional paths for tools
-      paths.tools.push('shared/tools')
-      // Add additional paths for resources
-      paths.resources.push('shared/resources')
-      // Add additional paths for prompts
-      paths.prompts.push('shared/prompts')
-    })
-  },
-})
-```
-
-Or in your `nuxt.config.ts`:
-
-```typescript
-// nuxt.config.ts
-export default defineNuxtConfig({
-  modules: ['@hrcd/mcp'],
-  hooks: {
-    'mcp:definitions:paths'(paths) {
-      paths.tools.push('shared/tools')
-      paths.resources.push('shared/resources')
-      paths.prompts.push('shared/prompts')
-    },
-  },
-})
-```
-
-Paths are relative to the `server/` directory of each Nuxt layer.
-
-## 🎯 Examples
-
-The module automatically discovers all `.ts`, `.js`, `.mts` or `.mjs` files in the configured directories. You can organize your definitions however you want:
-
-```
-server/
-  mcp/
-    tools/
-      calculator.ts
-      weather.ts
-    resources/
-      files.ts
-      database.ts
-    prompts/
-      summarize.ts
-      translate.ts
-```
-
-## 📝 TypeScript Types
-
-The module provides TypeScript types for a better development experience:
+All helpers are auto-imported in your server files:
 
 - `defineMcpTool` - Define tools with Zod validation
 - `defineMcpResource` - Define resources
 - `defineMcpPrompt` - Define prompts
+- `defineMcpHandler` - Create custom MCP endpoints
 
-All helpers are auto-imported in your server files.
+Full TypeScript support with complete type inference. See the [TypeScript Guide](docs/content/3.advanced/3.typescript) for more information.
 
 ## 🤝 Contributing
 

@@ -1,0 +1,13 @@
+{
+  "name": "@hrcd/mcp-docs",
+  "scripts": {
+    "dev": "nuxt dev --extends docus",
+    "build": "nuxt build --extends docus"
+  },
+  "dependencies": {
+    "@hrcd/mcp": "workspace:*",
+    "docus": "latest",
+    "better-sqlite3": "^12.2.0",
+    "nuxt": "^4.1.2"
+  }
+}
