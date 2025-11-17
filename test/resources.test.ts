@@ -67,6 +67,9 @@ describe('Resources', async () => {
     }
     expect(firstContent.uri).toBe('test://resource/test')
     expect(firstContent.mimeType).toBe('text/plain')
-    expect(firstContent.text).toContain('test resource content')
+    if ('text' in firstContent)
+      expect(firstContent.text).toContain('test resource content')
+    else
+      throw new Error('Expected content to have text property')
   })
 })
