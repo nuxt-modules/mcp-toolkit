@@ -15,6 +15,7 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 - 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts from your file structure
 - 📦 **File-based Organization** - Organize definitions in intuitive directory structures
 - 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single application
+- 🔍 **Built-in Inspector** - Visual debugging tool integrated into Nuxt DevTools
 - 📝 **TypeScript First** - Full type safety with auto-imports and complete type inference
 - 🔒 **Zod Validation** - Built-in input/output validation with Zod schemas
 - 🔧 **Flexible Architecture** - Custom paths, routes, and hooks for advanced use cases
@@ -85,13 +86,27 @@ export default defineMcpTool({
 
 The tool will be automatically discovered and registered. No imports needed - all helpers are auto-imported!
 
+## 🔍 MCP Inspector
+
+The module includes a built-in integration with the [MCP Inspector](https://github.com/modelcontextprotocol/inspector), a visual debugging tool for testing and debugging your MCP server.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="/docs/public/mcp-devtools-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="/docs/public/mcp-devtools-light.png">
+  <img alt="MCP Inspector" src="/docs/public/mcp-devtools-light.png">
+</picture>
+
+Enable DevTools in your `nuxt.config.ts`, then open Nuxt DevTools and navigate to the **MCP Inspector** tab in the **Server** section. Click **Launch Inspector** to start testing your tools, resources, and prompts with a visual interface.
+
+The inspector automatically connects to your MCP server - no configuration needed.
+
 ## 📚 Documentation
 
 📖 **[Full Documentation →](https://github.com/HugoRCD/nuxt-mcp-module/tree/main/docs)**
 
 The complete documentation includes:
 
-- **Getting Started** - Installation, configuration, and first steps
+- **Getting Started** - Installation, configuration, first steps, and MCP Inspector
 - **Core Concepts** - Tools, resources, prompts, and handlers
 - **Advanced Topics** - Custom paths, TypeScript, and hooks
 - **Examples** - Real-world examples and common patterns

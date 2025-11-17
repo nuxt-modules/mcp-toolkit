@@ -3,6 +3,7 @@ import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
+import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 
 const log = logger.withTag('nuxt-mcp')
 
@@ -159,5 +160,7 @@ export default defineNuxtModule<ModuleOptions>({
       route: options.route,
       handler: resolver.resolve('runtime/server/mcp/handler'),
     })
+
+    addDevToolsCustomTabs(nuxt, options)
   },
 })

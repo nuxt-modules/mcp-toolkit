@@ -29,9 +29,9 @@ importers:
       scule:
         specifier: ^1.3.0
         version: 1.3.0
-      tinyglobby:
-        specifier: ^0.2.15
-        version: 0.2.15
+      tinyexec:
+        specifier: ^1.0.2
+        version: 1.0.2
       zod:
         specifier: ^3.25.76
         version: 3.25.76
