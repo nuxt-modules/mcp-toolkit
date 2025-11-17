@@ -1,14 +1,16 @@
 import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTemplateCallback, ResourceMetadata } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { enrichNameTitle } from './utils'
 
 /**
  * Definition of an MCP resource matching the SDK's registerResource signature
  * Supports both static resources (URI string) and dynamic resources (ResourceTemplate)
  */
 export interface McpResourceDefinition {
-  name: string
+  name?: string
   title?: string
   uri: string | ResourceTemplate
   metadata?: ResourceMetadata
+  _meta?: Record<string, unknown>
   handler: ReadResourceCallback | ReadResourceTemplateCallback
 }
 
@@ -19,19 +21,31 @@ export function registerResourceFromDefinition(
   server: McpServer,
   resource: McpResourceDefinition,
 ) {
+  const { name, title } = enrichNameTitle({
+    name: resource.name,
+    title: resource.title,
+    _meta: resource._meta,
+    type: 'resource',
+  })
+
+  const metadata = {
+    ...resource.metadata,
+    title: title || resource.metadata?.title,
+  }
+
   if (typeof resource.uri === 'string') {
     return server.registerResource(
-      resource.name,
+      name,
       resource.uri,
-      resource.metadata || {},
+      metadata,
       resource.handler as ReadResourceCallback,
     )
   }
   else {
     return server.registerResource(
-      resource.name,
+      name,
       resource.uri,
-      resource.metadata || {},
+      metadata,
       resource.handler as ReadResourceTemplateCallback,
     )
   }
@@ -41,6 +55,9 @@ export function registerResourceFromDefinition(
  * Define an MCP resource that will be automatically registered
  *
  * This function matches the structure of server.registerResource() from the MCP SDK.
+ *
+ * If `name` or `title` are not provided, they will be automatically generated from the filename
+ * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
  *
  * @example
  * ```ts

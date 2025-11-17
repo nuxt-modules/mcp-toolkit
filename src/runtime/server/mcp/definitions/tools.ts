@@ -2,6 +2,7 @@ import type { z, ZodRawShape, ZodTypeAny } from 'zod'
 import type { CallToolResult, ServerRequest, ServerNotification, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { enrichNameTitle } from './utils'
 
 /**
  * Callback type for MCP tools, matching the SDK's ToolCallback type
@@ -19,7 +20,7 @@ export interface McpToolDefinition<
   InputSchema extends ZodRawShape = ZodRawShape,
   OutputSchema extends ZodRawShape = ZodRawShape,
 > {
-  name: string
+  name?: string
   title?: string
   description?: string
   inputSchema: InputSchema
@@ -40,10 +41,17 @@ export function registerToolFromDefinition<
   server: McpServer,
   tool: McpToolDefinition<InputSchema, OutputSchema>,
 ) {
+  const { name, title } = enrichNameTitle({
+    name: tool.name,
+    title: tool.title,
+    _meta: tool._meta,
+    type: 'tool',
+  })
+
   return server.registerTool<InputSchema, OutputSchema>(
-    tool.name,
+    name,
     {
-      title: tool.title,
+      title,
       description: tool.description,
       inputSchema: tool.inputSchema,
       outputSchema: tool.outputSchema,
@@ -59,6 +67,9 @@ export function registerToolFromDefinition<
  *
  * This function matches the exact structure of server.registerTool() from the MCP SDK,
  * making it easy to migrate code from the SDK to this module.
+ *
+ * If `name` or `title` are not provided, they will be automatically generated from the filename
+ * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
  *
  * @example
  * ```ts
