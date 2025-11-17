@@ -2,6 +2,7 @@ import { defineNuxtModule, addServerHandler, createResolver, addServerImports, l
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
+import { ROUTES } from './runtime/server/mcp/constants'
 
 const log = logger.withTag('nuxt-mcp')
 
@@ -65,11 +66,8 @@ export default defineNuxtModule<ModuleOptions>({
     )
 
     if (!options.enabled) {
-      log.info('MCP server is disabled')
       return
     }
-
-    log.info(`MCP server enabled at route: ${options.route}`)
 
     const mcpDir = options.dir ?? defaultMcpConfig.dir
 
@@ -81,16 +79,49 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     nuxt.hook('modules:done', async () => {
-      await nuxt.callHook('mcp:definitions:paths', paths)
+      try {
+        await nuxt.callHook('mcp:definitions:paths', paths)
 
-      const result = await loadAllDefinitions(paths)
+        const result = await loadAllDefinitions(paths)
 
-      if (result.handlers && result.handlers.count > 0) {
-        addServerHandler({
-          route: '/mcp/:handler',
-          handler: resolver.resolve('runtime/server/mcp/handler'),
-        })
-        log.info(`Registered ${result.handlers.count} custom MCP handler(s)`)
+        if (result.handlers && result.handlers.count > 0) {
+          addServerHandler({
+            route: ROUTES.CUSTOM_HANDLER,
+            handler: resolver.resolve('runtime/server/mcp/handler'),
+          })
+        }
+
+        if (result.total === 0) {
+          log.warn('No MCP definitions found. Create tools, resources, or prompts in server/mcp/')
+        }
+        else {
+          const summary: string[] = []
+          if (result.tools.count > 0) summary.push(`${result.tools.count} tool${result.tools.count > 1 ? 's' : ''}`)
+          if (result.resources.count > 0) summary.push(`${result.resources.count} resource${result.resources.count > 1 ? 's' : ''}`)
+          if (result.prompts.count > 0) summary.push(`${result.prompts.count} prompt${result.prompts.count > 1 ? 's' : ''}`)
+          if (result.handlers.count > 0) summary.push(`${result.handlers.count} handler${result.handlers.count > 1 ? 's' : ''}`)
+
+          const boxContent: string[] = []
+          if (options.name) {
+            boxContent.push(`${options.name}`)
+          }
+          boxContent.push(`Route: ${options.route}`)
+          boxContent.push(`Definitions: ${summary.join(', ')}`)
+
+          log.box({
+            title: 'MCP Server',
+            message: boxContent.join('\n'),
+          })
+        }
+      }
+      catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        log.error('Failed to initialize MCP server')
+        log.error(`Error: ${errorMessage}`)
+        if (error instanceof Error && error.cause) {
+          log.error(`Cause: ${error.cause}`)
+        }
+        throw error
       }
     })
 

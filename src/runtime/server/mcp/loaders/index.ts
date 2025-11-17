@@ -16,6 +16,11 @@ export interface LoaderPaths {
   handlers?: string[]
 }
 
+export interface HandlerRouteInfo {
+  name: string
+  route?: string
+}
+
 interface LoadResults {
   tools: LoadResult
   resources: LoadResult
@@ -23,94 +28,92 @@ interface LoadResults {
   handlers: LoadResult
 }
 
-function logLoadResults(results: LoadResults): void {
-  const { tools, resources, prompts, handlers } = results
-  const total = tools.count + resources.count + prompts.count + handlers.count
-
-  if (total === 0) {
-    return
-  }
-
-  const parts: string[] = []
-  const addPart = (count: number, label: string, overridden?: number) => {
-    if (count > 0) {
-      const overriddenText = overridden && overridden > 0 ? ` (${overridden} overridden)` : ''
-      parts.push(`${count} ${label}${overriddenText}`)
-    }
-  }
-
-  addPart(tools.count, 'tools', tools.overriddenCount)
-  addPart(resources.count, 'resources', resources.overriddenCount)
-  addPart(prompts.count, 'prompts', prompts.overriddenCount)
-  addPart(handlers.count, 'handlers', handlers.overriddenCount)
-
-  log.info(`Found ${total} MCP definition${total > 1 ? 's' : ''}: ${parts.join(', ')}`)
-}
-
 async function loadMcpDefinitions(
   type: 'tools' | 'resources' | 'prompts',
   templateFilename: string,
   paths: string[],
 ): Promise<LoadResult> {
-  const result = await loadDefinitionFiles(paths)
+  try {
+    const result = await loadDefinitionFiles(paths)
 
-  // Always generate the template file, even if empty (for imports)
-  addServerTemplate({
-    filename: templateFilename,
-    getContents: () => {
-      if (result.count === 0) {
-        return `export const ${type} = []\n`
-      }
-      const entries = result.files.map((file) => {
-        const filename = file.split('/').pop()!
-        const identifier = toIdentifier(filename)
-        return [identifier, file] as [string, string]
-      })
-      return createTemplateContent(type, entries)
-    },
-  })
+    // Always generate the template file, even if empty (for imports)
+    addServerTemplate({
+      filename: templateFilename,
+      getContents: () => {
+        if (result.count === 0) {
+          return `export const ${type} = []\n`
+        }
+        const entries = result.files.map((file) => {
+          const filename = file.split('/').pop()!
+          const identifier = toIdentifier(filename)
+          return [identifier, file] as [string, string]
+        })
+        return createTemplateContent(type, entries)
+      },
+    })
 
-  return result
+    return result
+  }
+  catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    log.error(`Failed to load ${type} definitions from paths: ${paths.join(', ')}`)
+    log.error(`Error: ${errorMessage}`)
+    throw new Error(
+      `Failed to load MCP ${type} definitions. Check that the paths exist and contain valid definition files.`,
+      { cause: error },
+    )
+  }
 }
 
 async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
-  if (paths.length === 0) {
-    // Always generate handlers file, even if empty (for imports)
+  try {
+    if (paths.length === 0) {
+      // Always generate handlers file, even if empty (for imports)
+      addServerTemplate({
+        filename: '#nuxt-mcp/handlers.mjs',
+        getContents: () => `export const handlers = []\n`,
+      })
+      return { count: 0, files: [], overriddenCount: 0 }
+    }
+
+    const excludePatterns = createExcludePatterns(paths, ['tools', 'resources', 'prompts'])
+    const result = await loadDefinitionFiles(paths, {
+      excludePatterns,
+      filter: (filePath) => {
+        const relativePath = filePath.replace(/.*\/server\//, '')
+        return !relativePath.includes('/tools/')
+          && !relativePath.includes('/resources/')
+          && !relativePath.includes('/prompts/')
+      },
+    })
+
+    // Always generate the template file, even if empty (for imports)
     addServerTemplate({
       filename: '#nuxt-mcp/handlers.mjs',
-      getContents: () => `export const handlers = []\n`,
+      getContents: () => {
+        if (result.count === 0) {
+          return `export const handlers = []\n`
+        }
+        const entries = result.files.map((file) => {
+          const filename = file.split('/').pop()!
+          const identifier = toIdentifier(filename)
+          return [identifier, file] as [string, string]
+        })
+        return createTemplateContent('handlers', entries)
+      },
     })
-    return { count: 0, files: [], overriddenCount: 0 }
+
+    return result
   }
-
-  const excludePatterns = createExcludePatterns(paths, ['tools', 'resources', 'prompts'])
-  const result = await loadDefinitionFiles(paths, {
-    excludePatterns,
-    filter: (filePath) => {
-      const relativePath = filePath.replace(/.*\/server\//, '')
-      return !relativePath.includes('/tools/')
-        && !relativePath.includes('/resources/')
-        && !relativePath.includes('/prompts/')
-    },
-  })
-
-  // Always generate the template file, even if empty (for imports)
-  addServerTemplate({
-    filename: '#nuxt-mcp/handlers.mjs',
-    getContents: () => {
-      if (result.count === 0) {
-        return `export const handlers = []\n`
-      }
-      const entries = result.files.map((file) => {
-        const filename = file.split('/').pop()!
-        const identifier = toIdentifier(filename)
-        return [identifier, file] as [string, string]
-      })
-      return createTemplateContent('handlers', entries)
-    },
-  })
-
-  return result
+  catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    log.error(`Failed to load handler definitions from paths: ${paths.join(', ')}`)
+    log.error(`Error: ${errorMessage}`)
+    throw new Error(
+      `Failed to load MCP handler definitions. Check that the paths exist and contain valid handler files.`,
+      { cause: error },
+    )
+  }
 }
 
 export async function loadTools(paths: string[]) {
@@ -128,24 +131,53 @@ export async function loadPrompts(paths: string[]) {
 export { loadHandlers }
 
 export async function loadAllDefinitions(paths: LoaderPaths) {
-  const [tools, resources, prompts, handlers] = await Promise.all([
-    loadTools(paths.tools),
-    loadResources(paths.resources),
-    loadPrompts(paths.prompts),
-    loadHandlers(paths.handlers ?? []),
-  ])
+  try {
+    const [tools, resources, prompts, handlers] = await Promise.all([
+      loadTools(paths.tools),
+      loadResources(paths.resources),
+      loadPrompts(paths.prompts),
+      loadHandlers(paths.handlers ?? []),
+    ])
 
-  const results: LoadResults = {
-    tools,
-    resources,
-    prompts,
-    handlers,
+    const results: LoadResults = {
+      tools,
+      resources,
+      prompts,
+      handlers,
+    }
+
+    return {
+      ...results,
+      total: tools.count + resources.count + prompts.count + handlers.count,
+    }
   }
+  catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    log.error('Failed to load MCP definitions')
+    log.error(`Error: ${errorMessage}`)
+    throw new Error(
+      'Failed to load MCP definitions. Please check your configuration and ensure definition files are valid.',
+      { cause: error },
+    )
+  }
+}
 
-  logLoadResults(results)
-
-  return {
-    ...results,
-    total: tools.count + resources.count + prompts.count + handlers.count,
+/**
+ * Get handler route information from loaded handlers
+ * This is used at runtime to identify handlers by their routes
+ */
+export async function getHandlerRoutes(): Promise<HandlerRouteInfo[]> {
+  try {
+    // @ts-expect-error - Generated module, types available at runtime
+    const handlersModule = await import('#nuxt-mcp/handlers.mjs')
+    interface HandlerDef {
+      name: string
+      route?: string
+    }
+    const handlers = handlersModule.handlers as HandlerDef[]
+    return handlers.map(h => ({ name: h.name, route: h.route }))
+  }
+  catch {
+    return []
   }
 }
