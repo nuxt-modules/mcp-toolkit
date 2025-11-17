@@ -12,14 +12,14 @@ export type McpPromptCallback<Args extends ZodRawShape | undefined = undefined> 
   : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
 
 /**
- * Definition of an MCP prompt matching the SDK's registerPrompt signature
- * This structure is identical to what you'd pass to server.registerPrompt()
+ * Definition of an MCP prompt
+ * Uses `inputSchema` for consistency with tools, which is mapped to `argsSchema` when registering with the SDK
  */
 export interface McpPromptDefinition<Args extends ZodRawShape | undefined = undefined> {
   name?: string
   title?: string
   description?: string
-  argsSchema?: Args
+  inputSchema?: Args
   _meta?: Record<string, unknown>
   handler: McpPromptCallback<Args>
 }
@@ -38,13 +38,13 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
     type: 'prompt',
   })
 
-  if (prompt.argsSchema) {
+  if (prompt.inputSchema) {
     return server.registerPrompt(
       name,
       {
         title,
         description: prompt.description,
-        argsSchema: prompt.argsSchema as ZodRawShape,
+        argsSchema: prompt.inputSchema as ZodRawShape,
       },
       prompt.handler as unknown as PromptCallback<ZodRawShape>,
     )
@@ -64,9 +64,6 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
 /**
  * Define an MCP prompt that will be automatically registered
  *
- * This function matches the exact structure of server.registerPrompt() from the MCP SDK,
- * making it easy to migrate code from the SDK to this module.
- *
  * If `name` or `title` are not provided, they will be automatically generated from the filename
  * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
  *
@@ -79,7 +76,7 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
  *   name: 'summarize',
  *   title: 'Text Summarizer',
  *   description: 'Summarize any text using an LLM',
- *   argsSchema: {
+ *   inputSchema: {
  *     text: z.string().describe('The text to summarize'),
  *     maxLength: z.string().optional().describe('Maximum length of summary')
  *   },

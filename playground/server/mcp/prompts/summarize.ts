@@ -4,21 +4,19 @@ export default defineMcpPrompt({
   name: 'summarize',
   title: 'Text Summarizer',
   description: 'Summarize any text content',
-  argsSchema: {
+  inputSchema: {
     text: z.string().describe('The text to summarize'),
-    maxLength: z.string().optional().describe('Maximum length of summary in words'),
+    maxLength: z.enum(['short', 'medium', 'long']).default('medium').describe('Maximum length of summary'),
   },
   handler: async ({ text, maxLength }) => {
-    const words = text.split(/\s+/)
-    const maxWords = maxLength ? Number.parseInt(maxLength) : Math.ceil(words.length * 0.3)
-    const summary = words.slice(0, maxWords).join(' ')
+    const summary = text.slice(0, maxLength === 'short' ? 100 : maxLength === 'medium' ? 200 : 300)
 
     return {
       messages: [{
         role: 'user',
         content: {
           type: 'text',
-          text: `Summary (${maxWords} words): ${summary}${words.length > maxWords ? '...' : ''}`,
+          text: `Summary: ${summary}${text.length > summary.length ? '...' : ''}`,
         },
       }],
     }

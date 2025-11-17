@@ -33,12 +33,12 @@ export function validatePromptDefinition(
     })
   }
 
-  // Validate argsSchema if provided
-  if (prompt.argsSchema && typeof prompt.argsSchema !== 'object') {
+  // Validate inputSchema if provided
+  if (prompt.inputSchema && typeof prompt.inputSchema !== 'object') {
     errors.push({
       file: filePath,
-      message: 'Prompt argsSchema must be an object with Zod string schemas',
-      suggestion: 'Use an object with Zod string schemas: argsSchema: { param: z.string() }',
+      message: 'Prompt inputSchema must be an object with Zod string schemas',
+      suggestion: 'Use an object with Zod string schemas: inputSchema: { param: z.string() }',
     })
   }
 

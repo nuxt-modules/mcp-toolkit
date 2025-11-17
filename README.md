@@ -1,33 +1,49 @@
 # Nuxt MCP Module
 
-[![npm version][npm-version-src]][npm-version-href]
-[![npm downloads][npm-downloads-src]][npm-downloads-href]
-[![License][license-src]][license-href]
-[![Nuxt][nuxt-src]][nuxt-href]
+<!-- automd:badges color="black" license name="@hrcd/mcp" -->
 
-A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server directly in your Nuxt application. Define MCP tools, resources, and prompts with a simple and intuitive API.
+[![npm version](https://img.shields.io/npm/v/@hrcd/mcp?color=black)](https://npmjs.com/package/@hrcd/mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@hrcd/mcp?color=black)](https://npm.chart.dev/@hrcd/mcp)
+[![license](https://img.shields.io/github/license/HugoRCD/nuxt-mcp-module?color=black)](https://github.com/HugoRCD/nuxt-mcp-module/blob/main/LICENSE)
+
+<!-- /automd -->
+
+A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server directly in your Nuxt application. Define MCP tools, resources, and prompts with zero configuration - just create files and they're automatically discovered and registered.
 
 ## ✨ Features
 
-- 🛠️ **Simple tool definitions** - Create MCP tools with Zod validation
-- 📦 **Resource management** - Expose resources accessible via URI
-- 💬 **Custom prompts** - Create reusable prompts for your assistants
-- 🔧 **Flexible configuration** - Customize paths and routes to fit your needs
-- 📝 **Native TypeScript** - Full TypeScript support with auto-completion
-- 🎯 **Auto-discovery** - Automatic discovery of definitions in your project
-- 🚀 **Multiple handlers** - Create multiple MCP endpoints in one application
+- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts from your file structure
+- 📦 **File-based Organization** - Organize definitions in intuitive directory structures
+- 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single application
+- 📝 **TypeScript First** - Full type safety with auto-imports and complete type inference
+- 🔒 **Zod Validation** - Built-in input/output validation with Zod schemas
+- 🔧 **Flexible Architecture** - Custom paths, routes, and hooks for advanced use cases
 
 ## 🚀 Installation
 
-```bash
-npm install @hrcd/mcp zod@3
-# or
-pnpm add @hrcd/mcp zod@3
-# or
-yarn add @hrcd/mcp zod@3
-# or
-bun add @hrcd/mcp zod@3
+<!-- automd:pm-install name="@hrcd/mcp" dev -->
+
+```sh
+# ✨ Auto-detect
+npx nypm install -D @hrcd/mcp
+
+# npm
+npm install -D @hrcd/mcp
+
+# yarn
+yarn add -D @hrcd/mcp
+
+# pnpm
+pnpm add -D @hrcd/mcp
+
+# bun
+bun install -D @hrcd/mcp
+
+# deno
+deno install --dev npm:@hrcd/mcp
 ```
+
+<!-- /automd -->
 
 **Note:** This module requires Zod v3 as a peer dependency. Zod v4 is not compatible with the MCP SDK.
 
@@ -51,7 +67,7 @@ Create your first tool in `server/mcp/tools/echo.ts`:
 import { z } from 'zod'
 
 export default defineMcpTool({
-  name: 'echo',
+  // name is optional - auto-generated from filename (echo.ts → 'echo')
   description: 'Echo back a message',
   inputSchema: {
     message: z.string().describe('The message to echo back'),
@@ -67,17 +83,18 @@ export default defineMcpTool({
 })
 ```
 
+The tool will be automatically discovered and registered. No imports needed - all helpers are auto-imported!
+
 ## 📚 Documentation
 
 📖 **[Full Documentation →](https://github.com/HugoRCD/nuxt-mcp-module/tree/main/docs)**
 
 The complete documentation includes:
 
-- [Getting Started](docs/content/1.getting-started) - Installation and quick start guide
-- [Core Concepts](docs/content/2.core-concepts) - Tools, resources, prompts, and handlers
-- [Advanced Topics](docs/content/3.advanced) - Custom paths, multiple handlers, TypeScript, hooks
-- [Examples](docs/content/4.examples) - Real-world examples and patterns
-- [API Reference](docs/content/5.reference) - Complete API and configuration reference
+- **Getting Started** - Installation, configuration, and first steps
+- **Core Concepts** - Tools, resources, prompts, and handlers
+- **Advanced Topics** - Custom paths, TypeScript, and hooks
+- **Examples** - Real-world examples and common patterns
 
 ## 🔧 Configuration
 
@@ -90,18 +107,18 @@ The complete documentation includes:
 | `version` | `string` | `'1.0.0'` | Version of the MCP server |
 | `dir` | `string` | `'mcp'` | Base directory for MCP definitions (relative to `server/`) |
 
-See the [Configuration Reference](docs/content/5.reference/2.configuration-reference) for detailed information.
+See the [Configuration Guide](docs/content/1.getting-started/3.configuration.md) for detailed information.
 
 ## 📝 TypeScript Support
 
-All helpers are auto-imported in your server files:
+All helpers are auto-imported in your server files - no imports needed:
 
-- `defineMcpTool` - Define tools with Zod validation
-- `defineMcpResource` - Define resources
-- `defineMcpPrompt` - Define prompts
-- `defineMcpHandler` - Create custom MCP endpoints
+- `defineMcpTool` - Define tools with Zod validation and type inference
+- `defineMcpResource` - Define resources with URI templates
+- `defineMcpPrompt` - Define reusable prompts with optional arguments
+- `defineMcpHandler` - Create custom MCP endpoints with multiple handlers
 
-Full TypeScript support with complete type inference. See the [TypeScript Guide](docs/content/3.advanced/3.typescript) for more information.
+Full TypeScript support with complete type inference from your Zod schemas. Input and output types are automatically inferred. See the [TypeScript Guide](docs/content/3.advanced/3.typescript.md) for more information.
 
 ## 🤝 Contributing
 
@@ -111,41 +128,35 @@ Contributions are welcome! Feel free to open an issue or submit a pull request.
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Generate type stubs
-npm run dev:prepare
+pnpm run dev:prepare
 
 # Develop with playground
-npm run dev
+pnpm run dev
 
 # Build playground
-npm run dev:build
+pnpm run dev:build
 
 # Lint
-npm run lint
+pnpm run lint
 
 # Test
-npm run test
-npm run test:watch
+pnpm run test
+pnpm run test:watch
 
 # Release
-npm run release
+pnpm run release
 ```
 
-## 📄 License
+<!-- automd:contributors author="HugoRCD" license="MIT" github="HugoRCD/nuxt-mcp-module" -->
 
-MIT
+Published under the [MIT](https://github.com/HugoRCD/nuxt-mcp-module/blob/main/LICENSE) license.
+Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.com/HugoRCD/nuxt-mcp-module/graphs/contributors) 💛
+<br><br>
+<a href="https://github.com/HugoRCD/nuxt-mcp-module/graphs/contributors">
+<img src="https://contrib.rocks/image?repo=HugoRCD/nuxt-mcp-module" />
+</a>
 
-<!-- Badges -->
-[npm-version-src]: https://img.shields.io/npm/v/@hrcd/mcp/latest.svg?style=flat&colorA=020420&colorB=00DC82
-[npm-version-href]: https://npmjs.com/package/@hrcd/mcp
-
-[npm-downloads-src]: https://img.shields.io/npm/dm/@hrcd/mcp.svg?style=flat&colorA=020420&colorB=00DC82
-[npm-downloads-href]: https://npm.chart.dev/@hrcd/mcp
-
-[license-src]: https://img.shields.io/npm/l/@hrcd/mcp.svg?style=flat&colorA=020420&colorB=00DC82
-[license-href]: https://npmjs.com/package/@hrcd/mcp
-
-[nuxt-src]: https://img.shields.io/badge/Nuxt-020420?logo=nuxt.js
-[nuxt-href]: https://nuxt.com
+<!-- /automd -->
