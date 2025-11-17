@@ -356,7 +356,7 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
                 label: promise ? 'Starting...' : 'Launch Inspector',
                 pending: !!promise,
                 handle() {
-                  promise = promise || launchMcpInspector(nuxt, options).then(() => {
+                  promise = promise || launchMcpInspector(nuxt, options).finally(() => {
                     promise = null
                   })
                   return promise
