@@ -5,6 +5,7 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  // @ts-expect-error - site is a valid Docus property but not typed in NuxtConfig
   site: {
     name: 'Nuxt MCP Module',
   },
