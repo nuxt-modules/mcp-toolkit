@@ -10,3 +10,7 @@
   --ui-primary: white;
   --ui-bg: #060606;
 }
+
+.main-gradient {
+  @apply bg-gradient-to-r from-inverted/45 to-inverted to-50% bg-clip-text text-transparent;
+}

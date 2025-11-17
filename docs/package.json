@@ -6,8 +6,10 @@
   },
   "dependencies": {
     "@hrcd/mcp": "workspace:*",
-    "docus": "latest",
     "better-sqlite3": "^12.2.0",
-    "nuxt": "^4.1.2"
+    "docus": "latest",
+    "motion-v": "^1.7.4",
+    "nuxt": "^4.1.2",
+    "shaders": "^2.1.10"
   }
 }

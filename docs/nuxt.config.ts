@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   extends: ['docus'],
 
-  modules: ['@hrcd/mcp'],
+  modules: ['@hrcd/mcp', 'motion-v/nuxt'],
 
   css: ['~/assets/css/main.css'],
 
