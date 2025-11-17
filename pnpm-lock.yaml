@@ -32,6 +32,9 @@ importers:
       tinyexec:
         specifier: ^1.0.2
         version: 1.0.2
+      tinyglobby:
+        specifier: ^0.2.15
+        version: 0.2.15
       zod:
         specifier: ^3.25.76
         version: 3.25.76
