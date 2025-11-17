@@ -37,8 +37,25 @@ export function createTemplateContent(
   const imports = entries.map(([name, path]) =>
     `import ${name.replace(/-/g, '_')} from '${path}'`,
   ).join('\n')
-  const exports = entries.map(([name]) => name.replace(/-/g, '_')).join(', ')
-  return `${imports}\n\nexport const ${type} = [${exports}]\n`
+
+  // Store filename in _meta for enrichment in register functions
+  const enrichedExports = entries.map(([name, path]) => {
+    const identifier = name.replace(/-/g, '_')
+    const filename = path.split('/').pop()!
+
+    return `(function() {
+  const def = ${identifier}
+  return {
+    ...def,
+    _meta: {
+      ...def._meta,
+      filename: ${JSON.stringify(filename)}
+    }
+  }
+})()`
+  }).join(',\n  ')
+
+  return `${imports}\n\nexport const ${type} = [\n  ${enrichedExports}\n]\n`
 }
 
 export async function loadDefinitionFiles(

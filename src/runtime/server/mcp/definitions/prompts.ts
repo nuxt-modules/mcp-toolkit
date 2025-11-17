@@ -2,6 +2,7 @@ import type { z, ZodTypeAny, ZodType, ZodOptional, ZodTypeDef } from 'zod'
 import type { GetPromptResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, PromptCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { enrichNameTitle } from './utils'
 
 type PromptArgsRawShape = {
   [k: string]: ZodType<string, ZodTypeDef, string> | ZodOptional<ZodType<string, ZodTypeDef, string>>
@@ -19,10 +20,11 @@ export type McpPromptCallback<Args extends PromptArgsRawShape | undefined = unde
  * This structure is identical to what you'd pass to server.registerPrompt()
  */
 export interface McpPromptDefinition<Args extends PromptArgsRawShape | undefined = undefined> {
-  name: string
+  name?: string
   title?: string
   description?: string
   argsSchema?: Args
+  _meta?: Record<string, unknown>
   handler: McpPromptCallback<Args>
 }
 
@@ -33,11 +35,18 @@ export function registerPromptFromDefinition<Args extends PromptArgsRawShape | u
   server: McpServer,
   prompt: McpPromptDefinition<Args>,
 ) {
+  const { name, title } = enrichNameTitle({
+    name: prompt.name,
+    title: prompt.title,
+    _meta: prompt._meta,
+    type: 'prompt',
+  })
+
   if (prompt.argsSchema) {
     return server.registerPrompt(
-      prompt.name,
+      name,
       {
-        title: prompt.title,
+        title,
         description: prompt.description,
         argsSchema: prompt.argsSchema as PromptArgsRawShape,
       },
@@ -46,9 +55,9 @@ export function registerPromptFromDefinition<Args extends PromptArgsRawShape | u
   }
   else {
     return server.registerPrompt(
-      prompt.name,
+      name,
       {
-        title: prompt.title,
+        title,
         description: prompt.description,
       },
       prompt.handler as unknown as PromptCallback<PromptArgsRawShape>,
@@ -61,6 +70,9 @@ export function registerPromptFromDefinition<Args extends PromptArgsRawShape | u
  *
  * This function matches the exact structure of server.registerPrompt() from the MCP SDK,
  * making it easy to migrate code from the SDK to this module.
+ *
+ * If `name` or `title` are not provided, they will be automatically generated from the filename
+ * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
  *
  * @example
  * ```ts
