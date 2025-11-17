@@ -11,5 +11,10 @@ export default defineAppConfig({
     colors: {
       neutral: 'zinc',
     },
+    button: {
+      slots: {
+        base: 'active:translate-y-px transition-transform duration-300',
+      },
+    },
   },
 })
