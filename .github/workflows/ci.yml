@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare module
+        run: pnpm run dev:prepare
+
       - name: Typecheck
         run: pnpm run test:types
 
@@ -70,7 +73,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Playground prepare
+      - name: Prepare module
         run: pnpm run dev:prepare
 
       - name: Test
