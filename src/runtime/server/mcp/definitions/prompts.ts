@@ -1,17 +1,13 @@
-import type { z, ZodTypeAny, ZodType, ZodOptional, ZodTypeDef } from 'zod'
+import type { z, ZodTypeAny, ZodRawShape } from 'zod'
 import type { GetPromptResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, PromptCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { enrichNameTitle } from './utils'
 
-type PromptArgsRawShape = {
-  [k: string]: ZodType<string, ZodTypeDef, string> | ZodOptional<ZodType<string, ZodTypeDef, string>>
-}
-
 /**
  * Callback type for MCP prompts, matching the SDK's PromptCallback type
  */
-export type McpPromptCallback<Args extends PromptArgsRawShape | undefined = undefined> = Args extends PromptArgsRawShape
+export type McpPromptCallback<Args extends ZodRawShape | undefined = undefined> = Args extends ZodRawShape
   ? (args: z.objectOutputType<Args, ZodTypeAny>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
   : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
 
@@ -19,7 +15,7 @@ export type McpPromptCallback<Args extends PromptArgsRawShape | undefined = unde
  * Definition of an MCP prompt matching the SDK's registerPrompt signature
  * This structure is identical to what you'd pass to server.registerPrompt()
  */
-export interface McpPromptDefinition<Args extends PromptArgsRawShape | undefined = undefined> {
+export interface McpPromptDefinition<Args extends ZodRawShape | undefined = undefined> {
   name?: string
   title?: string
   description?: string
@@ -31,7 +27,7 @@ export interface McpPromptDefinition<Args extends PromptArgsRawShape | undefined
 /**
  * Helper function to register a prompt from a McpPromptDefinition
  */
-export function registerPromptFromDefinition<Args extends PromptArgsRawShape | undefined = undefined>(
+export function registerPromptFromDefinition<Args extends ZodRawShape | undefined = undefined>(
   server: McpServer,
   prompt: McpPromptDefinition<Args>,
 ) {
@@ -48,9 +44,9 @@ export function registerPromptFromDefinition<Args extends PromptArgsRawShape | u
       {
         title,
         description: prompt.description,
-        argsSchema: prompt.argsSchema as PromptArgsRawShape,
+        argsSchema: prompt.argsSchema as ZodRawShape,
       },
-      prompt.handler as unknown as PromptCallback<PromptArgsRawShape>,
+      prompt.handler as unknown as PromptCallback<ZodRawShape>,
     )
   }
   else {
@@ -60,7 +56,7 @@ export function registerPromptFromDefinition<Args extends PromptArgsRawShape | u
         title,
         description: prompt.description,
       },
-      prompt.handler as unknown as PromptCallback<PromptArgsRawShape>,
+      prompt.handler as unknown as PromptCallback<ZodRawShape>,
     )
   }
 }
@@ -122,7 +118,7 @@ export function registerPromptFromDefinition<Args extends PromptArgsRawShape | u
  * })
  * ```
  */
-export function defineMcpPrompt<const Args extends PromptArgsRawShape | undefined = undefined>(
+export function defineMcpPrompt<const Args extends ZodRawShape | undefined = undefined>(
   definition: McpPromptDefinition<Args>,
 ): McpPromptDefinition<Args> {
   return definition
