@@ -13,7 +13,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 20.19.5
 
       - run: npm i -g --force corepack@latest && corepack enable
 
@@ -36,7 +36,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 20.19.5
 
       - run: npm i -g --force corepack@latest && corepack enable
 
@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 20.19.5
 
       - run: npm i -g --force corepack@latest && corepack enable
 
