@@ -47,18 +47,33 @@ export function registerToolFromDefinition<
     type: 'tool',
   })
 
-  return server.registerTool<ZodRawShape, OutputSchema>(
-    name,
-    {
-      title,
-      description: tool.description,
-      inputSchema: (tool.inputSchema || {}) as ZodRawShape,
-      outputSchema: tool.outputSchema,
-      annotations: tool.annotations,
-      _meta: tool._meta,
-    },
-    tool.handler as unknown as ToolCallback<ZodRawShape>,
-  )
+  if (tool.inputSchema) {
+    return server.registerTool<ZodRawShape, OutputSchema>(
+      name,
+      {
+        title,
+        description: tool.description,
+        inputSchema: tool.inputSchema as ZodRawShape,
+        outputSchema: tool.outputSchema,
+        annotations: tool.annotations,
+        _meta: tool._meta,
+      },
+      tool.handler as unknown as ToolCallback<ZodRawShape>,
+    )
+  }
+  else {
+    return server.registerTool<ZodRawShape, OutputSchema>(
+      name,
+      {
+        title,
+        description: tool.description,
+        outputSchema: tool.outputSchema,
+        annotations: tool.annotations,
+        _meta: tool._meta,
+      },
+      tool.handler as unknown as ToolCallback<ZodRawShape>,
+    )
+  }
 }
 
 /**
