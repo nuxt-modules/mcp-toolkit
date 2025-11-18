@@ -7,23 +7,22 @@ import { enrichNameTitle } from './utils'
 /**
  * Callback type for MCP tools, matching the SDK's ToolCallback type
  */
-export type McpToolCallback<Args extends ZodRawShape = ZodRawShape> = (
-  args: z.objectOutputType<Args, ZodTypeAny>,
-  extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
-) => CallToolResult | Promise<CallToolResult>
+export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = Args extends ZodRawShape
+  ? (args: z.objectOutputType<Args, ZodTypeAny>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
+  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
 
 /**
  * Definition of an MCP tool matching the SDK's registerTool signature
  * This structure is identical to what you'd pass to server.registerTool()
  */
 export interface McpToolDefinition<
-  InputSchema extends ZodRawShape = ZodRawShape,
+  InputSchema extends ZodRawShape | undefined = ZodRawShape,
   OutputSchema extends ZodRawShape = ZodRawShape,
 > {
   name?: string
   title?: string
   description?: string
-  inputSchema: InputSchema
+  inputSchema?: InputSchema
   outputSchema?: OutputSchema
   annotations?: ToolAnnotations
   _meta?: Record<string, unknown>
@@ -35,7 +34,7 @@ export interface McpToolDefinition<
  * This provides better type inference when registering tools
  */
 export function registerToolFromDefinition<
-  InputSchema extends ZodRawShape,
+  InputSchema extends ZodRawShape | undefined = ZodRawShape,
   OutputSchema extends ZodRawShape = ZodRawShape,
 >(
   server: McpServer,
@@ -48,18 +47,33 @@ export function registerToolFromDefinition<
     type: 'tool',
   })
 
-  return server.registerTool<InputSchema, OutputSchema>(
-    name,
-    {
-      title,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-      outputSchema: tool.outputSchema,
-      annotations: tool.annotations,
-      _meta: tool._meta,
-    },
-    tool.handler as ToolCallback<InputSchema>,
-  )
+  if (tool.inputSchema) {
+    return server.registerTool<ZodRawShape, OutputSchema>(
+      name,
+      {
+        title,
+        description: tool.description,
+        inputSchema: tool.inputSchema as ZodRawShape,
+        outputSchema: tool.outputSchema,
+        annotations: tool.annotations,
+        _meta: tool._meta,
+      },
+      tool.handler as unknown as ToolCallback<ZodRawShape>,
+    )
+  }
+  else {
+    return server.registerTool<ZodRawShape, OutputSchema>(
+      name,
+      {
+        title,
+        description: tool.description,
+        outputSchema: tool.outputSchema,
+        annotations: tool.annotations,
+        _meta: tool._meta,
+      },
+      tool.handler as unknown as ToolCallback<ZodRawShape>,
+    )
+  }
 }
 
 /**
@@ -99,7 +113,7 @@ export function registerToolFromDefinition<
  * ```
  */
 export function defineMcpTool<
-  const InputSchema extends ZodRawShape,
+  const InputSchema extends ZodRawShape | undefined = ZodRawShape,
   const OutputSchema extends ZodRawShape = ZodRawShape,
 >(
   definition: McpToolDefinition<InputSchema, OutputSchema>,

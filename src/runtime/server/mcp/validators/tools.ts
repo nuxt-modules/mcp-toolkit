@@ -25,15 +25,15 @@ export function validateToolDefinition(
     })
   }
 
-  // Validate inputSchema
-  if (!tool.inputSchema || typeof tool.inputSchema !== 'object') {
+  // Validate inputSchema if provided
+  if (tool.inputSchema && typeof tool.inputSchema !== 'object') {
     errors.push({
       file: filePath,
-      message: 'Tool definition is missing or has invalid inputSchema',
-      suggestion: 'Add an inputSchema object with Zod schemas: inputSchema: { param: z.string() }',
+      message: 'Tool inputSchema must be an object with Zod schemas',
+      suggestion: 'Use an object with Zod schemas: inputSchema: { param: z.string() }',
     })
   }
-  else {
+  else if (tool.inputSchema) {
     // Validate that inputSchema is a ZodRawShape (object with Zod schemas)
     const schema = tool.inputSchema as ZodRawShape
     for (const [key, value] of Object.entries(schema)) {
