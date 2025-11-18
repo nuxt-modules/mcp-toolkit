@@ -25,81 +25,30 @@ const links = [
     }"
   >
     <template #title>
-      <Motion
-        :initial="{
-          scale: 1.1,
-          opacity: 0,
-          filter: 'blur(20px)',
-        }"
-        :animate="{
-          scale: 1,
-          opacity: 1,
-          filter: 'blur(0px)',
-        }"
-        :transition="{
-          duration: 0.6,
-          delay: 0.1,
-        }"
-      >
-        <h1 class="font-normal main-gradient text-3xl sm:text-4xl lg:text-5xl">
-          {{ title }}
-        </h1>
-      </Motion>
+      <h1 class="font-normal main-gradient text-3xl sm:text-4xl lg:text-5xl">
+        {{ title }}
+      </h1>
     </template>
 
     <template #description>
-      <Motion
-        :initial="{
-          scale: 1.1,
-          opacity: 0,
-          filter: 'blur(20px)',
-        }"
-        :animate="{
-          scale: 1,
-          opacity: 1,
-          filter: 'blur(0px)',
-        }"
-        :transition="{
-          duration: 0.6,
-          delay: 0.3,
-        }"
-      >
-        {{ description }}
-      </Motion>
+      {{ description }}
     </template>
 
     <template #links>
-      <Motion
-        :initial="{
-          scale: 1.1,
-          opacity: 0,
-          filter: 'blur(20px)',
-        }"
-        :animate="{
-          scale: 1,
-          opacity: 1,
-          filter: 'blur(0px)',
-        }"
-        :transition="{
-          duration: 0.6,
-          delay: 0.5,
-        }"
+      <div
+        v-if="links"
+        class="flex items-center gap-2"
       >
-        <div
-          v-if="links"
-          class="flex items-center gap-2"
-        >
-          <UButton
-            :label="links[0]?.label"
-            :to="links[0]?.to"
-          />
-          <UButton
-            :ui="{ label: 'main-gradient' }"
-            variant="ghost"
-            v-bind="links[1]"
-          />
-        </div>
-      </Motion>
+        <UButton
+          :label="links[0]?.label"
+          :to="links[0]?.to"
+        />
+        <UButton
+          :ui="{ label: 'main-gradient' }"
+          variant="ghost"
+          v-bind="links[1]"
+        />
+      </div>
     </template>
 
     <HeroShader />

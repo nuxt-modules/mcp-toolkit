@@ -2,6 +2,17 @@ import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTem
 import { enrichNameTitle } from './utils'
 
 /**
+ * Annotations for a resource
+ * @see https://modelcontextprotocol.io/specification/2025-06-18/server/resources#annotations
+ */
+export interface McpResourceAnnotations {
+  audience?: ('user' | 'assistant')[]
+  priority?: number
+  lastModified?: string
+  [key: string]: unknown
+}
+
+/**
  * Definition of an MCP resource matching the SDK's registerResource signature
  * Supports both static resources (URI string) and dynamic resources (ResourceTemplate)
  */
@@ -9,7 +20,7 @@ export interface McpResourceDefinition {
   name?: string
   title?: string
   uri: string | ResourceTemplate
-  metadata?: ResourceMetadata
+  metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
   handler: ReadResourceCallback | ReadResourceTemplateCallback
 }
@@ -30,7 +41,7 @@ export function registerResourceFromDefinition(
 
   const metadata = {
     ...resource.metadata,
-    title: title || resource.metadata?.title,
+    title: resource.title || resource.metadata?.title || title,
   }
 
   if (typeof resource.uri === 'string') {

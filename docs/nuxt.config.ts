@@ -10,6 +10,12 @@ export default defineNuxtConfig({
     name: 'Nuxt MCP Module',
   },
 
+  mdc: {
+    highlight: {
+      noApiRoute: false,
+    },
+  },
+
   icon: {
     customCollections: [
       {

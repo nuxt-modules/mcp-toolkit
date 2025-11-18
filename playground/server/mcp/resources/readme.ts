@@ -2,12 +2,16 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 
 export default defineMcpResource({
-  name: 'readme',
-  title: 'README',
+  name: 'project-readme',
   uri: 'file:///project/README.md',
   metadata: {
     description: 'Project README file',
     mimeType: 'text/markdown',
+    annotations: {
+      audience: ['user'],
+      priority: 0.8,
+      lastModified: new Date().toISOString(),
+    },
   },
   handler: async (uri: URL) => {
     try {
