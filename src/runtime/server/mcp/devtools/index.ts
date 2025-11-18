@@ -25,22 +25,28 @@ let inspectorProcess: ChildProcess | null = null
 let inspectorUrl: string | null = null
 let isReady = false
 let promise: Promise<void> | null = null
+let proxyAuthToken: string | null = null
 
 function resetState() {
   inspectorProcess = null
   inspectorUrl = null
   isReady = false
+  proxyAuthToken = null
 }
 
 function buildInspectorUrl(baseUrl: string, mcpServerUrl: string): string {
   const urlObj = new URL(baseUrl)
-  const existingToken = urlObj.searchParams.get('MCP_PROXY_AUTH_TOKEN')
   urlObj.searchParams.set('transport', 'streamable-http')
   urlObj.searchParams.set('serverUrl', mcpServerUrl)
-  if (existingToken) {
-    urlObj.searchParams.set('MCP_PROXY_AUTH_TOKEN', existingToken)
+  if (proxyAuthToken) {
+    urlObj.searchParams.set('MCP_PROXY_AUTH_TOKEN', proxyAuthToken)
   }
   return urlObj.toString()
+}
+
+function extractProxyToken(text: string): string | null {
+  const match = text.match(/Session token:\s+([a-f0-9]+)/i)
+  return match?.[1] ?? null
 }
 
 function limitBuffer(buffer: string, maxSize: number): string {
@@ -98,6 +104,13 @@ async function waitForInspectorReady(url: string): Promise<boolean> {
       clearTimeout(timeoutId)
 
       if (response.status >= 200 && response.status < 400) {
+        if (!proxyAuthToken) {
+          const text = await response.text().catch(() => '')
+          const token = extractProxyToken(text)
+          if (token) {
+            proxyAuthToken = token
+          }
+        }
         return true
       }
     }
@@ -189,12 +202,28 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
 
       const handlers = {
         stdout: (data: Buffer) => {
-          stdoutBuffer += data.toString()
+          const text = data.toString()
+          stdoutBuffer += text
           stdoutBuffer = limitBuffer(stdoutBuffer, MAX_BUFFER_SIZE)
+
+          if (!proxyAuthToken) {
+            const token = extractProxyToken(text)
+            if (token) {
+              proxyAuthToken = token
+            }
+          }
         },
         stderr: (data: Buffer) => {
-          stderrBuffer += data.toString()
+          const text = data.toString()
+          stderrBuffer += text
           stderrBuffer = limitBuffer(stderrBuffer, MAX_BUFFER_SIZE)
+
+          if (!proxyAuthToken) {
+            const token = extractProxyToken(text)
+            if (token) {
+              proxyAuthToken = token
+            }
+          }
 
           if (containsError(stderrBuffer) && !isResolved) {
             isResolved = true
