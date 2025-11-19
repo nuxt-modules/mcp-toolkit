@@ -1,6 +1,7 @@
 import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTemplateCallback, ResourceMetadata } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { enrichNameTitle } from './utils'
 
 /**
@@ -102,7 +103,7 @@ export function registerResourceFromDefinition(
 
     // Auto-generate URI if not provided
     if (!uri) {
-      uri = `file://${filePath}`
+      uri = pathToFileURL(filePath).toString()
     }
 
     // Auto-generate handler if not provided
