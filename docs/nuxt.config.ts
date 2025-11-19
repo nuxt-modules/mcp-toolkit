@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   extends: ['docus'],
 
-  modules: ['@hrcd/mcp', 'motion-v/nuxt'],
+  modules: ['@hrcd/mcp', 'motion-v/nuxt', 'nuxt-studio'],
 
   css: ['~/assets/css/main.css'],
 
@@ -42,5 +42,16 @@ export default defineNuxtConfig({
 
   mcp: {
     name: 'Nuxt MCP Module',
+  },
+
+  studio: {
+    route: '/admin',
+    repository: {
+      provider: 'github',
+      owner: 'HugoRCD',
+      repo: 'nuxt-mcp-module',
+      branch: 'main',
+      rootDir: 'docs',
+    },
   },
 })
