@@ -6,7 +6,7 @@ import type { Variables } from '@modelcontextprotocol/sdk/shared/uriTemplate.js'
 export default defineMcpResource({
   name: 'file',
   title: 'File Resource',
-  uri: new ResourceTemplate('file:///project/{path}', {
+  uri: new ResourceTemplate('file:///project/{+path}', {
     list: async () => {
       try {
         const projectRoot = process.cwd()

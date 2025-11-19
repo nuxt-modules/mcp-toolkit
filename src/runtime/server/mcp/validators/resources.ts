@@ -15,8 +15,11 @@ export function validateResourceDefinition(
 ): ValidationError[] {
   const errors: ValidationError[] = []
 
+  // Check if it's a file resource
+  const isFileResource = 'file' in resource && !!resource.file
+
   // Validate handler
-  if (!resource.handler) {
+  if (!resource.handler && !isFileResource) {
     errors.push({
       file: filePath,
       message: 'Resource definition is missing a handler function',
@@ -25,14 +28,14 @@ export function validateResourceDefinition(
   }
 
   // Validate URI
-  if (!resource.uri) {
+  if (!resource.uri && !isFileResource) {
     errors.push({
       file: filePath,
       message: 'Resource definition is missing a URI',
       suggestion: 'Add a URI string or ResourceTemplate: uri: "file:///path/to/resource"',
     })
   }
-  else if (typeof resource.uri !== 'string' && typeof resource.uri !== 'object') {
+  else if (resource.uri && typeof resource.uri !== 'string' && typeof resource.uri !== 'object') {
     errors.push({
       file: filePath,
       message: 'Resource URI must be a string or ResourceTemplate',

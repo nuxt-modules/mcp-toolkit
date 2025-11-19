@@ -72,4 +72,35 @@ describe('Resources', async () => {
     else
       throw new Error('Expected content to have text property')
   })
+
+  it('should be able to read the file_resource', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const resources = await client.listResources()
+    const fileResource = resources.resources.find(resource => resource.name === 'file_resource')
+
+    expect(fileResource).toBeDefined()
+    expect(fileResource?.uri).toMatch(/^file:\/\//)
+
+    const result = await client.readResource({
+      uri: fileResource!.uri,
+    })
+
+    expect(result).toBeDefined()
+    expect(result.contents).toBeInstanceOf(Array)
+    expect(result.contents.length).toBeGreaterThan(0)
+    const content = result.contents[0]
+    if (!content) {
+      throw new Error('Content should be defined')
+    }
+    if ('text' in content) {
+      expect(content.text).toContain('Hello from file resource!')
+    }
+    else {
+      throw new Error('Expected content to have text property')
+    }
+  })
 })
