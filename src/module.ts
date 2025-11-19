@@ -5,7 +5,7 @@ import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 
-const log = logger.withTag('nuxt-mcp')
+const log = logger.withTag('nuxt-mcp-toolkit')
 
 export const { resolve } = createResolver(import.meta.url)
 
@@ -47,7 +47,7 @@ export interface ModuleOptions {
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'nuxt-mcp',
+    name: 'nuxt-mcp-toolkit',
     configKey: 'mcp',
   },
   defaults: defaultMcpConfig,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const title = 'Nuxt MCP Module'
+const title = 'Nuxt MCP Toolkit'
 const description = 'Create MCP servers directly in your Nuxt application. Define tools, resources, and prompts with a simple and intuitive API.'
 const links = [
   {
