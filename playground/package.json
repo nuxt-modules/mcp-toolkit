@@ -10,6 +10,6 @@
   "dependencies": {
     "@hrcd/mcp": "workspace:*",
     "nuxt": "^4.2.1",
-    "zod": "^3.25.76"
+    "zod": "^4.1.12"
   }
 }
