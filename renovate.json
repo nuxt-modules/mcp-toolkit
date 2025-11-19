@@ -1,6 +1,12 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "local>HugoRCD/renovate-config"
-  ]
+    "github>nuxt/renovate-config-nuxt"
+  ],
+  "packageRules": [{
+    "matchDepTypes": ["resolutions"],
+    "enabled": false
+  }],
+  "ignoreDeps": ["zod"],
+  "postUpdateOptions": ["pnpmDedupe"]
 }
