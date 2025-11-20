@@ -1,10 +1,10 @@
-# Nuxt MCP Module
+# Nuxt MCP Toolkit
 
-<!-- automd:badges color="black" license name="@hrcd/mcp" -->
+<!-- automd:badges color="black" license name="nuxt-mcp-toolkit" -->
 
-[![npm version](https://img.shields.io/npm/v/@hrcd/mcp?color=black)](https://npmjs.com/package/@hrcd/mcp)
-[![npm downloads](https://img.shields.io/npm/dm/@hrcd/mcp?color=black)](https://npm.chart.dev/@hrcd/mcp)
-[![license](https://img.shields.io/github/license/HugoRCD/nuxt-mcp-module?color=black)](https://github.com/HugoRCD/nuxt-mcp-module/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/nuxt-mcp-toolkit?color=black)](https://npmjs.com/package/nuxt-mcp-toolkit)
+[![npm downloads](https://img.shields.io/npm/dm/nuxt-mcp-toolkit?color=black)](https://npm.chart.dev/nuxt-mcp-toolkit)
+[![license](https://img.shields.io/github/license/HugoRCD/nuxt-mcp-toolkit?color=black)](https://github.com/HugoRCD/nuxt-mcp-toolkit/blob/main/LICENSE)
 
 <!-- /automd -->
 
@@ -22,26 +22,26 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 ## 🚀 Installation
 
-<!-- automd:pm-install name="@hrcd/mcp" dev -->
+<!-- automd:pm-install name="nuxt-mcp-toolkit" dev -->
 
 ```sh
 # ✨ Auto-detect
-npx nypm install -D @hrcd/mcp
+npx nypm install -D nuxt-mcp-toolkit
 
 # npm
-npm install -D @hrcd/mcp
+npm install -D nuxt-mcp-toolkit
 
 # yarn
-yarn add -D @hrcd/mcp
+yarn add -D nuxt-mcp-toolkit
 
 # pnpm
-pnpm add -D @hrcd/mcp
+pnpm add -D nuxt-mcp-toolkit
 
 # bun
-bun install -D @hrcd/mcp
+bun install -D nuxt-mcp-toolkit
 
 # deno
-deno install --dev npm:@hrcd/mcp
+deno install --dev npm:nuxt-mcp-toolkit
 ```
 
 <!-- /automd -->
@@ -54,7 +54,7 @@ Add the module to your `nuxt.config.ts`:
 
 ```typescript
 export default defineNuxtConfig({
-  modules: ['@hrcd/mcp'],
+  modules: ['nuxt-mcp-toolkit'],
   mcp: {
     name: 'My MCP Server',
     version: '1.0.0',
@@ -102,7 +102,7 @@ The inspector automatically connects to your MCP server - no configuration neede
 
 ## 📚 Documentation
 
-📖 **[Full Documentation →](https://github.com/HugoRCD/nuxt-mcp-module/tree/main/docs)**
+📖 **[Full Documentation →](https://github.com/HugoRCD/nuxt-mcp-toolkit/tree/main/docs)**
 
 The complete documentation includes:
 
@@ -165,13 +165,13 @@ pnpm run test:watch
 pnpm run release
 ```
 
-<!-- automd:contributors author="HugoRCD" license="MIT" github="HugoRCD/nuxt-mcp-module" -->
+<!-- automd:contributors author="HugoRCD" license="MIT" github="HugoRCD/nuxt-mcp-toolkit" -->
 
-Published under the [MIT](https://github.com/HugoRCD/nuxt-mcp-module/blob/main/LICENSE) license.
-Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.com/HugoRCD/nuxt-mcp-module/graphs/contributors) 💛
+Published under the [MIT](https://github.com/HugoRCD/nuxt-mcp-toolkit/blob/main/LICENSE) license.
+Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.com/HugoRCD/nuxt-mcp-toolkit/graphs/contributors) 💛
 <br><br>
-<a href="https://github.com/HugoRCD/nuxt-mcp-module/graphs/contributors">
-<img src="https://contrib.rocks/image?repo=HugoRCD/nuxt-mcp-module" />
+<a href="https://github.com/HugoRCD/nuxt-mcp-toolkit/graphs/contributors">
+<img src="https://contrib.rocks/image?repo=HugoRCD/nuxt-mcp-toolkit" />
 </a>
 
 <!-- /automd -->
