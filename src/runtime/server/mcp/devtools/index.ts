@@ -4,7 +4,7 @@ import type { ModuleOptions } from '../../../../module'
 import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 
-const log = logger.withTag('nuxt-mcp')
+const log = logger.withTag('nuxt-mcp-toolkit')
 
 // Constants
 const INSPECTOR_TIMEOUT = 15000
