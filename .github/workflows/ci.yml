@@ -25,8 +25,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Prepare
         run: pnpm run dev:prepare
-      - name: Build
-        run: pnpm run build
+      - name: Build module
+        run: pnpm run build:module
 
   lint:
     runs-on: ubuntu-latest
@@ -101,7 +101,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Prepare
         run: pnpm run dev:prepare
-      - name: Build packages
-        run: pnpm run build
+      - name: Build module
+        run: pnpm run build:module
       - name: Publish
         run: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/nuxt-mcp-toolkit'

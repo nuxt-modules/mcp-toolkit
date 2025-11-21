@@ -22,29 +22,27 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 ## 🚀 Installation
 
-<!-- automd:pm-install name="nuxt-mcp-toolkit" dev -->
+Use `nuxi` to install the module automatically:
 
-```sh
-# ✨ Auto-detect
-npx nypm install -D nuxt-mcp-toolkit
-
-# npm
-npm install -D nuxt-mcp-toolkit
-
-# yarn
-yarn add -D nuxt-mcp-toolkit
-
-# pnpm
-pnpm add -D nuxt-mcp-toolkit
-
-# bun
-bun install -D nuxt-mcp-toolkit
-
-# deno
-deno install --dev npm:nuxt-mcp-toolkit
+```bash
+npx nuxi module add nuxt-mcp-toolkit
 ```
 
-<!-- /automd -->
+Or install manually with your package manager (don't forget `zod`!):
+
+```bash
+# npm
+npm install -D nuxt-mcp-toolkit zod@^3
+
+# yarn
+yarn add -D nuxt-mcp-toolkit zod@^3
+
+# pnpm
+pnpm add -D nuxt-mcp-toolkit zod@^3
+
+# bun
+bun install -D nuxt-mcp-toolkit zod@^3
+```
 
 **Note:** This module requires Zod v3 as a peer dependency. Zod v4 is not compatible with the MCP SDK.
 
