@@ -1,75 +1,36 @@
 {
-  "name": "nuxt-mcp-toolkit",
-  "version": "0.0.1",
-  "description": "My new Nuxt module",
-  "repository": "HugoRCD/nuxt-mcp-toolkit",
-  "license": "MIT",
+  "name": "nuxt-mcp-toolkit-monorepo",
+  "private": true,
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/types.d.mts",
-      "import": "./dist/module.mjs"
-    }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HugoRCD/nuxt-mcp-toolkit.git"
   },
-  "main": "./dist/module.mjs",
-  "typesVersions": {
-    "*": {
-      ".": [
-        "./dist/types.d.mts"
-      ]
-    }
-  },
-  "files": [
-    "README.md",
-    "dist"
-  ],
+  "author": "Hugo Richard <hugo.richard@vercel.com>",
+  "license": "MIT",
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "prepack": "nuxt-module-build build",
-    "dev": "npm run dev:prepare && nuxi dev playground",
-    "dev:build": "nuxi build playground",
-    "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
-    "docs": "pnpm --filter nuxt-mcp-toolkit-docs dev",
-    "docs:build": "pnpm --filter nuxt-mcp-toolkit-docs build",
-    "release": "pnpm run lint && pnpm run test && pnpm run prepack && npm publish",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
-  },
-  "dependencies": {
-    "@clack/prompts": "^0.11.0",
-    "@modelcontextprotocol/sdk": "^1.22.0",
-    "@nuxt/kit": "^4.2.1",
-    "automd": "^0.4.2",
-    "chokidar": "^4.0.3",
-    "defu": "^6.1.4",
-    "pathe": "^2.0.3",
-    "scule": "^1.3.0",
-    "tinyglobby": "^0.2.15"
-  },
-  "peerDependencies": {
-    "zod": "^3.25.76"
-  },
-  "peerDependenciesMeta": {
-    "zod": {
-      "optional": false
-    }
+    "dev": "turbo dev --filter=nuxt-mcp-toolkit-playground",
+    "dev:prepare": "turbo dev:prepare",
+    "dev:docs": "turbo dev --filter=nuxt-mcp-toolkit-docs",
+    "build": "turbo build",
+    "build:docs": "turbo build --filter=nuxt-mcp-toolkit-docs",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "lint:docs": "turbo lint --filter=nuxt-mcp-toolkit-docs",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "typecheck:docs": "turbo typecheck --filter=nuxt-mcp-toolkit-docs",
+    "clean": "turbo clean"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^3.1.0",
     "@nuxt/eslint-config": "^1.10.0",
-    "@nuxt/module-builder": "^1.0.2",
-    "@nuxt/schema": "^4.2.1",
-    "@nuxt/test-utils": "^3.20.1",
-    "@types/node": "latest",
-    "changelogen": "^0.6.2",
     "eslint": "^9.39.1",
-    "nuxt": "^4.2.1",
-    "typescript": "~5.9.3",
-    "vitest": "^4.0.10",
-    "vue-tsc": "^3.1.4"
+    "turbo": "^2.6.1",
+    "typescript": "~5.9.3"
   },
-  "publishConfig": {
-    "access": "public"
-  }
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

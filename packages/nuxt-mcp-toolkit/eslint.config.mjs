@@ -5,11 +5,6 @@ export default createConfigForNuxt({
     tooling: true,
     stylistic: true,
   },
-  dirs: {
-    src: [
-      './playground',
-    ],
-  },
 }).overrideRules({
   'vue/multi-word-component-names': 'off',
 })
