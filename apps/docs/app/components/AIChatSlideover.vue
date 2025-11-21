@@ -11,14 +11,15 @@ const components = {
 const { isOpen, messages, pendingMessage, clearPending } = useAIChat()
 
 const input = ref('')
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const toolCalls = ref<Record<string, any[]>>({})
 
-const lastMessage = computed(() => chat.messages.at(-1))
-const showThinking = computed(() =>
-  chat.status === 'streaming'
-  && lastMessage.value?.role === 'assistant'
-  && lastMessage.value?.parts?.length === 0,
-)
+// const lastMessage = computed(() => chat.messages.at(-1))
+// const showThinking = computed(() =>
+//   chat.status === 'streaming'
+//   && lastMessage.value?.role === 'assistant'
+//   && lastMessage.value?.parts?.length === 0,
+// )
 
 watch(pendingMessage, (message) => {
   if (message) {
@@ -68,18 +69,18 @@ const faqQuestions = [
 
 const toast = useToast()
 
-function getAgentCalls(message: any) {
-  if (showThinking.value && message.role === 'assistant') {
-    return [{ type: 'thinking', state: 'calling' }]
-  }
+// function getAgentCalls(message: any) {
+//   if (showThinking.value && message.role === 'assistant') {
+//     return [{ type: 'thinking', state: 'calling' }]
+//   }
 
-  return message.parts
-    .filter((p: any) => p.type === 'tool-nuxt-agent' || p.type === 'tool-nuxt-ui-agent')
-    .map((p: any) => ({
-      type: p.type === 'tool-nuxt-agent' ? 'nuxt' : 'nuxt-ui',
-      state: p.state === 'output-available' ? 'done' : 'calling',
-    }))
-}
+//   return message.parts
+//     .filter((p: any) => p.type === 'tool-nuxt-agent' || p.type === 'tool-nuxt-ui-agent')
+//     .map((p: any) => ({
+//       type: p.type === 'tool-nuxt-agent' ? 'nuxt' : 'nuxt-ui',
+//       state: p.state === 'output-available' ? 'done' : 'calling',
+//     }))
+// }
 
 const chat = new Chat({
   messages: messages.value,

@@ -21,23 +21,26 @@ const socialLinks = [
   {
     label: 'Discord',
     href: 'https://discord.com/invite/nuxt',
-    icon: 'i-simple-icons-discord'
+    icon: 'i-simple-icons-discord',
   },
   {
     label: 'Twitter',
     href: 'https://twitter.com/nuxt_js',
-    icon: 'i-simple-icons-x'
+    icon: 'i-simple-icons-x',
   },
   {
     label: 'GitHub',
     href: 'https://github.com/nuxt/nuxt/issues',
-    icon: 'i-simple-icons-github'
-  }
+    icon: 'i-simple-icons-github',
+  },
 ]
 </script>
 
 <template>
-  <UCard v-if="invocation.state === 'output-available'" class="border-default">
+  <UCard
+    v-if="invocation.state === 'output-available'"
+    class="border-default"
+  >
     <div class="flex flex-col gap-4">
       <div class="flex flex-col gap-2">
         <p class="text-sm text-muted">
@@ -51,7 +54,10 @@ const socialLinks = [
         </p>
       </div>
 
-      <form class="flex flex-col gap-3" @submit.prevent="handleSubmit">
+      <form
+        class="flex flex-col gap-3"
+        @submit.prevent="handleSubmit"
+      >
         <UInput
           v-model="input"
           placeholder="Ask a question to the team..."
@@ -88,7 +94,10 @@ const socialLinks = [
     </div>
   </UCard>
 
-  <div v-else class="flex items-center justify-center py-8">
+  <div
+    v-else
+    class="flex items-center justify-center py-8"
+  >
     <div class="text-center">
       <UIcon
         name="i-lucide-loader-circle"
