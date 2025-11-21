@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   const { messages } = await readBody(event)
 
   const httpTransport = new StreamableHTTPClientTransport(
-    new URL(import.meta.dev ? 'http://localhost:3000/mcp' : 'https://ui.nuxt.com/mcp'),
+    new URL(import.meta.dev ? 'http://localhost:3000/mcp' : `${getRequestURL(event).origin}/mcp`),
   )
   const httpClient = await experimental_createMCPClient({
     transport: httpTransport,
