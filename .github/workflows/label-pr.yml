@@ -61,7 +61,7 @@ jobs:
 
             // Add selected labels
             if (labelsToAdd.length > 0) {
-              github.rest.issues.addLabels({
+              await github.rest.issues.addLabels({
                 issue_number: pullRequest.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
