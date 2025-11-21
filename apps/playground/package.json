@@ -1,0 +1,28 @@
+{
+  "name": "nuxt-mcp-toolkit-playground",
+  "private": true,
+  "type": "module",
+  "description": "Playground for Nuxt MCP Toolkit",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HugoRCD/nuxt-mcp-toolkit.git",
+    "directory": "apps/playground"
+  },
+  "author": "Hugo Richard <hugo.richard@vercel.com>",
+  "scripts": {
+    "dev": "nuxi dev",
+    "build": "nuxi build",
+    "generate": "nuxi generate",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "nuxt-mcp-toolkit": "workspace:*",
+    "nuxt": "^4.2.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@nuxt/eslint-config": "^1.10.0",
+    "eslint": "^9.39.1"
+  }
+}

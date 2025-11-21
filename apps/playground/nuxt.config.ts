@@ -1,5 +1,5 @@
 export default defineNuxtConfig({
-  modules: ['../src/module'],
+  modules: ['nuxt-mcp-toolkit'],
   devtools: { enabled: true },
   mcp: {
     name: 'Playground MCP',
