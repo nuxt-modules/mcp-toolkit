@@ -16,12 +16,15 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "nuxt-mcp-toolkit": "workspace:*",
-    "ai": "^5.0.95",
+    "@ai-sdk/vue": "3.0.0-beta.105",
+    "@ai-sdk/mcp": "^0.0.8",
+    "shiki-stream": "^0.1.2",
+    "ai": "6.0.0-beta.105",
     "better-sqlite3": "^12.4.1",
     "docus": "latest",
     "motion-v": "^1.7.4",
     "nuxt": "^4.2.1",
+    "nuxt-mcp-toolkit": "workspace:*",
     "nuxt-studio": "1.0.0-alpha.2",
     "shaders": "^2.1.10"
   },
