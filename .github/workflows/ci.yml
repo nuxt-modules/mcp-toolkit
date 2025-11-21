@@ -23,6 +23,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare
+        run: pnpm run dev:prepare
       - name: Build
         run: pnpm run build
 
@@ -39,6 +41,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare
+        run: pnpm run dev:prepare
       - name: Lint
         run: pnpm run lint
 
@@ -55,6 +59,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare
+        run: pnpm run dev:prepare
       - name: Typecheck
         run: pnpm run typecheck
 
@@ -71,6 +77,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare
+        run: pnpm run dev:prepare
       - name: Test
         run: pnpm run test
 
@@ -91,6 +99,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Prepare
+        run: pnpm run dev:prepare
       - name: Build packages
         run: pnpm run build
       - name: Publish
