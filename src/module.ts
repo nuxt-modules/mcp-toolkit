@@ -1,5 +1,9 @@
 import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
 import { defu } from 'defu'
+import { join } from 'pathe'
+import { existsSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
+import { confirm, intro, outro, isCancel, cancel, log as clackLog } from '@clack/prompts'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
@@ -119,9 +123,6 @@ export default defineNuxtModule<ModuleOptions>({
         const errorMessage = error instanceof Error ? error.message : String(error)
         log.error('Failed to initialize MCP server')
         log.error(`Error: ${errorMessage}`)
-        if (error instanceof Error && error.cause) {
-          log.error(`Cause: ${error.cause}`)
-        }
         throw error
       }
     })
@@ -162,5 +163,38 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     addDevToolsCustomTabs(nuxt, options)
+  },
+  async onInstall() {
+    intro('Nuxt MCP Toolkit Setup')
+
+    const cwd = process.cwd()
+    const mcpDir = join(cwd, 'server/mcp')
+    const hasMcpDir = existsSync(mcpDir)
+
+    if (hasMcpDir) {
+      clackLog.info(`MCP directory detected at ${mcpDir}`)
+    }
+
+    const shouldCreate = await confirm({
+      message: hasMcpDir
+        ? 'Do you want to ensure all MCP subdirectories (tools, resources, prompts) exist?'
+        : 'Do you want to create the default MCP directory structure (server/mcp)?',
+    })
+
+    if (isCancel(shouldCreate)) {
+      cancel('Setup cancelled')
+      return
+    }
+
+    if (shouldCreate) {
+      const dirs = ['tools', 'resources', 'prompts']
+      for (const dir of dirs) {
+        const path = join(mcpDir, dir)
+        await mkdir(path, { recursive: true })
+      }
+      clackLog.success('MCP directories created!')
+    }
+
+    outro('You are ready to build MCP servers!')
   },
 })

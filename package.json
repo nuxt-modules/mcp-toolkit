@@ -37,6 +37,7 @@
     "test:types": "vue-tsc --noEmit && cd playground && vue-tsc --noEmit"
   },
   "dependencies": {
+    "@clack/prompts": "^0.11.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@nuxt/kit": "^4.2.1",
     "automd": "^0.4.2",

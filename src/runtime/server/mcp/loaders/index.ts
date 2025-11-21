@@ -58,10 +58,7 @@ async function loadMcpDefinitions(
     const errorMessage = error instanceof Error ? error.message : String(error)
     log.error(`Failed to load ${type} definitions from paths: ${paths.join(', ')}`)
     log.error(`Error: ${errorMessage}`)
-    throw new Error(
-      `Failed to load MCP ${type} definitions. Check that the paths exist and contain valid definition files.`,
-      { cause: error },
-    )
+    throw new Error(`Failed to load MCP ${type} definitions. Check that the paths exist and contain valid definition files.`)
   }
 }
 
@@ -109,10 +106,7 @@ async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
     const errorMessage = error instanceof Error ? error.message : String(error)
     log.error(`Failed to load handler definitions from paths: ${paths.join(', ')}`)
     log.error(`Error: ${errorMessage}`)
-    throw new Error(
-      `Failed to load MCP handler definitions. Check that the paths exist and contain valid handler files.`,
-      { cause: error },
-    )
+    throw new Error(`Failed to load MCP handler definitions. Check that the paths exist and contain valid handler files.`)
   }
 }
 
@@ -155,10 +149,7 @@ export async function loadAllDefinitions(paths: LoaderPaths) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     log.error('Failed to load MCP definitions')
     log.error(`Error: ${errorMessage}`)
-    throw new Error(
-      'Failed to load MCP definitions. Please check your configuration and ensure definition files are valid.',
-      { cause: error },
-    )
+    throw new Error('Failed to load MCP definitions. Please check your configuration and ensure definition files are valid.')
   }
 }
 
