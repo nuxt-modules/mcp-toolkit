@@ -5,7 +5,6 @@ import features from './features.yml'
 
 <template>
   <UPageSection
-    :title="features.title"
     :description="features.description"
     :ui="{
       title: 'text-left',
@@ -14,6 +13,10 @@ import features from './features.yml'
       features: 'xl:grid-cols-4 lg:gap-10',
     }"
   >
+    <template #title>
+      <ChromaText>{{ features.title }}</ChromaText>
+    </template>
+
     <template #features>
       <Motion
         v-for="(feature, index) in features.items"

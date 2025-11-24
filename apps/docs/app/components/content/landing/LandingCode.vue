@@ -5,12 +5,15 @@ import code from './code.yml'
 
 <template>
   <UPageSection
-    :title="code.title"
     :description="code.description"
     :features="code.features"
     orientation="horizontal"
     :ui="{ container: 'lg:items-start' }"
   >
+    <template #title>
+      <ChromaText>{{ code.title }}</ChromaText>
+    </template>
+
     <ClientOnly>
       <UTabs
         :items="code.items"
