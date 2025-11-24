@@ -15,3 +15,26 @@
 .main-gradient {
   @apply bg-gradient-to-r from-inverted/45 to-inverted to-50% bg-clip-text text-transparent;
 }
+
+.chroma-text {
+  /* Original Dia gradient kept for reference */
+  /* background-image: linear-gradient(90deg, #000000 0, #000000 33.33%, #c679c4 40%, #fa3d1d 45%, #ffb005 50%, #e1e1fe 55%, #0358f7 60%, transparent 66.67%, transparent); */
+
+  /* Nuxt-themed gradient */
+  background-image: linear-gradient(90deg, #000000 0, #000000 33.33%, #00DC82 45%, #36E4DA 55%, #00DC82 60%, transparent 66.67%, transparent);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  will-change: background-position;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.dark .chroma-text {
+  /* Original Dia gradient kept for reference */
+  /* background-image: linear-gradient(90deg, #ffffff 0, #ffffff 33.33%, #c679c4 40%, #fa3d1d 45%, #ffb005 50%, #e1e1fe 55%, #0358f7 60%, transparent 66.67%, transparent); */
+
+  /* Nuxt-themed gradient */
+  background-image: linear-gradient(90deg, #ffffff 0, #ffffff 33.33%, #00DC82 45%, #36E4DA 55%, #00DC82 60%, transparent 66.67%, transparent);
+}

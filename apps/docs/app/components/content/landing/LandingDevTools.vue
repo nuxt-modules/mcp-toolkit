@@ -5,10 +5,13 @@ import devtools from './devtools.yml'
 
 <template>
   <UPageSection
-    :title="devtools.title"
     :description="devtools.description"
     :ui="{ container: 'lg:py-20' }"
   >
+    <template #title>
+      <ChromaText>{{ devtools.title }}</ChromaText>
+    </template>
+
     <UColorModeImage
       :light="devtools.image.light"
       :dark="devtools.image.dark"
