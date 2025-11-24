@@ -23,6 +23,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@rollup/plugin-yaml':
+        specifier: ^4.1.2
+        version: 4.1.2(rollup@4.53.3)
       ai:
         specifier: ^5.0.95
         version: 5.0.98(zod@3.25.76)

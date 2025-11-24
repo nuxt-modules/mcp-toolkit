@@ -1,0 +1,71 @@
+title: 'Just Write Code'
+description: 'Define tools, resources and prompts using standard TypeScript files. No complex configuration or boilerplate required.'
+features:
+  - title: 'Tools'
+    description: 'Define tools with Zod validation and type safety.'
+    icon: 'i-lucide-shield-check'
+  - title: 'Resources'
+    description: 'Expose your application data and file systems to LLMs with a simple and intuitive Resource API.'
+    icon: 'i-lucide-database'
+  - title: 'Prompts'
+    description: 'Create reusable prompts with arguments to help LLMs use your tools effectively.'
+    icon: 'i-lucide-message-square'
+items:
+  - label: 'Tools'
+    code: |
+      ```ts
+      // server/mcp/tools/weather.ts
+      import { z } from 'zod'
+
+      export default defineMcpTool({
+        name: 'get_weather',
+        description: 'Get current weather for a location',
+        inputSchema: {
+          city: z.string().describe('City name'),
+          unit: z.enum(['celsius', 'fahrenheit']).default('celsius')
+        },
+        handler: async ({ city, unit }) => {
+          return `Weather in ${city} is 20° ${unit}`
+        }
+      })
+      ```
+  - label: 'Resources'
+    code: |
+      ```ts
+      // server/mcp/resources/notes.ts
+      export default defineMcpResource({
+        uri: 'file:///notes/welcome.txt',
+        name: 'Welcome Note',
+        mimeType: 'text/plain',
+        handler: async () => {
+          return {
+            text: 'Welcome to Nuxt MCP Toolkit!'
+          }
+        }
+      })
+      ```
+  - label: 'Prompts'
+    code: |
+      ```ts
+      // server/mcp/prompts/summarize.ts
+      import { z } from 'zod'
+
+      export default defineMcpPrompt({
+        name: 'summarize',
+        description: 'Summarize a text',
+        inputSchema: {
+          text: z.string().describe('Text to summarize')
+        },
+        handler: async ({ text }) => {
+          return {
+            messages: [{
+              role: 'user',
+              content: {
+                type: 'text',
+                text: `Please summarize: ${text}`
+              }
+            }]
+          }
+        }
+      })
+      ```

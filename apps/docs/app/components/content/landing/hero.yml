@@ -1,0 +1,10 @@
+title: 'Build MCP Servers with Nuxt'
+description: 'Add an MCP Server to your Nuxt application in minutes. Expose your features to LLMs like Claude with a Nitro-like Developer Experience.'
+links:
+  - label: 'Get Started'
+    to: '/getting-started/installation'
+  - label: 'Documentation'
+    to: '/getting-started/introduction'
+    variant: ghost
+    ui:
+      label: 'main-gradient'
