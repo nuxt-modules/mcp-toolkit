@@ -6,5 +6,4 @@ links:
   - label: 'Documentation'
     to: '/getting-started/introduction'
     variant: ghost
-    ui:
-      label: 'main-gradient'
+    color: neutral
