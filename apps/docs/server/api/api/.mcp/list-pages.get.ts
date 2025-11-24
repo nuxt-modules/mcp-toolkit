@@ -6,6 +6,7 @@ export default defineCachedEventHandler(async (event) => {
   const pages = await queryCollection(event, 'docs')
     .select('title', 'path', 'description')
     .all()
+  console.log('pages', pages)
 
   return pages.map(page => ({
     title: page.title,
@@ -15,8 +16,7 @@ export default defineCachedEventHandler(async (event) => {
   }))
 }, {
   maxAge: 60 * 60,
-  getKey: (event) => {
-    const query = getQuery(event)
-    return `mcp-list-pages-${query.locale || 'all'}`
+  getKey: () => {
+    return 'mcp-list-pages'
   },
 })
