@@ -17,7 +17,7 @@ import {
     <Shader class="h-[300px] sm:h-[400px] invert dark:invert-0">
       <ImageTexture
         id="idmi372riw2o0ok3vcx"
-        url="https://rgqpsgmnzmniyzelfbfx.supabase.co/storage/v1/object/public/user-uploaded-images/user_34L5xrap4IrtzxuLli0GTOeUth8/RlvZEumAIgm6.png"
+        url="/mcp.png"
         :visible="false"
         mask-type="alpha"
         object-fit="contain"
