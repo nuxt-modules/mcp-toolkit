@@ -1,6 +1,7 @@
 <template>
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-1">
     <UIcon name="custom:mcp" />
-    <span>Nuxt MCP</span>
+    <span>Nuxt</span>
+    <ChromaText>MCP Toolkit</ChromaText>
   </div>
 </template>
