@@ -3,12 +3,10 @@
 
 :root {
   --ui-radius: 0;
-  --ui-primary: black;
   --ui-bg: var(--color-white);
 }
 
 .dark {
-  --ui-primary: white;
   --ui-bg: #060606;
 }
 
