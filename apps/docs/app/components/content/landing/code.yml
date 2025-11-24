@@ -1,0 +1,70 @@
+title: 'Just Write Code'
+description: 'Define tools, resources and prompts using standard TypeScript files. No complex configuration or boilerplate required.'
+features:
+  - title: 'Tools'
+    description: 'Create executable functions that allow AI models to perform actions and retrieve information.'
+    icon: 'i-lucide-hammer'
+  - title: 'Resources'
+    description: 'Share data like files, database records or API responses as context for AI models.'
+    icon: 'i-lucide-file-text'
+  - title: 'Prompts'
+    description: 'Build reusable templates and workflows to guide AI interactions and standardize usage.'
+    icon: 'i-lucide-terminal-square'
+items:
+  - label: 'Tools'
+    code: |
+      ```ts
+      // server/mcp/tools/weather.ts
+      import { z } from 'zod'
+
+      export default defineMcpTool({
+        name: 'get_weather',
+        description: 'Get current weather for a location',
+        inputSchema: {
+          city: z.string().describe('City name'),
+          unit: z.enum(['celsius', 'fahrenheit']).default('celsius')
+        },
+        handler: async ({ city, unit }) => {
+          return `Weather in ${city} is 20° ${unit}`
+        }
+      })
+      ```
+  - label: 'Resources'
+    code: |
+      ```ts
+      // server/mcp/resources/readme.ts
+      export default defineMcpResource({
+        file: 'README.md',
+        name: 'Project README',
+        description: 'The project documentation',
+        annotations: {
+          audience: ['user', 'assistant'],
+          lastModified: new Date().toISOString(),
+        }
+      })
+      ```
+  - label: 'Prompts'
+    code: |
+      ```ts
+      // server/mcp/prompts/summarize.ts
+      import { z } from 'zod'
+
+      export default defineMcpPrompt({
+        name: 'summarize',
+        description: 'Summarize a text',
+        inputSchema: {
+          text: z.string().describe('Text to summarize')
+        },
+        handler: async ({ text }) => {
+          return {
+            messages: [{
+              role: 'user',
+              content: {
+                type: 'text',
+                text: `Please summarize: ${text}`
+              }
+            }]
+          }
+        }
+      })
+      ```

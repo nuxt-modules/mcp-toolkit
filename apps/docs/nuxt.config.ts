@@ -1,3 +1,5 @@
+import yaml from '@rollup/plugin-yaml'
+
 export default defineNuxtConfig({
   extends: ['docus'],
 
@@ -14,6 +16,12 @@ export default defineNuxtConfig({
     highlight: {
       noApiRoute: false,
     },
+  },
+
+  vite: {
+    plugins: [
+      yaml(),
+    ],
   },
 
   icon: {

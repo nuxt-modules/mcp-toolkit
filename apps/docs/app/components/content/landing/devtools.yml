@@ -1,0 +1,6 @@
+title: 'Built-in Inspector'
+description: 'Debug your MCP server in real-time. View registered tools, resources, and prompts, and monitor client connections and request logs.'
+image:
+  light: '/mcp-devtools-light.png'
+  dark: '/mcp-devtools-dark.png'
+  alt: 'Nuxt MCP DevTools'
