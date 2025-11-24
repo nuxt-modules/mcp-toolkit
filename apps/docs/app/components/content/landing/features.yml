@@ -1,5 +1,5 @@
-title: 'Everything you need to build MCP Servers'
-description: 'A complete toolkit to build, test and deploy Model Context Protocol servers with Nuxt.'
+title: 'Make your App accessible to AI'
+description: 'Use the Model Context Protocol to standardize how LLMs interact with your Nuxt application.'
 items:
   - title: 'Nitro-like API'
     description: 'Use familiar patterns like defineMcpTool and defineMcpResource. It feels just like writing API routes.'
@@ -16,6 +16,9 @@ items:
   - title: 'Type-Safe Tools'
     description: 'Define your tools with Zod schemas and full TypeScript inference. No more guessing arguments types.'
     icon: 'i-lucide-shield-check'
+  - title: 'Standard Compatible'
+    description: 'Built on top of the official Model Context Protocol SDK, ensuring compatibility with all MCP clients.'
+    icon: 'i-lucide-check-circle-2'
   - title: 'DevTools Integrated'
     description: 'Debug your MCP server in real-time with the built-in inspector. View requests, responses and errors.'
     icon: 'i-lucide-bug'
