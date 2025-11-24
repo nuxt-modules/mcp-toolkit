@@ -1,5 +1,5 @@
-title: 'Build MCP Servers with Nuxt'
-description: 'Add an MCP Server to your Nuxt application in minutes. Expose your features to LLMs like Claude with a Nitro-like Developer Experience.'
+title: 'Expose your application to any LLM'
+description: 'Add a Model Context Protocol (MCP) server to your Nuxt application. Connect your features to AI clients with a Nitro-like Developer Experience.'
 links:
   - label: 'Get Started'
     to: '/getting-started/installation'

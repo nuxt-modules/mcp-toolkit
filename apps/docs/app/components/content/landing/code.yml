@@ -2,14 +2,14 @@ title: 'Just Write Code'
 description: 'Define tools, resources and prompts using standard TypeScript files. No complex configuration or boilerplate required.'
 features:
   - title: 'Tools'
-    description: 'Define tools with Zod validation and type safety.'
-    icon: 'i-lucide-shield-check'
+    description: 'Create executable functions that allow AI models to perform actions and retrieve information.'
+    icon: 'i-lucide-hammer'
   - title: 'Resources'
-    description: 'Expose your application data and file systems to LLMs with a simple and intuitive Resource API.'
-    icon: 'i-lucide-database'
+    description: 'Share data like files, database records or API responses as context for AI models.'
+    icon: 'i-lucide-file-text'
   - title: 'Prompts'
-    description: 'Create reusable prompts with arguments to help LLMs use your tools effectively.'
-    icon: 'i-lucide-message-square'
+    description: 'Build reusable templates and workflows to guide AI interactions and standardize usage.'
+    icon: 'i-lucide-terminal-square'
 items:
   - label: 'Tools'
     code: |
@@ -32,15 +32,14 @@ items:
   - label: 'Resources'
     code: |
       ```ts
-      // server/mcp/resources/notes.ts
+      // server/mcp/resources/readme.ts
       export default defineMcpResource({
-        uri: 'file:///notes/welcome.txt',
-        name: 'Welcome Note',
-        mimeType: 'text/plain',
-        handler: async () => {
-          return {
-            text: 'Welcome to Nuxt MCP Toolkit!'
-          }
+        file: 'README.md',
+        name: 'Project README',
+        description: 'The project documentation',
+        annotations: {
+          audience: ['user', 'assistant'],
+          lastModified: new Date().toISOString(),
         }
       })
       ```
