@@ -11,18 +11,13 @@ const components = {
 const { isOpen, messages, pendingMessage, clearPending } = useAIChat()
 
 const input = ref('')
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toolCalls = ref<Record<string, any[]>>({})
-
-// const lastMessage = computed(() => chat.messages.at(-1))
-// const showThinking = computed(() =>
-//   chat.status === 'streaming'
-//   && lastMessage.value?.role === 'assistant'
-//   && lastMessage.value?.parts?.length === 0,
-// )
 
 watch(pendingMessage, (message) => {
   if (message) {
+    if (messages.value.length === 0 && chat.messages.length > 0) {
+      // Clear chat messages by setting the internal array
+      chat.messages.length = 0
+    }
     chat.sendMessage({
       text: message,
     })
@@ -30,67 +25,61 @@ watch(pendingMessage, (message) => {
   }
 }, { immediate: true })
 
+watch(messages, (newMessages) => {
+  if (newMessages.length === 0 && chat.messages.length > 0) {
+    chat.messages.length = 0
+  }
+}, { deep: true })
+
 const faqQuestions = [
   {
     category: 'Getting Started',
     items: [
-      'How do I install and create a new Nuxt project?',
-      'What are the differences between Nuxt 3 and Nuxt 2?',
-      'What is the project structure in Nuxt?',
+      'What is Nuxt MCP Toolkit?',
+      'How do I install the module?',
+      'How do I use the DevTools?',
     ],
   },
   {
-    category: 'Core Concepts',
+    category: 'Core Features',
     items: [
-      'What is SSR and how does it work in Nuxt?',
-      'What is the difference between SSR, SSG, and SPA in Nuxt?',
-      'How does file-based routing work?',
-      'How do auto-imports work in Nuxt?',
-    ],
-  },
-  {
-    category: 'Data Fetching',
-    items: [
-      'What is the difference between useFetch and useAsyncData?',
-      'How do I fetch data on the server side?',
-      'How do I handle loading and error states?',
+      'How do I create a new MCP Tool?',
+      'How do I add an MCP Resource?',
+      'How do I configure Prompts?',
     ],
   },
   {
     category: 'Advanced',
     items: [
-      'How do I create and use Nuxt modules?',
-      'How do I create API routes with server routes?',
-      'How do I deploy my Nuxt application?',
-      'How do I optimize performance in Nuxt?',
+      'Can I expose my API routes as MCP Tools?',
+      'Does it support TypeScript?',
+      'How do I add a custom MCP server?',
     ],
   },
 ]
 
 const toast = useToast()
 
-// function getAgentCalls(message: any) {
-//   if (showThinking.value && message.role === 'assistant') {
-//     return [{ type: 'thinking', state: 'calling' }]
-//   }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getToolLabel(toolName: string, args: any) {
+  const path = args?.path || ''
 
-//   return message.parts
-//     .filter((p: any) => p.type === 'tool-nuxt-agent' || p.type === 'tool-nuxt-ui-agent')
-//     .map((p: any) => ({
-//       type: p.type === 'tool-nuxt-agent' ? 'nuxt' : 'nuxt-ui',
-//       state: p.state === 'output-available' ? 'done' : 'calling',
-//     }))
-// }
+  const labels: Record<string, string> = {
+    'list-pages': 'Listed documentation pages',
+    'list_pages': 'Listed documentation pages',
+    'get-page': `Read ${path}`,
+    'get_page': `Read ${path}`,
+  }
+
+  return labels[toolName] || toolName
+}
 
 const chat = new Chat({
   messages: messages.value,
   transport: new DefaultChatTransport({
     api: '/api/search',
   }),
-  onData: (data) => {
-    console.log('data', data)
-  },
-  onError: (error) => {
+  onError: (error: Error) => {
     const { message } = typeof error.message === 'string' && error.message[0] === '{' ? JSON.parse(error.message) : error
 
     toast.add({
@@ -105,14 +94,12 @@ const chat = new Chat({
   },
 })
 
-function handleSubmit(event: Event) {
-  event.preventDefault()
+function handleSubmit(event?: Event) {
+  event?.preventDefault()
 
   if (!input.value.trim()) {
     return
   }
-
-  toolCalls.value = {}
 
   chat.sendMessage({
     text: input.value,
@@ -122,8 +109,6 @@ function handleSubmit(event: Event) {
 }
 
 function askQuestion(question: string) {
-  toolCalls.value = {}
-
   chat.sendMessage({
     text: question,
   })
@@ -131,7 +116,6 @@ function askQuestion(question: string) {
 
 onMounted(() => {
   if (pendingMessage.value) {
-    toolCalls.value = {}
     chat.sendMessage({
       text: pendingMessage.value,
     })
@@ -146,17 +130,38 @@ onMounted(() => {
 <template>
   <USlideover
     v-model:open="isOpen"
-    title="Ask AI"
     side="right"
     :ui="{
-      header: 'px-4!',
-      content: 'w-full sm:max-w-md',
-      body: 'py-4! px-2!',
+      overlay: 'bg-default/60 backdrop-blur-sm',
+      content: 'w-full sm:max-w-md bg-default/95 backdrop-blur-xl shadow-2xl',
+      header: 'px-3! py-2! border-b border-muted/50',
+      body: 'p-0!',
       footer: 'p-0!',
     }"
   >
+    <template #header>
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-2">
+          <div class="size-6 rounded-full bg-primary/10 flex items-center justify-center">
+            <UIcon
+              name="i-lucide-sparkles"
+              class="size-3.5 text-primary"
+            />
+          </div>
+          <span class="font-medium text-highlighted">Ask AI</span>
+        </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          class="text-muted hover:text-highlighted"
+          @click="isOpen = false"
+        />
+      </div>
+    </template>
+
     <template #body>
-      {{ toolCalls }}
       <UChatMessages
         v-if="chat.messages.length > 0"
         should-auto-scroll
@@ -165,10 +170,10 @@ onMounted(() => {
         :status="chat.status"
         :user="{ ui: { content: 'text-sm' } }"
         :ui="{ indicator: '*:bg-accented' }"
-        class="flex-1"
+        class="flex-1 px-4 py-4"
       >
         <template #content="{ message }">
-          <div class="*:first:mt-0! *:last:mb-0! flex flex-col gap-3">
+          <div class="flex flex-col gap-2">
             <template
               v-for="(part, index) in message.parts"
               :key="`${message.id}-${part.type}-${index}${'state' in part ? `-${part.state}` : ''}`"
@@ -181,6 +186,12 @@ onMounted(() => {
                 :parser-options="{ highlight: false }"
                 class="*:first:mt-0 *:last:mb-0"
               />
+
+              <ChatToolCall
+                v-else-if="part.type === 'tool-invocation' || part.type === 'dynamic-tool'"
+                :text="getToolLabel((part as any).toolName, (part as any).args || (part as any).input)"
+                :is-loading="(part as any).state !== 'output-available'"
+              />
             </template>
           </div>
         </template>
@@ -188,33 +199,30 @@ onMounted(() => {
 
       <div
         v-else
-        class="flex flex-col gap-6 px-4 py-2"
+        class="flex-1 overflow-y-auto px-4 py-4"
       >
-        <h3 class="text-sm font-medium text-muted">
+        <p class="text-sm font-medium text-muted mb-4">
           FAQ
-        </h3>
+        </p>
 
-        <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-5">
           <div
             v-for="category in faqQuestions"
             :key="category.category"
-            class="flex flex-col gap-2"
+            class="flex flex-col gap-1.5"
           >
-            <h4 class="text-xs font-medium text-muted uppercase tracking-wide mb-1">
+            <h4 class="text-xs font-medium text-dimmed uppercase tracking-wide">
               {{ category.category }}
             </h4>
-            <div class="flex flex-col gap-1">
-              <UButton
+            <div class="flex flex-col">
+              <button
                 v-for="question in category.items"
                 :key="question"
-                :label="question"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                block
-                class="justify-start text-left h-auto py-2 whitespace-normal"
+                class="text-left text-sm text-muted hover:text-highlighted py-1.5 transition-colors"
                 @click="askQuestion(question)"
-              />
+              >
+                {{ question }}
+              </button>
             </div>
           </div>
         </div>
@@ -222,44 +230,34 @@ onMounted(() => {
     </template>
 
     <template #footer>
-      <div class="flex flex-col w-full">
-        <UChatPrompt
-          v-model="input"
-          variant="naked"
-          :error="chat.error"
-          placeholder="Ask me anything about Nuxt MCP Toolkit..."
-          :ui="{ trailing: 'items-center' }"
-          :maxrows="5"
-          :rows="2"
-          @submit="handleSubmit"
-        >
-          <template #footer>
-            <div class="flex justify-between items-center px-2 w-full">
-              <!-- <UButton
-                label="Deep thinking"
-                size="xs"
-                color="neutral"
-                variant="soft"
-                icon="i-lucide-lightbulb"
-              /> -->
-              <div />
-              <UChatPromptSubmit
-                color="neutral"
-                size="xs"
-                :status="chat.status"
-                class="rounded-full"
-              />
-            </div>
-          </template>
-        </UChatPrompt>
-        <div class="flex justify-end items-center gap-2 text-xs text-muted p-2 border-t border-default">
-          Chat is cleared on refresh
-          <USeparator
-            orientation="vertical"
-            class="h-4"
+      <div class="border-t border-muted/50 p-3 w-full">
+        <div class="relative flex items-end gap-2 rounded-xl bg-elevated/70 pr-2 pb-2">
+          <UTextarea
+            v-model="input"
+            :rows="1"
+            autoresize
+            variant="none"
+            placeholder="Ask me a question about Nuxt MCP..."
+            class="flex-1 text-sm bg-transparent resize-none"
+            :ui="{
+              base: 'bg-transparent! ring-0! shadow-none!',
+            }"
+            @keydown.enter.exact.prevent="handleSubmit"
           />
-          <span>Line break</span>
+          <UButton
+            icon="i-lucide-arrow-up"
+            color="primary"
+            size="xs"
+            :disabled="!input.trim() || chat.status === 'streaming'"
+            :loading="chat.status === 'streaming'"
+            class="shrink-0 rounded-lg"
+            @click="handleSubmit"
+          />
+        </div>
+        <div class="flex justify-between items-center mt-2 px-1 text-xs text-dimmed">
+          <span>Chat is cleared on refresh</span>
           <div class="flex items-center gap-1">
+            <span>Line break</span>
             <UKbd value="shift" />
             <UKbd value="enter" />
           </div>

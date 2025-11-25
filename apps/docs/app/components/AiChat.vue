@@ -3,8 +3,12 @@ const { toggle } = useAIChat()
 </script>
 
 <template>
-  <div
-    class="bg-primary rounded-full size-10"
-    @click="toggle"
-  />
+  <UTooltip text="Ask AI a question">
+    <UButton
+      icon="i-lucide-sparkles"
+      variant="ghost"
+      class="rounded-full"
+      @click="toggle"
+    />
+  </UTooltip>
 </template>

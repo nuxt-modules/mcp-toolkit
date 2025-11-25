@@ -17,6 +17,5 @@ const { open } = useAIChat()
       @click="open(`Explain the page ${pageUrl}`, true)"
     />
     <AIChatSlideover />
-    <AiChat class="absolute bottom-2 right-2" />
   </div>
 </template>

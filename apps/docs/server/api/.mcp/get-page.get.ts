@@ -15,7 +15,6 @@ export default defineCachedEventHandler(async (event) => {
       .where('path', '=', path)
       .select('title', 'path', 'description')
       .first()
-    console.log('page', page)
 
     if (!page) {
       return {
