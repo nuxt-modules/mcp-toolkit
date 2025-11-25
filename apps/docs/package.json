@@ -16,18 +16,20 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@rollup/plugin-yaml": "^4.1.2",
-    "@ai-sdk/vue": "3.0.0-beta.105",
-    "shiki-stream": "^0.1.2",
     "@ai-sdk/mcp": "^0.0.8",
+    "@ai-sdk/vue": "3.0.0-beta.105",
+    "@nuxtjs/mcp-toolkit": "workspace:*",
+    "@rollup/plugin-yaml": "^4.1.2",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "ai": "6.0.0-beta.105",
     "better-sqlite3": "^12.4.1",
     "docus": "latest",
     "motion-v": "^1.7.4",
     "nuxt": "^4.2.1",
-    "@nuxtjs/mcp-toolkit": "workspace:*",
     "nuxt-studio": "1.0.0-alpha.2",
-    "shaders": "^2.1.10"
+    "shaders": "^2.1.10",
+    "shiki-stream": "^0.1.2"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.10.0",
