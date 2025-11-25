@@ -7,7 +7,6 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
-  // @ts-expect-error - site is a valid Docus property but not typed in NuxtConfig
   site: {
     name: 'Nuxt MCP Toolkit',
   },
@@ -39,7 +38,7 @@ export default defineNuxtConfig({
   },
 
   llms: {
-    domain: 'https://nuxt-mcp-toolkit.vercel.app',
+    domain: 'https://mcp-toolkit.nuxt.dev',
     title: 'Nuxt MCP Toolkit',
     description: 'Create MCP servers directly in your Nuxt application. Define tools, resources, and prompts with a simple and intuitive API.',
     full: {
@@ -56,8 +55,8 @@ export default defineNuxtConfig({
     route: '/admin',
     repository: {
       provider: 'github',
-      owner: 'HugoRCD',
-      repo: 'nuxt-mcp-toolkit',
+      owner: 'nuxt-modules',
+      repo: 'mcp-toolkit',
       branch: 'main',
       rootDir: 'docs',
     },

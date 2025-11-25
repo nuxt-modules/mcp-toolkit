@@ -4,7 +4,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HugoRCD/nuxt-mcp-toolkit.git"
+    "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git"
   },
   "author": "Hugo Richard <hugo.richard@vercel.com>",
   "license": "MIT",
@@ -22,7 +22,8 @@
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "typecheck:docs": "turbo typecheck --filter=nuxt-mcp-toolkit-docs",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "automd": "npx automd --config .github/automd.json"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.10.0",

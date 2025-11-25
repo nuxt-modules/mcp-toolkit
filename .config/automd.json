@@ -1,0 +1,12 @@
+{
+  "input": [
+    ".github/snippets/installation.md",
+    ".github/snippets/license.md",
+    "README.md",
+    "packages/nuxt-mcp-toolkit/README.md"
+  ],
+  "ignore": [
+    "node_modules",
+    "dist"
+  ]
+}

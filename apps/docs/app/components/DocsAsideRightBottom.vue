@@ -13,6 +13,7 @@ const { open } = useAIChat()
       label="Explain with AI"
       size="sm"
       variant="ghost"
+      color="neutral"
       @click="open(`Explain the page ${pageUrl}`, true)"
     />
     <AIChatSlideover />
