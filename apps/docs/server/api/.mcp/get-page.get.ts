@@ -8,7 +8,7 @@ const querySchema = z.object({
 export default defineCachedEventHandler(async (event) => {
   const { path } = await getValidatedQuery(event, querySchema.parse)
 
-  const siteUrl = import.meta.dev ? 'http://localhost:3000' : getRequestURL(event).origin
+  const siteUrl = import.meta.dev ? 'http://localhost:3000' : 'https://mcp-toolkit.nuxt.dev'
 
   try {
     const page = await queryCollection(event, 'docs')

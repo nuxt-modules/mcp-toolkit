@@ -39,7 +39,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "release": "pnpm run typecheck && pnpm run test && pnpm run lint && pnpm run build && npm publish && git push --follow-tags"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
