@@ -1,4 +1,4 @@
-![Nuxt MCP Toolkit](../../assets/banner.jpg)
+![Nuxt MCP Toolkit](https://raw.githubusercontent.com/nuxt-modules/nuxt-mcp-toolkit/main/assets/banner.jpg)
 
 # Nuxt MCP Toolkit
 
