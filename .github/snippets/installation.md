@@ -1,7 +1,7 @@
-Use `nuxi` to install the module automatically:
+Use `nuxt` to install the module automatically:
 
 ```bash
-npx nuxi module add nuxt-mcp-toolkit
+npx nuxt module add nuxt-mcp-toolkit
 ```
 
 Or install manually:

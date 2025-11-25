@@ -29,10 +29,10 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 <!-- automd:file src=".github/snippets/installation.md" -->
 
-Use `nuxi` to install the module automatically:
+Use `nuxt` to install the module automatically:
 
 ```bash
-npx nuxi module add nuxt-mcp-toolkit
+npx nuxt module add nuxt-mcp-toolkit
 ```
 
 Or install manually:
