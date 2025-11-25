@@ -8,7 +8,7 @@ links:
     color: 'neutral'
     size: 'xl'
   - label: 'Star on GitHub'
-    to: 'https://github.com/nuxt-modules/nuxt-mcp-toolkit'
+    to: 'https://github.com/nuxt-modules/mcp-toolkit'
     icon: 'i-lucide-github'
     trailing: true
     color: 'neutral'

@@ -1,4 +1,4 @@
-![Nuxt MCP Toolkit](https://raw.githubusercontent.com/nuxt-modules/nuxt-mcp-toolkit/main/assets/banner.jpg)
+![Nuxt MCP Toolkit](https://raw.githubusercontent.com/nuxt-modules/mcp-toolkit/main/assets/banner.jpg)
 
 # Nuxt MCP Toolkit
 
@@ -6,7 +6,7 @@
 
 [![npm version](https://img.shields.io/npm/v/nuxt-mcp-toolkit?color=black)](https://npmjs.com/package/nuxt-mcp-toolkit)
 [![npm downloads](https://img.shields.io/npm/dm/nuxt-mcp-toolkit?color=black)](https://npm.chart.dev/nuxt-mcp-toolkit)
-[![license](https://img.shields.io/github/license/nuxt-modules/nuxt-mcp-toolkit?color=black)](https://github.com/nuxt-modules/nuxt-mcp-toolkit/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/nuxt-modules/mcp-toolkit?color=black)](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)
 
 <!-- /automd -->
 
@@ -85,8 +85,8 @@ pnpm run test
 
 <!-- automd:file src=".github/snippets/support.md" -->
 
-- **Issues**: [Open an issue](https://github.com/nuxt-modules/nuxt-mcp-toolkit/issues) for bugs or feature requests
-- **Discussions**: [Join the discussion](https://github.com/nuxt-modules/nuxt-mcp-toolkit/discussions) for questions and ideas
+- **Issues**: [Open an issue](https://github.com/nuxt-modules/mcp-toolkit/issues) for bugs or feature requests
+- **Discussions**: [Join the discussion](https://github.com/nuxt-modules/mcp-toolkit/discussions) for questions and ideas
 - **X**: Follow [@hugorcd](https://twitter.com/hugorcd) for updates
 
 <!-- /automd -->
@@ -95,12 +95,12 @@ pnpm run test
 
 <!-- automd:file src=".github/snippets/license.md" -->
 
-Published under the [MIT](https://github.com/nuxt-modules/nuxt-mcp-toolkit/blob/main/LICENSE) license.
+Published under the [MIT](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE) license.
 
-Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.com/nuxt-modules/nuxt-mcp-toolkit/graphs/contributors) 💛
+Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.com/nuxt-modules/mcp-toolkit/graphs/contributors) 💛
 
-<a href="https://github.com/nuxt-modules/nuxt-mcp-toolkit/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=nuxt-modules/nuxt-mcp-toolkit" />
+<a href="https://github.com/nuxt-modules/mcp-toolkit/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=nuxt-modules/mcp-toolkit" />
 </a>
 
 <!-- /automd -->

@@ -4,7 +4,7 @@
   "description": "Documentation for Nuxt MCP Toolkit",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nuxt-modules/nuxt-mcp-toolkit.git",
+    "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git",
     "directory": "apps/docs"
   },
   "author": "Hugo Richard <hugo.richard@vercel.com>",

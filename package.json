@@ -4,7 +4,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nuxt-modules/nuxt-mcp-toolkit.git"
+    "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git"
   },
   "author": "Hugo Richard <hugo.richard@vercel.com>",
   "license": "MIT",
