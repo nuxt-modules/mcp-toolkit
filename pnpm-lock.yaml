@@ -23,12 +23,18 @@ importers:
 
   apps/docs:
     dependencies:
+      '@ai-sdk/mcp':
+        specifier: ^0.0.8
+        version: 0.0.8(zod@3.25.76)
+      '@ai-sdk/vue':
+        specifier: 3.0.0-beta.105
+        version: 3.0.0-beta.105(vue@3.5.24(typescript@5.9.3))(zod@3.25.76)
       '@rollup/plugin-yaml':
         specifier: ^4.1.2
         version: 4.1.2(rollup@4.53.3)
       ai:
-        specifier: ^5.0.95
-        version: 5.0.98(zod@3.25.76)
+        specifier: 6.0.0-beta.105
+        version: 6.0.0-beta.105(zod@3.25.76)
       better-sqlite3:
         specifier: ^12.4.1
         version: 12.4.5
@@ -50,6 +56,9 @@ importers:
       shaders:
         specifier: ^2.1.10
         version: 2.1.10
+      shiki-stream:
+        specifier: ^0.1.2
+        version: 0.1.3(vue@3.5.24(typescript@5.9.3))
     devDependencies:
       '@nuxt/eslint-config':
         specifier: ^1.10.0
@@ -149,8 +158,14 @@ importers:
 
 packages:
 
-  '@ai-sdk/gateway@2.0.13':
-    resolution: {integrity: sha512-q8M+7+VEKp91I295cjNDgQ4LyGImKj5cDLVARDay7nBTXGjIRZOlthYE7K6Rbz2yHKFyTmKH7MMkYavAM7L/UQ==}
+  '@ai-sdk/gateway@2.0.0-beta.57':
+    resolution: {integrity: sha512-ZSqa1QKKU87gY4ivgTiH+8P5EL3KfaqwK0WlwAizKS+S6mgBt0m9zuYVjg0PWRyiRhynz2zORQULGpcLEwlNag==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/mcp@0.0.8':
+    resolution: {integrity: sha512-9y9GuGcZ9/+pMIHfpOCJgZVp+AZMv6TkjX2NVT17SQZvTF2N8LXuCXyoUPyi1PxIxzxl0n463LxxaB2O6olC+Q==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -161,9 +176,35 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/provider-utils@4.0.0-beta.33':
+    resolution: {integrity: sha512-8UnWOiWP5Fm0X+tU0ne4X3OnbDq5mMMxympHcW5VjVmx+Mc1TgD8KGPl0XsS9l3f61qPSVn1vZC3FthRnTlvhA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@valibot/to-json-schema': ^1.3.0
+      arktype: ^2.1.22
+      effect: ^3.18.4
+      zod: ^3.25.76 || ^4.1.8
+    peerDependenciesMeta:
+      '@valibot/to-json-schema':
+        optional: true
+      arktype:
+        optional: true
+      effect:
+        optional: true
+
   '@ai-sdk/provider@2.0.0':
     resolution: {integrity: sha512-6o7Y2SeO9vFKB8lArHXehNuusnpddKPk7xqL7T2/b+OvXMRIXUO1rR4wcv1hAFUAT9avGZshty3Wlua/XA7TvA==}
     engines: {node: '>=18'}
+
+  '@ai-sdk/provider@3.0.0-beta.16':
+    resolution: {integrity: sha512-R62Z0fziX467Eu6MtVhkmHm0VFtJrq4vPGo8w4mcc4LhSPncHwn+b9yoyxv3f2pkWyUAhPR4ttgWyZoFG/lXIA==}
+    engines: {node: '>=18'}
+
+  '@ai-sdk/vue@3.0.0-beta.105':
+    resolution: {integrity: sha512-N1PpszxNp616i0qYPkTzmdcKtJoYl5zC//V1C4SXa0y2gvXNi1bsmanvD4IqNnz3ex62foR1n3kErmuf7fLwbQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      vue: ^3.3.4
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -2453,8 +2494,8 @@ packages:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
 
-  ai@5.0.98:
-    resolution: {integrity: sha512-RpMnwnml68Swblobvk6IdF7HLZrog72Ve6H5J3aN+A/JPg4y5CjCXeQyK1N4wJStyuTa6AoKYfJR5F4e/aVpHQ==}
+  ai@6.0.0-beta.105:
+    resolution: {integrity: sha512-KXnP0s5ztyUVdHRM8hQiRMXr4Afg3zr3UlX3S31pP7tWRAo962EpVRavh5wzmAzmi6EN98rcRQdbCHZ0m81ptQ==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -5411,6 +5452,17 @@ packages:
     resolution: {integrity: sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw==}
     engines: {node: '>= 0.4'}
 
+  shiki-stream@0.1.3:
+    resolution: {integrity: sha512-pDIqmaP/zJWHNV8bJKp0tD0CZ6OkF+lWTIvmNRLktlTjBjN3+durr19JarS657U1oSEf/WrSYmdzwr9CeD6m2Q==}
+    peerDependencies:
+      react: ^19.0.0
+      vue: ^3.2.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
+
   shiki@3.15.0:
     resolution: {integrity: sha512-kLdkY6iV3dYbtPwS9KXU7mjfmDm25f5m0IPNFnaXO7TBPcvbUOY72PYXSuSqDzwp+vlH/d7MXpHlKO/x+QoLXw==}
 
@@ -5629,6 +5681,11 @@ packages:
     resolution: {integrity: sha512-VvrHQ+9uniE+Mvx3+C9IEe/lWasXCU0nXMY2kZeLrHNICuRiC8uMPyM14UEaMOFA5mhyQqEkB02VoQ16n3DLaw==}
     engines: {node: '>=16'}
     hasBin: true
+
+  swrv@1.1.0:
+    resolution: {integrity: sha512-pjllRDr2s0iTwiE5Isvip51dZGR7GjLH1gCSVyE8bQnbAx6xackXsFdojau+1O5u98yHF5V73HQGOFxKUXO9gQ==}
+    peerDependencies:
+      vue: '>=3.2.26 < 4'
 
   system-architecture@0.1.0:
     resolution: {integrity: sha512-ulAk51I9UVUyJgxlv9M6lFot2WP3e7t8Kz9+IS6D4rVba1tR9kON+Ey69f+1R4Q8cd45Lod6a4IcJIxnzGc/zA==}
@@ -6479,11 +6536,22 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/gateway@2.0.13(zod@3.25.76)':
+  '@ai-sdk/gateway@2.0.0-beta.57(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.0-beta.16
+      '@ai-sdk/provider-utils': 4.0.0-beta.33(zod@3.25.76)
+      '@vercel/oidc': 3.0.5
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
+
+  '@ai-sdk/mcp@0.0.8(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@ai-sdk/provider-utils': 3.0.17(zod@3.25.76)
-      '@vercel/oidc': 3.0.5
+      pkce-challenge: 5.0.0
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@3.0.17(zod@3.25.76)':
@@ -6493,9 +6561,32 @@ snapshots:
       eventsource-parser: 3.0.6
       zod: 3.25.76
 
+  '@ai-sdk/provider-utils@4.0.0-beta.33(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.0-beta.16
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.6
+      zod: 3.25.76
+
   '@ai-sdk/provider@2.0.0':
     dependencies:
       json-schema: 0.4.0
+
+  '@ai-sdk/provider@3.0.0-beta.16':
+    dependencies:
+      json-schema: 0.4.0
+
+  '@ai-sdk/vue@3.0.0-beta.105(vue@3.5.24(typescript@5.9.3))(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider-utils': 4.0.0-beta.33(zod@3.25.76)
+      ai: 6.0.0-beta.105(zod@3.25.76)
+      swrv: 1.1.0(vue@3.5.24(typescript@5.9.3))
+      vue: 3.5.24(typescript@5.9.3)
+    transitivePeerDependencies:
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
+      - zod
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -9150,13 +9241,17 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@5.0.98(zod@3.25.76):
+  ai@6.0.0-beta.105(zod@3.25.76):
     dependencies:
-      '@ai-sdk/gateway': 2.0.13(zod@3.25.76)
-      '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.17(zod@3.25.76)
+      '@ai-sdk/gateway': 2.0.0-beta.57(zod@3.25.76)
+      '@ai-sdk/provider': 3.0.0-beta.16
+      '@ai-sdk/provider-utils': 4.0.0-beta.33(zod@3.25.76)
       '@opentelemetry/api': 1.9.0
       zod: 3.25.76
+    transitivePeerDependencies:
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
 
   ajv-formats@3.0.1(ajv@8.17.1):
     optionalDependencies:
@@ -13020,6 +13115,12 @@ snapshots:
 
   shell-quote@1.8.3: {}
 
+  shiki-stream@0.1.3(vue@3.5.24(typescript@5.9.3)):
+    dependencies:
+      '@shikijs/core': 3.15.0
+    optionalDependencies:
+      vue: 3.5.24(typescript@5.9.3)
+
   shiki@3.15.0:
     dependencies:
       '@shikijs/core': 3.15.0
@@ -13261,6 +13362,10 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
       sax: 1.4.3
+
+  swrv@1.1.0(vue@3.5.24(typescript@5.9.3)):
+    dependencies:
+      vue: 3.5.24(typescript@5.9.3)
 
   system-architecture@0.1.0: {}
 

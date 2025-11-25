@@ -17,7 +17,10 @@
   },
   "dependencies": {
     "@rollup/plugin-yaml": "^4.1.2",
-    "ai": "^5.0.95",
+    "@ai-sdk/vue": "3.0.0-beta.105",
+    "shiki-stream": "^0.1.2",
+    "@ai-sdk/mcp": "^0.0.8",
+    "ai": "6.0.0-beta.105",
     "better-sqlite3": "^12.4.1",
     "docus": "latest",
     "motion-v": "^1.7.4",

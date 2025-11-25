@@ -1,0 +1,21 @@
+<script setup lang="ts">
+const route = useRoute()
+
+const pageUrl = route.path
+const { open } = useAIChat()
+</script>
+
+<template>
+  <div>
+    <UButton
+      icon="i-lucide-brain"
+      target="_blank"
+      label="Explain with AI"
+      size="sm"
+      variant="ghost"
+      color="neutral"
+      @click="open(`Explain the page ${pageUrl}`, true)"
+    />
+    <AIChatSlideover />
+  </div>
+</template>
