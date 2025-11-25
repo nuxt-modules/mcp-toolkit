@@ -3,4 +3,4 @@ description: 'Add a Model Context Protocol (MCP) server to your Nuxt application
 links:
   - label: 'Get Started'
     to: '/getting-started/installation'
-  - value: 'npx nuxt module add mcp'
+  - value: 'npx nuxt module add mcp-toolkit'

@@ -38,6 +38,6 @@ import hero from './hero.yml'
       </template>
     </template>
 
-    <HeroShader class="absolute inset-0 translate-x-1/4" />
+    <HeroShader class="hidden md:block absolute inset-0 translate-x-1/4 pointer-events-none" />
   </UPageHero>
 </template>

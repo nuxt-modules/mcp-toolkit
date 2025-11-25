@@ -6,10 +6,6 @@ defineProps({
     type: String,
     required: true,
   },
-  size: {
-    type: String,
-    default: 'lg',
-  },
 })
 const { copy, copied } = useClipboard()
 </script>
@@ -18,9 +14,9 @@ const { copy, copied } = useClipboard()
   <label>
     <UInput
       :model-value="value"
-      :size="size"
+      size="lg"
       disabled
-      class="w-56"
+      class="w-68"
     >
       <div
         class="absolute inset-0"
