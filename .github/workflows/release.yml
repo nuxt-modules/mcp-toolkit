@@ -36,10 +36,5 @@ jobs:
       - name: 🛠 Build project
         run: pnpm build:module
 
-      - name: 📦 Release
-        run: pnpm publish --no-git-checks
-
-      - name: 📦 Release
-        run: pnpm changelogithub
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 📦 Publish to npm
+        run: pnpm --filter @nuxtjs/mcp-toolkit publish --no-git-checks
