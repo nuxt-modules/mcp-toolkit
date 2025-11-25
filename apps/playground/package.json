@@ -5,7 +5,7 @@
   "description": "Playground for Nuxt MCP Toolkit",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HugoRCD/nuxt-mcp-toolkit.git",
+    "url": "git+https://github.com/nuxt-modules/nuxt-mcp-toolkit.git",
     "directory": "apps/playground"
   },
   "author": "Hugo Richard <hugo.richard@vercel.com>",

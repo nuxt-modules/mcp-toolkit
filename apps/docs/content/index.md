@@ -1,7 +1,8 @@
 ---
 seo:
-  title: Nuxt MCP Toolkit - Connect Nuxt to the AI Ecosystem
-  description: Turn your Nuxt application into a Model Context Protocol (MCP) server. Expose APIs, databases, and files to LLMs like Claude with zero configuration and full type safety.
+  ogImage: '/og.jpg'
+  title: Expose your application to any LLM
+  description: Add a Model Context Protocol (MCP) server to your Nuxt application. Connect your features to AI clients with a Nitro-like Developer Experience.
 ---
 
 ::landing-hero
@@ -14,4 +15,7 @@ seo:
 ::
 
 ::landing-dev-tools
+::
+
+::landing-cta
 ::

@@ -1,0 +1,16 @@
+title: 'Ready to build your first MCP Server?'
+description: 'Get started in minutes with our comprehensive guide and examples.'
+links:
+  - label: 'Get Started'
+    to: '/getting-started/installation'
+    icon: 'i-lucide-arrow-right'
+    trailing: true
+    color: 'neutral'
+    size: 'xl'
+  - label: 'Star on GitHub'
+    to: 'https://github.com/nuxt-modules/nuxt-mcp-toolkit'
+    icon: 'i-lucide-github'
+    trailing: true
+    color: 'neutral'
+    variant: 'ghost'
+    size: 'xl'
