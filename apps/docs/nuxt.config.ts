@@ -56,7 +56,7 @@ export default defineNuxtConfig({
     repository: {
       provider: 'github',
       owner: 'nuxt-modules',
-      repo: 'nuxt-mcp-toolkit',
+      repo: 'mcp-toolkit',
       branch: 'main',
       rootDir: 'docs',
     },
