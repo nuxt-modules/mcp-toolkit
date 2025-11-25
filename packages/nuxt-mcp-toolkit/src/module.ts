@@ -8,6 +8,7 @@ import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
+import { name, version } from '../package.json'
 
 const log = logger.withTag('nuxt-mcp-toolkit')
 
@@ -51,8 +52,11 @@ export interface ModuleOptions {
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'nuxt-mcp-toolkit',
+    name,
+    version,
     configKey: 'mcp',
+    docs: 'https://mcp-toolkit.nuxt.dev/getting-started/installation',
+    mcp: 'https://mcp-toolkit.nuxt.dev/mcp',
   },
   defaults: defaultMcpConfig,
   async setup(options, nuxt) {
