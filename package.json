@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-mcp-toolkit-monorepo",
+  "name": "@nuxtjs/mcp-toolkit-monorepo",
   "private": true,
   "type": "module",
   "repository": {
@@ -10,18 +10,18 @@
   "license": "MIT",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "turbo dev --filter=nuxt-mcp-toolkit-playground",
+    "dev": "turbo dev --filter=@nuxtjs/mcp-toolkit-playground",
     "dev:prepare": "turbo dev:prepare",
-    "dev:docs": "turbo dev --filter=nuxt-mcp-toolkit-docs",
+    "dev:docs": "turbo dev --filter=@nuxtjs/mcp-toolkit-docs",
     "build": "turbo build",
-    "build:module": "turbo build --filter=nuxt-mcp-toolkit",
-    "build:docs": "turbo build --filter=nuxt-mcp-toolkit-docs",
+    "build:module": "turbo build --filter=@nuxtjs/mcp-toolkit",
+    "build:docs": "turbo build --filter=@nuxtjs/mcp-toolkit-docs",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
-    "lint:docs": "turbo lint --filter=nuxt-mcp-toolkit-docs",
+    "lint:docs": "turbo lint --filter=@nuxtjs/mcp-toolkit-docs",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
-    "typecheck:docs": "turbo typecheck --filter=nuxt-mcp-toolkit-docs",
+    "typecheck:docs": "turbo typecheck --filter=@nuxtjs/mcp-toolkit-docs",
     "clean": "turbo clean",
     "automd": "npx automd --config .github/automd.json"
   },

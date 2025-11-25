@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-mcp-toolkit-docs",
+  "name": "@nuxtjs/mcp-toolkit-docs",
   "private": true,
   "description": "Documentation for Nuxt MCP Toolkit",
   "repository": {
@@ -25,7 +25,7 @@
     "docus": "latest",
     "motion-v": "^1.7.4",
     "nuxt": "^4.2.1",
-    "nuxt-mcp-toolkit": "workspace:*",
+    "@nuxtjs/mcp-toolkit": "workspace:*",
     "nuxt-studio": "1.0.0-alpha.2",
     "shaders": "^2.1.10"
   },

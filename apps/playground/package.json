@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-mcp-toolkit-playground",
+  "name": "@nuxtjs/mcp-toolkit-playground",
   "private": true,
   "type": "module",
   "description": "Playground for Nuxt MCP Toolkit",
@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "nuxt-mcp-toolkit": "workspace:*",
+    "@nuxtjs/mcp-toolkit": "workspace:*",
     "nuxt": "^4.2.1",
     "zod": "^3.25.76"
   },

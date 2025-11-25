@@ -2,10 +2,10 @@
 
 # Nuxt MCP Toolkit
 
-<!-- automd:badges color="black" license name="nuxt-mcp-toolkit" -->
+<!-- automd:badges color="black" license name="@nuxtjs/mcp-toolkit" -->
 
-[![npm version](https://img.shields.io/npm/v/nuxt-mcp-toolkit?color=black)](https://npmjs.com/package/nuxt-mcp-toolkit)
-[![npm downloads](https://img.shields.io/npm/dm/nuxt-mcp-toolkit?color=black)](https://npm.chart.dev/nuxt-mcp-toolkit)
+[![npm version](https://img.shields.io/npm/v/@nuxtjs/mcp-toolkit?color=black)](https://npmjs.com/package/@nuxtjs/mcp-toolkit)
+[![npm downloads](https://img.shields.io/npm/dm/@nuxtjs/mcp-toolkit?color=black)](https://npm.chart.dev/@nuxtjs/mcp-toolkit)
 [![license](https://img.shields.io/github/license/nuxt-modules/mcp-toolkit?color=black)](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)
 
 <!-- /automd -->
@@ -32,23 +32,23 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 Use `nuxt` to install the module automatically:
 
 ```bash
-npx nuxt module add nuxt-mcp-toolkit
+npx nuxt module add @nuxtjs/mcp-toolkit
 ```
 
 Or install manually:
 
 ```bash
 # npm
-npm install -D nuxt-mcp-toolkit zod@^3
+npm install -D @nuxtjs/mcp-toolkit zod@^3
 
 # yarn
-yarn add -D nuxt-mcp-toolkit zod@^3
+yarn add -D @nuxtjs/mcp-toolkit zod@^3
 
 # pnpm
-pnpm add -D nuxt-mcp-toolkit zod@^3
+pnpm add -D @nuxtjs/mcp-toolkit zod@^3
 
 # bun
-bun add -D nuxt-mcp-toolkit zod@^3
+bun add -D @nuxtjs/mcp-toolkit zod@^3
 ```
 
 > **Note:** Zod v3 is required. Zod v4 is not yet compatible with the MCP SDK.
@@ -61,7 +61,7 @@ Add the module to your `nuxt.config.ts`:
 
 ```typescript
 export default defineNuxtConfig({
-  modules: ['nuxt-mcp-toolkit'],
+  modules: ['@nuxtjs/mcp-toolkit'],
   mcp: {
     name: 'My MCP Server',
     version: '1.0.0',

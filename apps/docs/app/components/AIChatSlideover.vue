@@ -15,7 +15,6 @@ const input = ref('')
 watch(pendingMessage, (message) => {
   if (message) {
     if (messages.value.length === 0 && chat.messages.length > 0) {
-      // Clear chat messages by setting the internal array
       chat.messages.length = 0
     }
     chat.sendMessage({
@@ -114,6 +113,12 @@ function askQuestion(question: string) {
   })
 }
 
+function resetChat() {
+  chat.stop()
+  messages.value = []
+  chat.messages.length = 0
+}
+
 onMounted(() => {
   if (pendingMessage.value) {
     chat.sendMessage({
@@ -150,14 +155,31 @@ onMounted(() => {
           </div>
           <span class="font-medium text-highlighted">Ask AI</span>
         </div>
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          class="text-muted hover:text-highlighted"
-          @click="isOpen = false"
-        />
+        <div class="flex items-center gap-1">
+          <UTooltip
+            v-if="chat.messages.length > 0"
+            text="Clear chat"
+          >
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              class="text-muted hover:text-highlighted"
+              @click="resetChat"
+            />
+          </UTooltip>
+          <UTooltip text="Close">
+            <UButton
+              icon="i-lucide-x"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              class="text-muted hover:text-highlighted"
+              @click="isOpen = false"
+            />
+          </UTooltip>
+        </div>
       </div>
     </template>
 

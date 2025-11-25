@@ -16,5 +16,21 @@ export default defineAppConfig({
         base: 'active:translate-y-px transition-transform duration-300',
       },
     },
+    contentSurround: {
+      variants: {
+        direction: {
+          left: {
+            linkLeadingIcon: [
+              'group-active:-translate-x-0',
+            ],
+          },
+          right: {
+            linkLeadingIcon: [
+              'group-active:translate-x-0',
+            ],
+          },
+        },
+      },
+    },
   },
 })

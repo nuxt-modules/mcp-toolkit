@@ -7,7 +7,7 @@ import {
   type LoadResult,
 } from './utils'
 
-const log = logger.withTag('nuxt-mcp-toolkit')
+const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
 export interface LoaderPaths {
   tools: string[]

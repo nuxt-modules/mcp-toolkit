@@ -29,6 +29,9 @@ importers:
       '@ai-sdk/vue':
         specifier: 3.0.0-beta.105
         version: 3.0.0-beta.105(vue@3.5.24(typescript@5.9.3))(zod@3.25.76)
+      '@nuxtjs/mcp-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/nuxt-mcp-toolkit
       '@rollup/plugin-yaml':
         specifier: ^4.1.2
         version: 4.1.2(rollup@4.53.3)
@@ -47,9 +50,6 @@ importers:
       nuxt:
         specifier: ^4.2.1
         version: 4.2.1(@parcel/watcher@2.5.1)(@types/node@24.10.1)(@vue/compiler-sfc@3.5.24)(better-sqlite3@12.4.5)(db0@0.3.4(better-sqlite3@12.4.5))(eslint@9.39.1(jiti@2.6.1))(ioredis@5.8.2)(lightningcss@1.30.2)(magicast@0.5.1)(optionator@0.9.4)(rollup@4.53.3)(terser@5.44.1)(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1))(vue-tsc@3.1.4(typescript@5.9.3))(yaml@2.8.1)
-      nuxt-mcp-toolkit:
-        specifier: workspace:*
-        version: link:../../packages/nuxt-mcp-toolkit
       nuxt-studio:
         specifier: 1.0.0-alpha.2
         version: 1.0.0-alpha.2(db0@0.3.4(better-sqlite3@12.4.5))(ioredis@5.8.2)(magicast@0.5.1)(vue@3.5.24(typescript@5.9.3))
@@ -69,12 +69,12 @@ importers:
 
   apps/playground:
     dependencies:
+      '@nuxtjs/mcp-toolkit':
+        specifier: workspace:*
+        version: link:../../packages/nuxt-mcp-toolkit
       nuxt:
         specifier: ^4.2.1
         version: 4.2.1(@parcel/watcher@2.5.1)(@types/node@24.10.1)(@vue/compiler-sfc@3.5.24)(better-sqlite3@12.4.5)(db0@0.3.4(better-sqlite3@12.4.5))(eslint@9.39.1(jiti@2.6.1))(ioredis@5.8.2)(lightningcss@1.30.2)(magicast@0.5.1)(optionator@0.9.4)(rollup@4.53.3)(terser@5.44.1)(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.1))(vue-tsc@3.1.4(typescript@5.9.3))(yaml@2.8.1)
-      nuxt-mcp-toolkit:
-        specifier: workspace:*
-        version: link:../../packages/nuxt-mcp-toolkit
       zod:
         specifier: ^3.25.76
         version: 3.25.76

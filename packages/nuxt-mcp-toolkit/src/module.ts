@@ -6,7 +6,7 @@ import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 import { name, version } from '../package.json'
 
-const log = logger.withTag('nuxt-mcp-toolkit')
+const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
 export const { resolve } = createResolver(import.meta.url)
 

@@ -3,7 +3,7 @@ import yaml from '@rollup/plugin-yaml'
 export default defineNuxtConfig({
   extends: ['docus'],
 
-  modules: ['nuxt-mcp-toolkit', 'motion-v/nuxt', 'nuxt-studio'],
+  modules: ['@nuxtjs/mcp-toolkit', 'motion-v/nuxt', 'nuxt-studio'],
 
   css: ['~/assets/css/main.css'],
 
