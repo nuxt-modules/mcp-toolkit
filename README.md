@@ -14,7 +14,7 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 ## ✨ Features
 
-<!-- automd:file src="../../.github/snippets/features.md" -->
+<!-- automd:file src=".github/snippets/features.md" -->
 
 - 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
 - 📦 **File-based** - Organize definitions in intuitive directory structures
@@ -27,7 +27,7 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 ## 🚀 Installation
 
-<!-- automd:file src="../../.github/snippets/installation.md" -->
+<!-- automd:file src=".github/snippets/installation.md" -->
 
 Use `nuxi` to install the module automatically:
 
@@ -55,50 +55,13 @@ bun add -D nuxt-mcp-toolkit zod@^3
 
 <!-- /automd -->
 
-## 📖 Quick Start
-
-Add the module to your `nuxt.config.ts`:
-
-```typescript
-export default defineNuxtConfig({
-  modules: ['nuxt-mcp-toolkit'],
-  mcp: {
-    name: 'My MCP Server',
-    version: '1.0.0',
-  },
-})
-```
-
-Create your first tool in `server/mcp/tools/echo.ts`:
-
-```typescript
-import { z } from 'zod'
-
-export default defineMcpTool({
-  description: 'Echo back a message',
-  inputSchema: {
-    message: z.string().describe('The message to echo back'),
-  },
-  handler: async ({ message }) => {
-    return {
-      content: [{
-        type: 'text',
-        text: `Echo: ${message}`,
-      }],
-    }
-  },
-})
-```
-
-The tool will be automatically discovered and registered. No imports needed - all helpers are auto-imported!
-
-## 📚 Documentation
+## 📖 Documentation
 
 📖 **[Full Documentation →](https://mcp-toolkit.nuxt.dev)**
 
 ## 🤝 Contributing
 
-<!-- automd:file src="../../.github/snippets/contributing.md" -->
+<!-- automd:file src=".github/snippets/contributing.md" -->
 
 Contributions are welcome! Feel free to open an issue or submit a pull request.
 
@@ -118,9 +81,19 @@ pnpm run test
 
 <!-- /automd -->
 
+## ❓ Questions & Support
+
+<!-- automd:file src=".github/snippets/support.md" -->
+
+- **Issues**: [Open an issue](https://github.com/nuxt-modules/nuxt-mcp-toolkit/issues) for bugs or feature requests
+- **Discussions**: [Join the discussion](https://github.com/nuxt-modules/nuxt-mcp-toolkit/discussions) for questions and ideas
+- **X**: Follow [@hugorcd](https://twitter.com/hugorcd) for updates
+
+<!-- /automd -->
+
 ## 📄 License
 
-<!-- automd:file src="../../.github/snippets/license.md" -->
+<!-- automd:file src=".github/snippets/license.md" -->
 
 Published under the [MIT](https://github.com/nuxt-modules/nuxt-mcp-toolkit/blob/main/LICENSE) license.
 

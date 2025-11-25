@@ -1,0 +1,6 @@
+- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
+- 📦 **File-based** - Organize definitions in intuitive directory structures
+- 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single app
+- 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
+- 📝 **TypeScript First** - Full type safety with auto-imports
+- 🔒 **Zod Validation** - Built-in input/output validation

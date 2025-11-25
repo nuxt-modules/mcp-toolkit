@@ -14,14 +14,14 @@ import {
     :animate="{ opacity: 1 }"
     :transition="{ duration: 2, ease: 'easeOut' }"
   >
-    <Shader class="h-[300px] sm:h-[400px] invert dark:invert-0">
+    <Shader class="size-full invert dark:invert-0">
       <ImageTexture
         id="idmi372riw2o0ok3vcx"
         url="/mcp.png"
         :visible="false"
         mask-type="alpha"
         object-fit="contain"
-        :transform="{ edges: 'transparent', scale: 1, anchorX: 0.5, anchorY: 0.5, offsetX: 0, offsetY: 0, rotation: 0 }"
+        :transform="{ edges: 'transparent', scale: 1.2, anchorX: 0.5, anchorY: 0.5, offsetX: 0, offsetY: 0, rotation: 0 }"
       />
       <DotGrid
         color="#ffffff"
