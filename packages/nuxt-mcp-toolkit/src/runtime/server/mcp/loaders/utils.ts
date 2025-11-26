@@ -78,6 +78,19 @@ export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'm
   )
 }
 
+/**
+ * Create file patterns for a specific layer
+ */
+export function createLayerFilePatterns(
+  layerServer: string,
+  paths: string[],
+  extensions = ['ts', 'js', 'mts', 'mjs'],
+): string[] {
+  return paths.flatMap(pathPattern =>
+    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/*.${ext}`)),
+  )
+}
+
 export function createExcludePatterns(paths: string[], subdirs: string[]): string[] {
   const layerDirectories = getLayerDirectories()
   return layerDirectories.flatMap(layer =>
@@ -134,24 +147,35 @@ export async function loadDefinitionFiles(
     return { count: 0, files: [], overriddenCount: 0 }
   }
 
-  const patterns = createFilePatterns(paths)
-  const files = await glob(patterns, {
-    absolute: true,
-    onlyFiles: true,
-    ignore: options.excludePatterns,
-  })
+  // Get layer directories and reverse the order so that:
+  // - Extended layers are processed first
+  // - The main app (first in getLayerDirectories) is processed last
+  // This allows the app to override definitions from extended layers
+  const layerDirectories = getLayerDirectories()
+  const reversedLayers = [...layerDirectories].reverse()
 
   const definitionsMap = new Map<string, string>()
-  const filteredFiles = options.filter ? files.filter(options.filter) : files
   let overriddenCount = 0
 
-  for (const filePath of filteredFiles) {
-    const filename = filePath.split('/').pop()!
-    const identifier = toIdentifier(filename)
-    if (definitionsMap.has(identifier)) {
-      overriddenCount++
+  // Process each layer separately to ensure correct override order
+  for (const layer of reversedLayers) {
+    const layerPatterns = createLayerFilePatterns(layer.server, paths)
+    const layerFiles = await glob(layerPatterns, {
+      absolute: true,
+      onlyFiles: true,
+      ignore: options.excludePatterns,
+    })
+
+    const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
+
+    for (const filePath of filteredFiles) {
+      const filename = filePath.split('/').pop()!
+      const identifier = toIdentifier(filename)
+      if (definitionsMap.has(identifier)) {
+        overriddenCount++
+      }
+      definitionsMap.set(identifier, filePath)
     }
-    definitionsMap.set(identifier, filePath)
   }
 
   const total = definitionsMap.size
