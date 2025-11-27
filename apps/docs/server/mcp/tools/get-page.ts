@@ -5,8 +5,8 @@ export default defineMcpTool({
   inputSchema: {
     path: z.string().describe('The page path from list-pages or provided by the user (e.g., /getting-started/installation)'),
   },
-  handler: async (params) => {
-    const result = await $fetch('/api/.mcp/get-page', { query: params })
+  handler: async ({ path }) => {
+    const result = await $fetch('/api/.mcp/get-page', { query: { path } })
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
     }
