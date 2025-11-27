@@ -21,6 +21,7 @@ export interface McpResourceAnnotations {
 export interface StandardMcpResourceDefinition {
   name?: string
   title?: string
+  description?: string
   uri: string | ResourceTemplate
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
@@ -34,6 +35,7 @@ export interface StandardMcpResourceDefinition {
 export interface FileMcpResourceDefinition {
   name?: string
   title?: string
+  description?: string
   uri?: string
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
@@ -95,6 +97,7 @@ export function registerResourceFromDefinition(
   const metadata = {
     ...resource.metadata,
     title: resource.title || resource.metadata?.title || title,
+    description: resource.description || resource.metadata?.description,
   }
 
   // Handle file-based resources
@@ -168,9 +171,9 @@ export function registerResourceFromDefinition(
  * export default defineMcpResource({
  *   name: 'readme',
  *   title: 'README',
+ *   description: 'Project README file',
  *   uri: 'file:///project/README.md',
  *   metadata: {
- *     description: 'Project README file',
  *     mimeType: 'text/markdown'
  *   },
  *   handler: async (uri) => {
@@ -191,10 +194,8 @@ export function registerResourceFromDefinition(
  * // Simpler file-based resource
  * export default defineMcpResource({
  *   name: 'readme',
+ *   description: 'Project README file',
  *   file: 'README.md', // Automatically handles reading file and setting URI
- *   metadata: {
- *     description: 'Project README file'
- *   }
  * })
  * ```
  *
