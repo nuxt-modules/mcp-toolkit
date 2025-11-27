@@ -3,6 +3,11 @@ import { readFile } from 'node:fs/promises'
 import { resolve, extname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { enrichNameTitle } from './utils'
+import { type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+
+// Re-export cache types for convenience
+export type McpResourceCacheOptions = McpCacheOptions<URL>
+export type McpResourceCache = McpCache<URL>
 
 /**
  * Annotations for a resource
@@ -27,6 +32,14 @@ export interface StandardMcpResourceDefinition {
   _meta?: Record<string, unknown>
   handler: ReadResourceCallback | ReadResourceTemplateCallback
   file?: never
+  /**
+   * Cache configuration for the resource response
+   * - string: Duration parsed by `ms` (e.g., '1h', '2 days', '30m')
+   * - number: Duration in milliseconds
+   * - object: Full cache options with getKey, group, swr, etc.
+   * @see https://nitro.build/guide/cache#options
+   */
+  cache?: McpResourceCache
 }
 
 /**
@@ -45,6 +58,14 @@ export interface FileMcpResourceDefinition {
    * Relative to the project root
    */
   file: string
+  /**
+   * Cache configuration for the resource response
+   * - string: Duration parsed by `ms` (e.g., '1h', '2 days', '30m')
+   * - number: Duration in milliseconds
+   * - object: Full cache options with getKey, group, swr, etc.
+   * @see https://nitro.build/guide/cache#options
+   */
+  cache?: McpResourceCache
 }
 
 /**
@@ -124,8 +145,6 @@ export function registerResourceFromDefinition(
           }
         }
         catch (error) {
-          // Return error as content or throw depending on preference
-          // Throwing will return an error result to the client
           throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
@@ -138,6 +157,17 @@ export function registerResourceFromDefinition(
 
   if (!handler) {
     throw new Error(`Resource ${name} is missing a handler`)
+  }
+
+  // Wrap handler with cache if cache is defined
+  if (resource.cache !== undefined) {
+    const defaultGetKey = (requestUri: URL) => requestUri.pathname.replace(/\//g, '-').replace(/^-/, '')
+    const cacheOptions = createCacheOptions(resource.cache, `mcp-resource:${name}`, defaultGetKey)
+
+    handler = wrapWithCache(
+      handler as (...args: unknown[]) => unknown,
+      cacheOptions,
+    ) as ReadResourceCallback
   }
 
   if (typeof uri === 'string') {

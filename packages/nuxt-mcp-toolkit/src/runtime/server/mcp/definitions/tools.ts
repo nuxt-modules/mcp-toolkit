@@ -3,51 +3,13 @@ import type { CallToolResult, ServerRequest, ServerNotification, ToolAnnotations
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
-import { defineCachedFunction } from 'nitropack/runtime'
 import { enrichNameTitle } from './utils'
-import ms from 'ms'
+import { type MsCacheDuration, type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
 
-/**
- * Cache duration strings supported by the `ms` package
- */
-export type MsCacheDuration
-  = | '1s' | '5s' | '10s' | '15s' | '30s' | '45s' // seconds
-    | '1m' | '2m' | '5m' | '10m' | '15m' | '30m' | '45m' // minutes
-    | '1h' | '2h' | '3h' | '4h' | '6h' | '8h' | '12h' | '24h' // hours
-    | '1d' | '2d' | '3d' | '7d' | '14d' | '30d' // days
-    | '1w' | '2w' | '4w' // weeks
-    | '1 second' | '1 minute' | '1 hour' | '1 day' | '1 week'
-    | '2 seconds' | '5 seconds' | '10 seconds' | '30 seconds'
-    | '2 minutes' | '5 minutes' | '10 minutes' | '15 minutes' | '30 minutes'
-    | '2 hours' | '3 hours' | '6 hours' | '12 hours' | '24 hours'
-    | '2 days' | '3 days' | '7 days' | '14 days' | '30 days'
-    | '2 weeks' | '4 weeks'
-    | (string & Record<never, never>)
-
-/**
- * Cache options for MCP tools using Nitro's caching system
- * @see https://nitro.build/guide/cache#options
- */
-export interface McpToolCacheOptions<Args = unknown> {
-  /** Cache duration as string (e.g. '1h') or milliseconds (required) */
-  maxAge: MsCacheDuration | number
-  /** Duration for stale-while-revalidate */
-  staleMaxAge?: number
-  /** Cache name (auto-generated from tool name by default) */
-  name?: string
-  /** Function to generate cache key from arguments */
-  getKey?: (args: Args) => string
-  /** Cache group (default: 'mcp') */
-  group?: string
-  /** Enable stale-while-revalidate behavior */
-  swr?: boolean
-}
-
-/**
- * Cache configuration: string duration, milliseconds, or full options
- * @see https://nitro.build/guide/cache#options
- */
-export type McpToolCache<Args = unknown> = MsCacheDuration | number | McpToolCacheOptions<Args>
+// Re-export cache types for convenience
+export type { MsCacheDuration }
+export type McpToolCacheOptions<Args = unknown> = McpCacheOptions<Args>
+export type McpToolCache<Args = unknown> = McpCache<Args>
 
 /**
  * Handler callback type for MCP tools
@@ -83,20 +45,6 @@ export interface McpToolDefinition<
 }
 
 /**
- * Parse cache duration to milliseconds
- */
-function parseCacheDuration(duration: MsCacheDuration | number): number {
-  if (typeof duration === 'number') {
-    return duration
-  }
-  const parsed = ms(duration as Parameters<typeof ms>[0])
-  if (parsed === undefined) {
-    throw new Error(`Invalid cache duration: ${duration}`)
-  }
-  return parsed
-}
-
-/**
  * Register a tool from a McpToolDefinition
  * @internal
  */
@@ -125,24 +73,11 @@ export function registerToolFromDefinition<
         }
       : undefined
 
-    const cacheOptions = typeof tool.cache === 'object'
-      ? {
-          getKey: defaultGetKey,
-          ...tool.cache,
-          maxAge: parseCacheDuration(tool.cache.maxAge),
-          name: tool.cache.name ?? `mcp-tool:${name}`,
-          group: tool.cache.group ?? 'mcp',
-        }
-      : {
-          maxAge: parseCacheDuration(tool.cache),
-          name: `mcp-tool:${name}`,
-          group: 'mcp',
-          getKey: defaultGetKey,
-        }
+    const cacheOptions = createCacheOptions(tool.cache, `mcp-tool:${name}`, defaultGetKey)
 
-    handler = defineCachedFunction(
-      tool.handler as unknown as ToolCallback<ZodRawShape>,
-      cacheOptions as Parameters<typeof defineCachedFunction>[1],
+    handler = wrapWithCache(
+      tool.handler as unknown as (...args: unknown[]) => unknown,
+      cacheOptions,
     ) as unknown as ToolCallback<ZodRawShape>
   }
 
