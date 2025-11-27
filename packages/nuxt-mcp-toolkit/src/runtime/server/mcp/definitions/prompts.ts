@@ -1,14 +1,15 @@
-import type { z, ZodTypeAny, ZodRawShape } from 'zod'
+import type { ZodRawShape } from 'zod'
 import type { GetPromptResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, PromptCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { enrichNameTitle } from './utils'
 
 /**
  * Callback type for MCP prompts, matching the SDK's PromptCallback type
  */
 export type McpPromptCallback<Args extends ZodRawShape | undefined = undefined> = Args extends ZodRawShape
-  ? (args: z.objectOutputType<Args, ZodTypeAny>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
+  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
   : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
 
 /**
