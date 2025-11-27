@@ -1,14 +1,15 @@
-import type { z, ZodRawShape, ZodTypeAny } from 'zod'
+import type { ZodRawShape } from 'zod'
 import type { CallToolResult, ServerRequest, ServerNotification, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { enrichNameTitle } from './utils'
 
 /**
  * Callback type for MCP tools, matching the SDK's ToolCallback type
  */
 export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = Args extends ZodRawShape
-  ? (args: z.objectOutputType<Args, ZodTypeAny>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
+  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
   : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
 
 /**
