@@ -79,7 +79,8 @@ function getMimeType(filePath: string): string {
 }
 
 /**
- * Helper function to register a resource from a McpResourceDefinition
+ * Register a resource from a McpResourceDefinition
+ * @internal
  */
 export function registerResourceFromDefinition(
   server: McpServer,
@@ -158,76 +159,18 @@ export function registerResourceFromDefinition(
 }
 
 /**
- * Define an MCP resource that will be automatically registered
+ * Define an MCP resource that will be automatically registered.
  *
- * This function matches the structure of server.registerResource() from the MCP SDK.
+ * `name` and `title` are auto-generated from filename if not provided.
  *
- * If `name` or `title` are not provided, they will be automatically generated from the filename
- * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
+ * @see https://mcp-toolkit.nuxt.dev/core-concepts/resources
  *
  * @example
  * ```ts
- * // server/mcp/resources/my-resource.ts
+ * // File-based resource
  * export default defineMcpResource({
- *   name: 'readme',
- *   title: 'README',
  *   description: 'Project README file',
- *   uri: 'file:///project/README.md',
- *   metadata: {
- *     mimeType: 'text/markdown'
- *   },
- *   handler: async (uri) => {
- *     const content = await readFile(uri.pathname, 'utf-8')
- *     return {
- *       contents: [{
- *         uri: uri.toString(),
- *         mimeType: 'text/markdown',
- *         text: content
- *       }]
- *     }
- *   }
- * })
- * ```
- *
- * @example
- * ```ts
- * // Simpler file-based resource
- * export default defineMcpResource({
- *   name: 'readme',
- *   description: 'Project README file',
- *   file: 'README.md', // Automatically handles reading file and setting URI
- * })
- * ```
- *
- * @example
- * ```ts
- * // Dynamic resource with template
- * import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
- *
- * export default defineMcpResource({
- *   name: 'file',
- *   title: 'File Resource',
- *   uri: new ResourceTemplate('file:///project/{+path}', {
- *     list: async () => {
- *       return {
- *         resources: [
- *           { uri: 'file:///project/README.md', name: 'README.md' },
- *           { uri: 'file:///project/src/index.ts', name: 'index.ts' }
- *         ]
- *       }
- *     }
- *   }),
- *   handler: async (uri, variables) => {
- *     const path = variables.path
- *     const content = await readFile(path, 'utf-8')
- *     return {
- *       contents: [{
- *         uri: uri.toString(),
- *         mimeType: 'text/plain',
- *         text: content
- *       }]
- *     }
- *   }
+ *   file: 'README.md'
  * })
  * ```
  */

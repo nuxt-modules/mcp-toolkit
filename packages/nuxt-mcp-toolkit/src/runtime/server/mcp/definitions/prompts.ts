@@ -26,7 +26,8 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
 }
 
 /**
- * Helper function to register a prompt from a McpPromptDefinition
+ * Register a prompt from a McpPromptDefinition
+ * @internal
  */
 export function registerPromptFromDefinition<Args extends ZodRawShape | undefined = undefined>(
   server: McpServer,
@@ -63,56 +64,19 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
 }
 
 /**
- * Define an MCP prompt that will be automatically registered
+ * Define an MCP prompt that will be automatically registered.
  *
- * If `name` or `title` are not provided, they will be automatically generated from the filename
- * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
+ * `name` and `title` are auto-generated from filename if not provided.
  *
- * @example
- * ```ts
- * // server/mcp/prompts/my-prompt.ts
- * import { z } from 'zod'
- *
- * export default defineMcpPrompt({
- *   name: 'summarize',
- *   title: 'Text Summarizer',
- *   description: 'Summarize any text using an LLM',
- *   inputSchema: {
- *     text: z.string().describe('The text to summarize'),
- *     maxLength: z.string().optional().describe('Maximum length of summary')
- *   },
- *   handler: async ({ text, maxLength }) => {
- *     const summary = await summarizeText(text, maxLength ? parseInt(maxLength) : undefined)
- *     return {
- *       messages: [{
- *         role: 'user',
- *         content: {
- *           type: 'text',
- *           text: summary
- *         }
- *       }]
- *     }
- *   }
- * })
- * ```
+ * @see https://mcp-toolkit.nuxt.dev/core-concepts/prompts
  *
  * @example
  * ```ts
- * // Simple prompt without arguments
  * export default defineMcpPrompt({
- *   name: 'greeting',
  *   description: 'Generate a greeting message',
- *   handler: async () => {
- *     return {
- *       messages: [{
- *         role: 'user',
- *         content: {
- *           type: 'text',
- *           text: 'Hello! How can I help you today?'
- *         }
- *       }]
- *     }
- *   }
+ *   handler: async () => ({
+ *     messages: [{ role: 'user', content: { type: 'text', text: 'Hello!' } }]
+ *   })
  * })
  * ```
  */
