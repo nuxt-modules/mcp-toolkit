@@ -138,24 +138,18 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.typescript.tsConfig.include ??= []
     nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
 
+    const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
+
     addServerImports([
-      {
-        name: 'defineMcpTool',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'defineMcpResource',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'defineMcpPrompt',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'defineMcpHandler',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-    ])
+      'defineMcpTool',
+      'defineMcpResource',
+      'defineMcpPrompt',
+      'defineMcpHandler',
+      'textResult',
+      'jsonResult',
+      'errorResult',
+      'imageResult',
+    ].map(name => ({ name, from: mcpDefinitionsPath })))
 
     addServerHandler({
       route: options.route,
