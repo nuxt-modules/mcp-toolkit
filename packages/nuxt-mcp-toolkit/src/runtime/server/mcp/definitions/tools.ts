@@ -29,8 +29,8 @@ export type MsCacheDuration
  * @see https://nitro.build/guide/cache#options
  */
 export interface McpToolCacheOptions<Args = unknown> {
-  /** Cache duration as string (e.g. '1h') or milliseconds */
-  maxAge?: MsCacheDuration | number
+  /** Cache duration as string (e.g. '1h') or milliseconds (required) */
+  maxAge: MsCacheDuration | number
   /** Duration for stale-while-revalidate */
   staleMaxAge?: number
   /** Cache name (auto-generated from tool name by default) */
@@ -118,42 +118,31 @@ export function registerToolFromDefinition<
   let handler = tool.handler as unknown as ToolCallback<ZodRawShape>
 
   if (tool.cache !== undefined) {
-    let cacheOptions: {
-      maxAge: number
-      staleMaxAge?: number
-      name: string
-      group: string
-      swr?: boolean
-      getKey: (args: unknown) => string
-    }
+    const defaultGetKey = tool.inputSchema
+      ? (args: unknown) => {
+          const values = Object.values(args as Record<string, unknown>)
+          return values.map(v => String(v).replace(/\//g, '-').replace(/^-/, '')).join(':')
+        }
+      : undefined
 
-    if (typeof tool.cache === 'string' || typeof tool.cache === 'number') {
-      // Simple duration format
-      cacheOptions = {
-        maxAge: parseCacheDuration(tool.cache),
-        name: `mcp-tool:${name}`,
-        group: 'mcp',
-        getKey: (args: unknown) => JSON.stringify(args ?? {}),
-      }
-    }
-    else {
-      // Full options object
-      const config = tool.cache
-      cacheOptions = {
-        maxAge: config.maxAge !== undefined ? parseCacheDuration(config.maxAge) : 60 * 60 * 1000, // 1 hour default
-        staleMaxAge: config.staleMaxAge,
-        name: config.name ?? `mcp-tool:${name}`,
-        group: config.group ?? 'mcp',
-        swr: config.swr,
-        getKey: config.getKey
-          ? (args: unknown) => (config.getKey as (args: unknown) => string)(args)
-          : (args: unknown) => JSON.stringify(args ?? {}),
-      }
-    }
+    const cacheOptions = typeof tool.cache === 'object'
+      ? {
+          getKey: defaultGetKey,
+          ...tool.cache,
+          maxAge: parseCacheDuration(tool.cache.maxAge),
+          name: tool.cache.name ?? `mcp-tool:${name}`,
+          group: tool.cache.group ?? 'mcp',
+        }
+      : {
+          maxAge: parseCacheDuration(tool.cache),
+          name: `mcp-tool:${name}`,
+          group: 'mcp',
+          getKey: defaultGetKey,
+        }
 
     handler = defineCachedFunction(
       tool.handler as unknown as ToolCallback<ZodRawShape>,
-      cacheOptions,
+      cacheOptions as Parameters<typeof defineCachedFunction>[1],
     ) as unknown as ToolCallback<ZodRawShape>
   }
 
