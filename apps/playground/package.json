@@ -19,7 +19,7 @@
   "dependencies": {
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "nuxt": "^4.2.1",
-    "zod": "^3.25.76"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.10.0",
