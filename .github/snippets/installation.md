@@ -8,16 +8,14 @@ Or install manually:
 
 ```bash
 # npm
-npm install -D @nuxtjs/mcp-toolkit zod@^3
+npm install -D @nuxtjs/mcp-toolkit zod
 
 # yarn
-yarn add -D @nuxtjs/mcp-toolkit zod@^3
+yarn add -D @nuxtjs/mcp-toolkit zod
 
 # pnpm
-pnpm add -D @nuxtjs/mcp-toolkit zod@^3
+pnpm add -D @nuxtjs/mcp-toolkit zod
 
 # bun
-bun add -D @nuxtjs/mcp-toolkit zod@^3
+bun add -D @nuxtjs/mcp-toolkit zod
 ```
-
-> **Note:** Zod v3 is required. Zod v4 is not yet compatible with the MCP SDK.
