@@ -23,7 +23,7 @@ export type MsCacheDuration
  * @see https://nitro.build/guide/cache#options
  */
 export interface McpCacheOptions<Args = unknown> {
-  /** Cache duration as string (e.g. '1h') or milliseconds (required) */
+  /** Cache duration as string (e.g. '1h') or seconds (required) */
   maxAge: MsCacheDuration | number
   /** Duration for stale-while-revalidate */
   staleMaxAge?: number
@@ -44,7 +44,7 @@ export interface McpCacheOptions<Args = unknown> {
 export type McpCache<Args = unknown> = MsCacheDuration | number | McpCacheOptions<Args>
 
 /**
- * Parse cache duration to milliseconds
+ * Parse cache duration to seconds
  */
 export function parseCacheDuration(duration: MsCacheDuration | number): number {
   if (typeof duration === 'number') {
@@ -54,7 +54,8 @@ export function parseCacheDuration(duration: MsCacheDuration | number): number {
   if (parsed === undefined) {
     throw new Error(`Invalid cache duration: ${duration}`)
   }
-  return parsed
+  // Convert milliseconds to seconds for Nitro
+  return Math.ceil(parsed / 1000)
 }
 
 /**
