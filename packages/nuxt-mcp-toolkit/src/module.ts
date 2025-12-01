@@ -1,4 +1,4 @@
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
@@ -73,6 +73,11 @@ export default defineNuxtModule<ModuleOptions>({
     if (!options.enabled) {
       return
     }
+
+    addComponent({
+      name: 'InstallButton',
+      filePath: resolver.resolve('runtime/components/InstallButton.vue'),
+    })
 
     const mcpDir = options.dir ?? defaultMcpConfig.dir
 
@@ -154,6 +159,16 @@ export default defineNuxtModule<ModuleOptions>({
     addServerHandler({
       route: options.route,
       handler: resolver.resolve('runtime/server/mcp/handler'),
+    })
+
+    addServerHandler({
+      route: `${options.route}/badge`,
+      handler: resolver.resolve('runtime/server/mcp/badge'),
+    })
+
+    addServerHandler({
+      route: `${options.route}/badge.svg`,
+      handler: resolver.resolve('runtime/server/mcp/badge-image'),
     })
 
     addDevToolsCustomTabs(nuxt, options)
