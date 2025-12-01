@@ -1,4 +1,4 @@
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
@@ -73,6 +73,11 @@ export default defineNuxtModule<ModuleOptions>({
     if (!options.enabled) {
       return
     }
+
+    addComponent({
+      name: 'CursorInstallButton',
+      filePath: resolver.resolve('runtime/components/CursorInstallButton.vue'),
+    })
 
     const mcpDir = options.dir ?? defaultMcpConfig.dir
 
