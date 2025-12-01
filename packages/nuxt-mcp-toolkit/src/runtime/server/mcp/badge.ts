@@ -28,13 +28,23 @@ const IDE_CONFIGS: Record<SupportedIDE, IDEConfig> = {
 }
 
 // Escape string for safe use in HTML attributes
-function escapeHtml(str: string): string {
+function escapeHtmlAttr(str: string): string {
   return str
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+}
+
+// Escape string for safe use in JavaScript strings
+function escapeJs(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/'/g, '\\\'')
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
 }
 
 export default defineEventHandler((event) => {
@@ -61,8 +71,9 @@ export default defineEventHandler((event) => {
   // Generate the deeplink for the selected IDE
   const deeplink = ideConfig.generateDeeplink(serverName, mcpUrl)
 
-  // HTML-escape the deeplink for safe embedding
-  const safeDeeplink = escapeHtml(deeplink)
+  // Escape for HTML attribute and JavaScript separately
+  const htmlDeeplink = escapeHtmlAttr(deeplink)
+  const jsDeeplink = escapeJs(deeplink)
 
   // Return HTML page that redirects via JavaScript (for custom protocol support)
   setHeader(event, 'Content-Type', 'text/html; charset=utf-8')
@@ -82,9 +93,9 @@ export default defineEventHandler((event) => {
 <body>
   <div class="container">
     <p>Opening ${ideConfig.name}...</p>
-    <p>If nothing happens, <a href="${safeDeeplink}">click here to install</a>.</p>
+    <p>If nothing happens, <a href="${htmlDeeplink}">click here to install</a>.</p>
   </div>
-  <script>window.location.href = "${safeDeeplink}";</script>
+  <script>window.location.href = "${jsDeeplink}";</script>
 </body>
 </html>`
 })
