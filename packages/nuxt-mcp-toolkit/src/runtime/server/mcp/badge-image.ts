@@ -149,6 +149,11 @@ async function loadFont(): Promise<ArrayBuffer> {
   const response = await fetch(
     'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hjp-Ek-_EeA.woff',
   )
+
+  if (!response.ok) {
+    throw new Error(`Failed to load font: ${response.status} ${response.statusText}`)
+  }
+
   return response.arrayBuffer()
 }
 
@@ -167,10 +172,22 @@ export default defineEventHandler(async (event) => {
     showIcon: query.icon !== 'false',
   }
 
-  const svg = await generateBadgeSVG(options)
+  try {
+    const svg = await generateBadgeSVG(options)
 
-  setHeader(event, 'Content-Type', 'image/svg+xml')
-  setHeader(event, 'Cache-Control', 'public, max-age=86400')
+    setHeader(event, 'Content-Type', 'image/svg+xml')
+    setHeader(event, 'Cache-Control', 'public, max-age=86400')
 
-  return svg
+    return svg
+  }
+  catch {
+    // Return a simple fallback SVG if font loading fails
+    setHeader(event, 'Content-Type', 'image/svg+xml')
+    setHeader(event, 'Cache-Control', 'no-cache')
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="32">
+      <rect width="140" height="32" fill="#171717" stroke="#404040"/>
+      <text x="70" y="20" fill="#fff" font-size="12" text-anchor="middle">${options.label}</text>
+    </svg>`
+  }
 })
