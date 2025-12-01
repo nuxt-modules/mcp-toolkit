@@ -52,7 +52,7 @@ const IDE_CONFIG = {
     defaultLabel: 'Install MCP in Cursor',
     generateDeeplink: (name: string, config: McpConfig) => {
       const configBase64 = btoa(JSON.stringify(config))
-      return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(name)}&config=${configBase64}`
+      return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(name)}&config=${encodeURIComponent(configBase64)}`
     },
   },
   vscode: {

@@ -14,7 +14,7 @@ const IDE_CONFIGS: Record<SupportedIDE, IDEConfig> = {
     generateDeeplink: (serverName: string, mcpUrl: string) => {
       const config = { type: 'http', url: mcpUrl }
       const configBase64 = Buffer.from(JSON.stringify(config)).toString('base64')
-      return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(serverName)}&config=${configBase64}`
+      return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(serverName)}&config=${encodeURIComponent(configBase64)}`
     },
   },
   vscode: {
