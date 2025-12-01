@@ -1,7 +1,10 @@
 import type { H3Event } from 'h3'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { db, schema } from 'hub:database'
+// To run `auth:schema` command, you need to import the schema from the .nuxt/hub/database/schema.js file
+// import { db, schema } from '../../.nuxt/hub/db.mjs'
+// But in dev & prod, use 'hub:db' to import the schema
+import { db, schema } from 'hub:db'
 
 export const auth: ReturnType<typeof betterAuth> = betterAuth({
   database: drizzleAdapter(

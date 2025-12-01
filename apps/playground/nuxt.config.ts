@@ -49,7 +49,7 @@ export default defineNuxtConfig({
   },
 
   hub: {
-    database: 'postgresql',
+    db: 'postgresql',
   },
 
   mcp: {
