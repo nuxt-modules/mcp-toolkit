@@ -14,10 +14,10 @@ interface BadgeOptions {
 
 const IDE_CONFIG = {
   cursor: {
-    defaultLabel: 'Install in Cursor',
+    defaultLabel: 'Install MCP in Cursor',
   },
   vscode: {
-    defaultLabel: 'Install in VS Code',
+    defaultLabel: 'Install MCP in VS Code',
   },
 }
 
@@ -108,13 +108,12 @@ async function generateBadgeSVG(options: BadgeOptions): Promise<string> {
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        padding: '6px 14px',
+        padding: '6px 8px',
         fontSize: '14px',
         fontWeight: 500,
         color: `#${textColor}`,
         backgroundColor: `#${color}`,
         border: `1px solid #${borderColor}`,
-        borderRadius: '6px',
       },
       children: showIcon
         ? [icon, { type: 'span', props: { children: label } }]
@@ -125,7 +124,7 @@ async function generateBadgeSVG(options: BadgeOptions): Promise<string> {
   // Calculate width based on content - increased multiplier for better fit
   const iconWidth = showIcon ? 26 : 0 // 18px icon + 8px gap
   const textWidth = label.length * 8 // Character width
-  const padding = 32 // 14px * 2 + buffer
+  const padding = 20 // 8px * 2 + buffer
   const width = Math.max(Math.ceil(iconWidth + textWidth + padding), 140)
   const height = 32
 

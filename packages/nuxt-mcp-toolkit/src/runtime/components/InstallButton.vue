@@ -49,7 +49,7 @@ export interface InstallButtonProps {
 const IDE_CONFIG = {
   cursor: {
     name: 'Cursor',
-    defaultLabel: 'Install in Cursor',
+    defaultLabel: 'Install MCP in Cursor',
     generateDeeplink: (name: string, config: McpConfig) => {
       const configBase64 = btoa(JSON.stringify(config))
       return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(name)}&config=${configBase64}`
@@ -57,7 +57,7 @@ const IDE_CONFIG = {
   },
   vscode: {
     name: 'VS Code',
-    defaultLabel: 'Install in VS Code',
+    defaultLabel: 'Install MCP in VS Code',
     generateDeeplink: (name: string, config: McpConfig) => {
       const configJson = JSON.stringify(config)
       return `vscode:mcp/install?name=${encodeURIComponent(name)}&config=${encodeURIComponent(configJson)}`
@@ -240,14 +240,13 @@ const deeplink = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25rem;
   color: #fff;
   background-color: #171717;
   border: 1px solid #404040;
-  border-radius: 0.375rem;
   text-decoration: none;
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s;
