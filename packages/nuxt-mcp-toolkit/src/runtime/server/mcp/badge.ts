@@ -1,4 +1,4 @@
-import { defineEventHandler, sendRedirect, getRequestURL, getQuery } from 'h3'
+import { defineEventHandler, getRequestURL, getQuery, setHeader } from 'h3'
 import { useRuntimeConfig } from '#imports'
 
 export type SupportedIDE = 'cursor' | 'vscode'
@@ -27,6 +27,16 @@ const IDE_CONFIGS: Record<SupportedIDE, IDEConfig> = {
   },
 }
 
+// Escape string for safe use in HTML attributes
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 export default defineEventHandler((event) => {
   const runtimeConfig = useRuntimeConfig(event).mcp
   const requestUrl = getRequestURL(event)
@@ -36,8 +46,10 @@ export default defineEventHandler((event) => {
   const ide = (query.ide as SupportedIDE) || 'cursor'
 
   // Validate IDE
-  if (!IDE_CONFIGS[ide]) {
-    return sendRedirect(event, '/', 302)
+  const ideConfig = IDE_CONFIGS[ide]
+  if (!ideConfig) {
+    setHeader(event, 'Location', '/')
+    return new Response(null, { status: 302 })
   }
 
   // Get the server name from config or use a default
@@ -47,8 +59,32 @@ export default defineEventHandler((event) => {
   const mcpUrl = `${requestUrl.origin}${runtimeConfig.route || '/mcp'}`
 
   // Generate the deeplink for the selected IDE
-  const deeplink = IDE_CONFIGS[ide].generateDeeplink(serverName, mcpUrl)
+  const deeplink = ideConfig.generateDeeplink(serverName, mcpUrl)
 
-  // Redirect to the deeplink
-  return sendRedirect(event, deeplink, 302)
+  // HTML-escape the deeplink for safe embedding
+  const safeDeeplink = escapeHtml(deeplink)
+
+  // Return HTML page that redirects via JavaScript (for custom protocol support)
+  setHeader(event, 'Content-Type', 'text/html; charset=utf-8')
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opening ${ideConfig.name}...</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #0a0a0a; color: #fff; }
+    .container { text-align: center; padding: 2rem; }
+    a { color: #3b82f6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p>Opening ${ideConfig.name}...</p>
+    <p>If nothing happens, <a href="${safeDeeplink}">click here to install</a>.</p>
+  </div>
+  <script>window.location.href = "${safeDeeplink}";</script>
+</body>
+</html>`
 })
