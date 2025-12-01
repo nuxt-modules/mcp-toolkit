@@ -75,8 +75,8 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     addComponent({
-      name: 'CursorInstallButton',
-      filePath: resolver.resolve('runtime/components/CursorInstallButton.vue'),
+      name: 'InstallButton',
+      filePath: resolver.resolve('runtime/components/InstallButton.vue'),
     })
 
     const mcpDir = options.dir ?? defaultMcpConfig.dir
@@ -159,6 +159,16 @@ export default defineNuxtModule<ModuleOptions>({
     addServerHandler({
       route: options.route,
       handler: resolver.resolve('runtime/server/mcp/handler'),
+    })
+
+    addServerHandler({
+      route: `${options.route}/badge`,
+      handler: resolver.resolve('runtime/server/mcp/badge'),
+    })
+
+    addServerHandler({
+      route: `${options.route}/badge.svg`,
+      handler: resolver.resolve('runtime/server/mcp/badge-image'),
     })
 
     addDevToolsCustomTabs(nuxt, options)
