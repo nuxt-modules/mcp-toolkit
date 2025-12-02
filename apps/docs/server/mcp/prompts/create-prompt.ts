@@ -48,23 +48,20 @@ export default defineMcpPrompt({
     return {
       messages: [
         {
-          role: 'system',
+          role: 'user',
           content: {
             type: 'text',
             text: `You are an expert developer helping to create MCP prompts.
 
-IMPORTANT: Before generating code, always:
+**IMPORTANT**: Before generating code, always:
 1. Proofread and fix any spelling or grammar mistakes in the provided name and description
 2. Use consistent naming conventions (kebab-case for filenames, camelCase for variables)
 3. Ensure descriptions are clear, professional, and grammatically correct
-4. Convert the corrected description to proper English if needed`,
-          },
-        },
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `Create an MCP prompt named "${promptName}" that ${promptPurpose}.
+4. Convert the corrected description to proper English if needed
+
+---
+
+Create an MCP prompt named "${promptName}" that ${promptPurpose}.
 
 ## File Location
 
@@ -84,15 +81,7 @@ Prompts can return messages with different roles:
 \`\`\`typescript
 {
   role: 'user',
-  content: { type: 'text', text: 'User instruction' },
-}
-\`\`\`
-
-### System Role (Set AI Behavior)
-\`\`\`typescript
-{
-  role: 'system',
-  content: { type: 'text', text: 'You are a helpful assistant specialized in...' },
+  content: { type: 'text', text: 'User instruction with context' },
 }
 \`\`\`
 
@@ -106,24 +95,24 @@ Prompts can return messages with different roles:
 
 ## Multiple Messages Pattern
 
-For complex prompts, use multiple messages:
+For complex prompts, combine user and assistant messages:
 
 \`\`\`typescript
 handler: async ({ topic }) => {
   return {
     messages: [
       {
-        role: 'system',
-        content: {
-          type: 'text',
-          text: 'You are an expert developer.',
-        },
-      },
-      {
         role: 'user',
         content: {
           type: 'text',
-          text: \`Help me understand \${topic}.\`,
+          text: \`You are an expert developer. Help me understand \${topic}.\`,
+        },
+      },
+      {
+        role: 'assistant',
+        content: {
+          type: 'text',
+          text: 'I\\'ll analyze this topic and provide a clear explanation.',
         },
       },
     ],
