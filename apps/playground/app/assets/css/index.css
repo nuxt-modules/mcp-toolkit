@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme {
+  --font-sans: 'Geist', sans-serif;
+  --font-mono: 'Jetbrains Mono', monospace;
+}
+
+:root {
+  --ui-primary: black;
+  --ui-radius: 0.375rem;
+
+  ::selection {
+    color: #282a30;
+    background-color: #c8c8c8;
+  }
+}
+
+.dark {
+  --ui-primary: white;
+  --ui-bg: #0d0d0d;
+
+  ::selection {
+    color: #ffffff;
+    background-color: #474747;
+  }
+}

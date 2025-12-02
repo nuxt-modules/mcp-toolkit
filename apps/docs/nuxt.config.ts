@@ -17,6 +17,10 @@ export default defineNuxtConfig({
     },
   },
 
+  experimental: {
+    asyncContext: true,
+  },
+
   vite: {
     plugins: [
       yaml(),

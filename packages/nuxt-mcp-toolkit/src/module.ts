@@ -1,4 +1,4 @@
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
@@ -74,6 +74,11 @@ export default defineNuxtModule<ModuleOptions>({
       return
     }
 
+    addComponent({
+      name: 'InstallButton',
+      filePath: resolver.resolve('runtime/components/InstallButton.vue'),
+    })
+
     const mcpDir = options.dir ?? defaultMcpConfig.dir
 
     const paths = {
@@ -138,28 +143,32 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.typescript.tsConfig.include ??= []
     nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
 
+    const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
+
     addServerImports([
-      {
-        name: 'defineMcpTool',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'defineMcpResource',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'defineMcpPrompt',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-      {
-        name: 'defineMcpHandler',
-        from: resolver.resolve('runtime/server/mcp/definitions'),
-      },
-    ])
+      'defineMcpTool',
+      'defineMcpResource',
+      'defineMcpPrompt',
+      'defineMcpHandler',
+      'textResult',
+      'jsonResult',
+      'errorResult',
+      'imageResult',
+    ].map(name => ({ name, from: mcpDefinitionsPath })))
 
     addServerHandler({
       route: options.route,
       handler: resolver.resolve('runtime/server/mcp/handler'),
+    })
+
+    addServerHandler({
+      route: `${options.route}/badge`,
+      handler: resolver.resolve('runtime/server/mcp/badge'),
+    })
+
+    addServerHandler({
+      route: `${options.route}/badge.svg`,
+      handler: resolver.resolve('runtime/server/mcp/badge-image'),
     })
 
     addDevToolsCustomTabs(nuxt, options)

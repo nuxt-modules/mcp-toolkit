@@ -1,19 +1,26 @@
-import type { z, ZodRawShape, ZodTypeAny } from 'zod'
+import type { ZodRawShape } from 'zod'
 import type { CallToolResult, ServerRequest, ServerNotification, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { enrichNameTitle } from './utils'
+import { type MsCacheDuration, type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+
+// Re-export cache types for convenience
+export type { MsCacheDuration }
+export type McpToolCacheOptions<Args = unknown> = McpCacheOptions<Args>
+export type McpToolCache<Args = unknown> = McpCache<Args>
 
 /**
- * Callback type for MCP tools, matching the SDK's ToolCallback type
+ * Handler callback type for MCP tools
  */
 export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = Args extends ZodRawShape
-  ? (args: z.objectOutputType<Args, ZodTypeAny>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
+  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
   : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
 
 /**
- * Definition of an MCP tool matching the SDK's registerTool signature
- * This structure is identical to what you'd pass to server.registerTool()
+ * MCP tool definition structure
+ * @see https://mcp-toolkit.nuxt.dev/core-concepts/tools
  */
 export interface McpToolDefinition<
   InputSchema extends ZodRawShape | undefined = ZodRawShape,
@@ -27,11 +34,19 @@ export interface McpToolDefinition<
   annotations?: ToolAnnotations
   _meta?: Record<string, unknown>
   handler: McpToolCallback<InputSchema>
+  /**
+   * Cache configuration for the tool response
+   * - string: Duration parsed by `ms` (e.g., '1h', '2 days', '30m')
+   * - number: Duration in milliseconds
+   * - object: Full cache options with getKey, group, swr, etc.
+   * @see https://nitro.build/guide/cache#options
+   */
+  cache?: McpToolCache<InputSchema extends ZodRawShape ? ShapeOutput<InputSchema> : undefined>
 }
 
 /**
- * Helper function to register a tool from a McpToolDefinition
- * This provides better type inference when registering tools
+ * Register a tool from a McpToolDefinition
+ * @internal
  */
 export function registerToolFromDefinition<
   InputSchema extends ZodRawShape | undefined = ZodRawShape,
@@ -47,6 +62,25 @@ export function registerToolFromDefinition<
     type: 'tool',
   })
 
+  // Wrap handler with cache if cache is defined
+  let handler = tool.handler as unknown as ToolCallback<ZodRawShape>
+
+  if (tool.cache !== undefined) {
+    const defaultGetKey = tool.inputSchema
+      ? (args: unknown) => {
+          const values = Object.values(args as Record<string, unknown>)
+          return values.map(v => String(v).replace(/\//g, '-').replace(/^-/, '')).join(':')
+        }
+      : undefined
+
+    const cacheOptions = createCacheOptions(tool.cache, `mcp-tool:${name}`, defaultGetKey)
+
+    handler = wrapWithCache(
+      tool.handler as unknown as (...args: unknown[]) => unknown,
+      cacheOptions,
+    ) as unknown as ToolCallback<ZodRawShape>
+  }
+
   if (tool.inputSchema) {
     return server.registerTool<ZodRawShape, OutputSchema>(
       name,
@@ -58,7 +92,7 @@ export function registerToolFromDefinition<
         annotations: tool.annotations,
         _meta: tool._meta,
       },
-      tool.handler as unknown as ToolCallback<ZodRawShape>,
+      handler,
     )
   }
   else {
@@ -71,44 +105,27 @@ export function registerToolFromDefinition<
         annotations: tool.annotations,
         _meta: tool._meta,
       },
-      tool.handler as unknown as ToolCallback<ZodRawShape>,
+      handler,
     )
   }
 }
 
 /**
- * Define an MCP tool that will be automatically registered
+ * Define an MCP tool that will be automatically registered.
  *
- * This function matches the exact structure of server.registerTool() from the MCP SDK,
- * making it easy to migrate code from the SDK to this module.
+ * `name` and `title` are auto-generated from filename if not provided.
  *
- * If `name` or `title` are not provided, they will be automatically generated from the filename
- * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
+ * @see https://mcp-toolkit.nuxt.dev/core-concepts/tools
  *
  * @example
  * ```ts
- * // server/mcp/tools/my-tool.ts
- * import { z } from 'zod'
- *
  * export default defineMcpTool({
- *   name: 'calculate-bmi',
- *   title: 'BMI Calculator',
- *   description: 'Calculate Body Mass Index',
- *   inputSchema: {
- *     weightKg: z.number(),
- *     heightM: z.number()
- *   },
- *   outputSchema: { bmi: z.number() },
- *   handler: async ({ weightKg, heightM }) => {
- *     const output = { bmi: weightKg / (heightM * heightM) }
- *     return {
- *       content: [{
- *         type: 'text',
- *         text: JSON.stringify(output)
- *       }],
- *       structuredContent: output
- *     }
- *   }
+ *   description: 'Echo back a message',
+ *   inputSchema: { message: z.string() },
+ *   cache: '1h', // optional caching
+ *   handler: async ({ message }) => ({
+ *     content: [{ type: 'text', text: message }]
+ *   })
  * })
  * ```
  */

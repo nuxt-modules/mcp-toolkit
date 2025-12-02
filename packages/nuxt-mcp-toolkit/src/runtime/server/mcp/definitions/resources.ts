@@ -3,6 +3,11 @@ import { readFile } from 'node:fs/promises'
 import { resolve, extname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { enrichNameTitle } from './utils'
+import { type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+
+// Re-export cache types for convenience
+export type McpResourceCacheOptions = McpCacheOptions<URL>
+export type McpResourceCache = McpCache<URL>
 
 /**
  * Annotations for a resource
@@ -21,11 +26,20 @@ export interface McpResourceAnnotations {
 export interface StandardMcpResourceDefinition {
   name?: string
   title?: string
+  description?: string
   uri: string | ResourceTemplate
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
   handler: ReadResourceCallback | ReadResourceTemplateCallback
   file?: never
+  /**
+   * Cache configuration for the resource response
+   * - string: Duration parsed by `ms` (e.g., '1h', '2 days', '30m')
+   * - number: Duration in milliseconds
+   * - object: Full cache options with getKey, group, swr, etc.
+   * @see https://nitro.build/guide/cache#options
+   */
+  cache?: McpResourceCache
 }
 
 /**
@@ -34,6 +48,7 @@ export interface StandardMcpResourceDefinition {
 export interface FileMcpResourceDefinition {
   name?: string
   title?: string
+  description?: string
   uri?: string
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
@@ -43,6 +58,14 @@ export interface FileMcpResourceDefinition {
    * Relative to the project root
    */
   file: string
+  /**
+   * Cache configuration for the resource response
+   * - string: Duration parsed by `ms` (e.g., '1h', '2 days', '30m')
+   * - number: Duration in milliseconds
+   * - object: Full cache options with getKey, group, swr, etc.
+   * @see https://nitro.build/guide/cache#options
+   */
+  cache?: McpResourceCache
 }
 
 /**
@@ -77,7 +100,8 @@ function getMimeType(filePath: string): string {
 }
 
 /**
- * Helper function to register a resource from a McpResourceDefinition
+ * Register a resource from a McpResourceDefinition
+ * @internal
  */
 export function registerResourceFromDefinition(
   server: McpServer,
@@ -95,6 +119,7 @@ export function registerResourceFromDefinition(
   const metadata = {
     ...resource.metadata,
     title: resource.title || resource.metadata?.title || title,
+    description: resource.description || resource.metadata?.description,
   }
 
   // Handle file-based resources
@@ -120,8 +145,6 @@ export function registerResourceFromDefinition(
           }
         }
         catch (error) {
-          // Return error as content or throw depending on preference
-          // Throwing will return an error result to the client
           throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
@@ -134,6 +157,17 @@ export function registerResourceFromDefinition(
 
   if (!handler) {
     throw new Error(`Resource ${name} is missing a handler`)
+  }
+
+  // Wrap handler with cache if cache is defined
+  if (resource.cache !== undefined) {
+    const defaultGetKey = (requestUri: URL) => requestUri.pathname.replace(/\//g, '-').replace(/^-/, '')
+    const cacheOptions = createCacheOptions(resource.cache, `mcp-resource:${name}`, defaultGetKey)
+
+    handler = wrapWithCache(
+      handler as (...args: unknown[]) => unknown,
+      cacheOptions,
+    ) as ReadResourceCallback
   }
 
   if (typeof uri === 'string') {
@@ -155,78 +189,18 @@ export function registerResourceFromDefinition(
 }
 
 /**
- * Define an MCP resource that will be automatically registered
+ * Define an MCP resource that will be automatically registered.
  *
- * This function matches the structure of server.registerResource() from the MCP SDK.
+ * `name` and `title` are auto-generated from filename if not provided.
  *
- * If `name` or `title` are not provided, they will be automatically generated from the filename
- * (e.g., `list_documentation.ts` → `name: 'list-documentation'`, `title: 'List Documentation'`).
- *
- * @example
- * ```ts
- * // server/mcp/resources/my-resource.ts
- * export default defineMcpResource({
- *   name: 'readme',
- *   title: 'README',
- *   uri: 'file:///project/README.md',
- *   metadata: {
- *     description: 'Project README file',
- *     mimeType: 'text/markdown'
- *   },
- *   handler: async (uri) => {
- *     const content = await readFile(uri.pathname, 'utf-8')
- *     return {
- *       contents: [{
- *         uri: uri.toString(),
- *         mimeType: 'text/markdown',
- *         text: content
- *       }]
- *     }
- *   }
- * })
- * ```
+ * @see https://mcp-toolkit.nuxt.dev/core-concepts/resources
  *
  * @example
  * ```ts
- * // Simpler file-based resource
+ * // File-based resource
  * export default defineMcpResource({
- *   name: 'readme',
- *   file: 'README.md', // Automatically handles reading file and setting URI
- *   metadata: {
- *     description: 'Project README file'
- *   }
- * })
- * ```
- *
- * @example
- * ```ts
- * // Dynamic resource with template
- * import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
- *
- * export default defineMcpResource({
- *   name: 'file',
- *   title: 'File Resource',
- *   uri: new ResourceTemplate('file:///project/{+path}', {
- *     list: async () => {
- *       return {
- *         resources: [
- *           { uri: 'file:///project/README.md', name: 'README.md' },
- *           { uri: 'file:///project/src/index.ts', name: 'index.ts' }
- *         ]
- *       }
- *     }
- *   }),
- *   handler: async (uri, variables) => {
- *     const path = variables.path
- *     const content = await readFile(path, 'utf-8')
- *     return {
- *       contents: [{
- *         uri: uri.toString(),
- *         mimeType: 'text/plain',
- *         text: content
- *       }]
- *     }
- *   }
+ *   description: 'Project README file',
+ *   file: 'README.md'
  * })
  * ```
  */

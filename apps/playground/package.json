@@ -14,15 +14,26 @@
     "build": "nuxi build",
     "generate": "nuxi generate",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "auth:schema": "npx @better-auth/cli generate --config server/utils/auth.ts --output server/db/schema/auth.ts -y && eslint . --fix",
+    "db:generate": "nuxt db generate",
+    "db:migrate": "nuxt db migrate"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.3.11",
+    "@nuxt/ui": "^4.1.0",
+    "@nuxthub/core": "npm:@nuxthub/core-nightly@0.10.0-20251128-232930-0579c39",
     "@nuxtjs/mcp-toolkit": "workspace:*",
+    "better-auth": "^1.4.3",
+    "drizzle-orm": "^0.44.7",
     "nuxt": "^4.2.1",
-    "zod": "^3.25.76"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.71",
+    "@iconify-json/simple-icons": "^1.2.56",
     "@nuxt/eslint-config": "^1.10.0",
+    "drizzle-kit": "^0.31.6",
     "eslint": "^9.39.1"
   }
 }
