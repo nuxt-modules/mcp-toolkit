@@ -32,11 +32,12 @@
     "test": {
       "cache": true
     },
-    "typecheck": {
-      "cache": true
-    },
-    "clean": {
+    "eval": {
       "cache": false
+    },
+    "eval:ui": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

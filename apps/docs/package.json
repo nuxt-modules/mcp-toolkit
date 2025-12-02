@@ -13,7 +13,9 @@
     "build": "nuxt build --extends docus",
     "generate": "nuxt generate --extends docus",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "eval": "evalite",
+    "eval:ui": "evalite watch"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^0.0.8",
@@ -33,6 +35,8 @@
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.10.0",
-    "eslint": "^9.39.1"
+    "eslint": "^9.39.1",
+    "evalite": "^1.0.0-beta.13",
+    "vitest": "^3.2.3"
   }
 }

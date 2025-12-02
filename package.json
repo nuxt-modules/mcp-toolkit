@@ -22,6 +22,8 @@
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "typecheck:docs": "turbo typecheck --filter=@nuxtjs/mcp-toolkit-docs",
+    "eval": "turbo eval --filter=@nuxtjs/mcp-toolkit-docs",
+    "eval:ui": "turbo eval:ui --filter=@nuxtjs/mcp-toolkit-docs",
     "clean": "turbo clean",
     "automd": "npx automd --config .github/automd.json"
   },
