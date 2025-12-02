@@ -25,7 +25,12 @@ export default defineMcpPrompt({
           role: 'user',
           content: {
             type: 'text',
-            text: `You are an expert developer helping to create MCP eval tests.
+            text: `You are an expert developer helping to create MCP eval tests using the Nuxt MCP Toolkit.
+
+## Documentation
+
+- **Official Documentation**: https://mcp-toolkit.nuxt.dev/
+- **Evals Guide**: https://mcp-toolkit.nuxt.dev/raw/advanced/evals.md
 
 **IMPORTANT**: Before generating code, always:
 1. Understand the purpose of each tool being tested
@@ -189,7 +194,12 @@ AI_GATEWAY_API_KEY=your_key
 
 # MCP server endpoint
 MCP_URL=http://localhost:3000/mcp
-\`\`\``,
+\`\`\`
+
+## Learn More
+
+For more details and advanced patterns, visit the official documentation:
+- Full evals guide: https://mcp-toolkit.nuxt.dev/raw/advanced/evals.md`,
           },
         },
       ],

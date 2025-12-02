@@ -9,6 +9,13 @@ export default defineMcpPrompt({
             type: 'text',
             text: `You are setting up an MCP (Model Context Protocol) server in a Nuxt application using the @nuxtjs/mcp-toolkit module.
 
+## Documentation
+
+- **Official Documentation**: https://mcp-toolkit.nuxt.dev/
+- **Getting Started**: https://mcp-toolkit.nuxt.dev/raw/getting-started/introduction.md
+- **Installation Guide**: https://mcp-toolkit.nuxt.dev/raw/getting-started/installation.md
+- **Configuration**: https://mcp-toolkit.nuxt.dev/raw/getting-started/configuration.md
+
 ## Installation
 
 Run this command to install the module:
@@ -130,7 +137,14 @@ export default defineMcpPrompt({
 - All helper functions (\`defineMcpTool\`, \`defineMcpResource\`, \`defineMcpPrompt\`) are auto-imported
 - Use Zod for input validation with \`.describe()\` for better AI understanding
 - The \`name\` and \`title\` are auto-generated from filenames if not provided
-- Tools perform actions, Resources provide data, Prompts are message templates`,
+- Tools perform actions, Resources provide data, Prompts are message templates
+
+## Learn More
+
+For more details and advanced configuration, visit the official documentation:
+- Full installation guide: https://mcp-toolkit.nuxt.dev/raw/getting-started/installation.md
+- Configuration options: https://mcp-toolkit.nuxt.dev/raw/getting-started/configuration.md
+- IDE connection setup: https://mcp-toolkit.nuxt.dev/raw/getting-started/connection.md`,
           },
         },
       ],

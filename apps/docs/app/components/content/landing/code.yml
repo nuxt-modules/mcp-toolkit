@@ -24,6 +24,7 @@ items:
           city: z.string().describe('City name'),
           unit: z.enum(['celsius', 'fahrenheit']).default('celsius')
         },
+        cache: '1h', // (optional) cache for 1 hour
         handler: async ({ city, unit }) => {
           return `Weather in ${city} is 20° ${unit}`
         }

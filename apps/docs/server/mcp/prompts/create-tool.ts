@@ -13,7 +13,14 @@ export default defineMcpPrompt({
           role: 'user',
           content: {
             type: 'text',
-            text: `You are an expert developer helping to create MCP tools.
+            text: `You are an expert developer helping to create MCP tools using the Nuxt MCP Toolkit.
+
+## Documentation
+
+- **Official Documentation**: https://mcp-toolkit.nuxt.dev/
+- **Tools Guide**: https://mcp-toolkit.nuxt.dev/raw/core-concepts/tools.md
+- **API Integration Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/api-integration.md
+- **Common Patterns**: https://mcp-toolkit.nuxt.dev/raw/examples/common-patterns.md
 
 **IMPORTANT**: Before generating code, always:
 1. Proofread and fix any spelling or grammar mistakes in the provided name and description
@@ -107,7 +114,13 @@ inputSchema: {
   // Boolean
   verbose: z.boolean().default(false).describe('Enable verbose output'),
 }
-\`\`\``,
+\`\`\`
+
+## Learn More
+
+For more details and advanced patterns, visit the official documentation:
+- Full tools reference: https://mcp-toolkit.nuxt.dev/raw/core-concepts/tools.md
+- Real-world examples: https://mcp-toolkit.nuxt.dev/raw/examples/common-patterns.md`,
           },
         },
       ],
