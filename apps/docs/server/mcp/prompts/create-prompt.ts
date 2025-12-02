@@ -51,7 +51,13 @@ export default defineMcpPrompt({
           role: 'user',
           content: {
             type: 'text',
-            text: `You are an expert developer helping to create MCP prompts.
+            text: `You are an expert developer helping to create MCP prompts using the Nuxt MCP Toolkit.
+
+## Documentation
+
+- **Official Documentation**: https://mcp-toolkit.nuxt.dev/
+- **Prompts Guide**: https://mcp-toolkit.nuxt.dev/raw/core-concepts/prompts.md
+- **Prompt Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/prompt-examples.md
 
 **IMPORTANT**: Before generating code, always:
 1. Proofread and fix any spelling or grammar mistakes in the provided name and description
@@ -134,7 +140,13 @@ handler: async ({ topic }) => {
 - **Documentation**: Generate docs for code/APIs
 - **Translation**: Multi-language support with language argument
 - **Onboarding**: Setup instructions for new developers
-- **Debugging**: Structured troubleshooting prompts`,
+- **Debugging**: Structured troubleshooting prompts
+
+## Learn More
+
+For more details and advanced patterns, visit the official documentation:
+- Full prompts reference: https://mcp-toolkit.nuxt.dev/raw/core-concepts/prompts.md
+- Real-world examples: https://mcp-toolkit.nuxt.dev/raw/examples/prompt-examples.md`,
           },
         },
       ],

@@ -13,8 +13,18 @@ export default defineMcpPrompt({
     ]).describe('The type of issue you are experiencing'),
   },
   handler: async ({ issue }) => {
+    const docsHeader = `## Documentation
+
+- **Official Documentation**: https://mcp-toolkit.nuxt.dev/
+- **Installation Guide**: https://mcp-toolkit.nuxt.dev/raw/getting-started/installation.md
+- **Configuration**: https://mcp-toolkit.nuxt.dev/raw/getting-started/configuration.md
+- **DevTools Inspector**: https://mcp-toolkit.nuxt.dev/raw/getting-started/inspector.md
+
+---
+
+`
     const troubleshootingGuides: Record<string, string> = {
-      'auto-imports': `## Auto-Imports Not Working
+      'auto-imports': docsHeader + `## Auto-Imports Not Working
 
 If \`defineMcpTool\`, \`defineMcpResource\`, or \`defineMcpPrompt\` are not auto-imported:
 
@@ -60,7 +70,7 @@ pnpm nuxt prepare
 
 Ensure \`.nuxt/types\` is included in your tsconfig.json.`,
 
-      'endpoint-not-accessible': `## MCP Endpoint Not Accessible
+      'endpoint-not-accessible': docsHeader + `## MCP Endpoint Not Accessible
 
 If you can't connect to the MCP endpoint:
 
@@ -110,7 +120,7 @@ For Cursor/VS Code, check your MCP server config:
 }
 \`\`\``,
 
-      'zod-validation': `## Zod Validation Errors
+      'zod-validation': docsHeader + `## Zod Validation Errors
 
 If your tool/resource/prompt fails with validation errors:
 
@@ -158,7 +168,7 @@ format: z.enum(['json', 'xml', 'text'])
 
 Zod provides detailed error messages. Check the server logs for specifics.`,
 
-      'resource-cache': `## Resource Caching Issues
+      'resource-cache': docsHeader + `## Resource Caching Issues
 
 If resources are returning stale data or not caching properly:
 
@@ -195,7 +205,7 @@ export default defineMcpResource({
 
 The module handles caching internally. If you need custom behavior, consider using a handler instead of a resource.`,
 
-      'tool-not-found': `## Tool/Resource/Prompt Not Found
+      'tool-not-found': docsHeader + `## Tool/Resource/Prompt Not Found
 
 If your MCP definitions aren't being discovered:
 
@@ -249,7 +259,7 @@ export default defineNuxtConfig({
 
 After adding new files, restart the dev server.`,
 
-      'general': `## General Troubleshooting
+      'general': docsHeader + `## General Troubleshooting
 
 ### Quick Checklist
 
@@ -291,7 +301,8 @@ Check the Nuxt DevTools MCP Inspector:
 
 ### Getting Help
 
-- Documentation: https://mcp-toolkit.nuxt.dev
+- Documentation: https://mcp-toolkit.nuxt.dev/
+- Raw Documentation: https://mcp-toolkit.nuxt.dev/raw/getting-started/introduction.md
 - GitHub Issues: https://github.com/nuxt/mcp-toolkit/issues
 - Discord: https://discord.nuxt.com`,
     }

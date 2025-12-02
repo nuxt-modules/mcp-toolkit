@@ -90,7 +90,13 @@ export default defineMcpResource({
           role: 'user',
           content: {
             type: 'text',
-            text: `You are an expert developer helping to create MCP resources.
+            text: `You are an expert developer helping to create MCP resources using the Nuxt MCP Toolkit.
+
+## Documentation
+
+- **Official Documentation**: https://mcp-toolkit.nuxt.dev/
+- **Resources Guide**: https://mcp-toolkit.nuxt.dev/raw/core-concepts/resources.md
+- **File Operations Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/file-operations.md
 
 **IMPORTANT**: Before generating code, always:
 1. Proofread and fix any spelling or grammar mistakes in the provided name and description
@@ -149,7 +155,13 @@ return {
 2. **Set appropriate mimeType**: Helps AI understand the content format
 3. **Enable caching**: Use \`cache\` for expensive operations
 4. **Handle errors gracefully**: Return empty contents or throw descriptive errors
-5. **Use URI templates for collections**: When you have multiple related items`,
+5. **Use URI templates for collections**: When you have multiple related items
+
+## Learn More
+
+For more details and advanced patterns, visit the official documentation:
+- Full resources reference: https://mcp-toolkit.nuxt.dev/raw/core-concepts/resources.md
+- File operations examples: https://mcp-toolkit.nuxt.dev/raw/examples/file-operations.md`,
           },
         },
       ],
