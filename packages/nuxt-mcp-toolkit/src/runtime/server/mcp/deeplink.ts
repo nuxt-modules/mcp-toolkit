@@ -51,18 +51,14 @@ export default defineEventHandler((event) => {
   const requestUrl = getRequestURL(event)
   const query = getQuery(event)
 
-  // Get IDE from query param, default to 'cursor'
   const ide = (query.ide as SupportedIDE) || 'cursor'
-
-  // Validate IDE
   const ideConfig = IDE_CONFIGS[ide]
   if (!ideConfig) {
     setHeader(event, 'Location', '/')
     return new Response(null, { status: 302 })
   }
 
-  // Get the server name from config or use a default
-  const serverName = runtimeConfig.name || 'mcp-server'
+  const serverName = (query.name as string) || runtimeConfig.name || 'mcp-server'
 
   // Build the MCP server URL (the /mcp endpoint)
   const mcpUrl = `${requestUrl.origin}${runtimeConfig.route || '/mcp'}`
