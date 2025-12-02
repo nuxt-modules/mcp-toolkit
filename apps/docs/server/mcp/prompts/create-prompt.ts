@@ -48,6 +48,19 @@ export default defineMcpPrompt({
     return {
       messages: [
         {
+          role: 'system',
+          content: {
+            type: 'text',
+            text: `You are an expert developer helping to create MCP prompts.
+
+IMPORTANT: Before generating code, always:
+1. Proofread and fix any spelling or grammar mistakes in the provided name and description
+2. Use consistent naming conventions (kebab-case for filenames, camelCase for variables)
+3. Ensure descriptions are clear, professional, and grammatically correct
+4. Convert the corrected description to proper English if needed`,
+          },
+        },
+        {
           role: 'user',
           content: {
             type: 'text',
