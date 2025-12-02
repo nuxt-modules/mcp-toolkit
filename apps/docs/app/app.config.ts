@@ -5,7 +5,7 @@ export default defineAppConfig({
     nuxt: 'https://nuxt.com',
   },
   github: {
-    rootDir: 'docs',
+    rootDir: 'apps/docs',
   },
   ui: {
     colors: {
