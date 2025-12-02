@@ -1,7 +1,7 @@
 ![Nuxt MCP Toolkit](https://raw.githubusercontent.com/nuxt-modules/mcp-toolkit/main/assets/banner.jpg)
 
-[![Install MCP in Cursor](https://mcp-toolkit.nuxt.dev/mcp/badge.svg)](https://mcp-toolkit.nuxt.dev/mcp/badge)
-[![Install MCP in VS Code](https://mcp-toolkit.nuxt.dev/mcp/badge.svg?ide=vscode)](https://mcp-toolkit.nuxt.dev/mcp/badge?ide=vscode)
+[![Install MCP in Cursor](https://mcp-toolkit.nuxt.dev/mcp/badge.svg)](https://mcp-toolkit.nuxt.dev/mcp/deeplink)
+[![Install MCP in VS Code](https://mcp-toolkit.nuxt.dev/mcp/badge.svg?ide=vscode)](https://mcp-toolkit.nuxt.dev/mcp/deeplink?ide=vscode)
 
 # Nuxt MCP Toolkit
 

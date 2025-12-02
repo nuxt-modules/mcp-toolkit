@@ -3,33 +3,12 @@ import { computed } from 'vue'
 
 export type SupportedIDE = 'cursor' | 'vscode'
 
-export interface StdioConfig {
-  command: string
-  args?: string[]
-  env?: Record<string, string>
-}
-
-export interface HttpConfig {
-  type: 'http' | 'sse'
-  url: string
-  headers?: Record<string, string>
-}
-
-export type McpConfig = StdioConfig | HttpConfig
-
 export interface InstallButtonProps {
   /**
-   * Name of the MCP server (required)
+   * URL of the MCP server endpoint (e.g., 'https://example.com/mcp')
+   * The deeplink will be derived as '{url}/deeplink?ide=xxx'
    */
-  name: string
-  /**
-   * URL for HTTP/SSE transport (shorthand for { type: 'http', url: '...' })
-   */
-  url?: string
-  /**
-   * Full MCP config object for stdio or http transport
-   */
-  config?: McpConfig
+  url: string
   /**
    * Target IDE
    * @default 'cursor'
@@ -50,18 +29,10 @@ const IDE_CONFIG = {
   cursor: {
     name: 'Cursor',
     defaultLabel: 'Install MCP in Cursor',
-    generateDeeplink: (name: string, config: McpConfig) => {
-      const configBase64 = btoa(JSON.stringify(config))
-      return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(name)}&config=${encodeURIComponent(configBase64)}`
-    },
   },
   vscode: {
     name: 'VS Code',
     defaultLabel: 'Install MCP in VS Code',
-    generateDeeplink: (name: string, config: McpConfig) => {
-      const configWithName = { name, ...config }
-      return `vscode:mcp/install?${encodeURIComponent(JSON.stringify(configWithName))}`
-    },
   },
 }
 
@@ -74,21 +45,9 @@ const ideConfig = computed(() => IDE_CONFIG[props.ide])
 
 const buttonLabel = computed(() => props.label ?? ideConfig.value.defaultLabel)
 
-const resolvedConfig = computed<McpConfig>(() => {
-  if (props.config) {
-    return props.config
-  }
-  if (props.url) {
-    return {
-      type: 'http',
-      url: props.url,
-    }
-  }
-  throw new Error('InstallButton: either "url" or "config" prop is required')
-})
-
 const deeplink = computed(() => {
-  return ideConfig.value.generateDeeplink(props.name, resolvedConfig.value)
+  const baseUrl = props.url.replace(/\/$/, '') // Remove trailing slash
+  return `${baseUrl}/deeplink?ide=${props.ide}`
 })
 </script>
 

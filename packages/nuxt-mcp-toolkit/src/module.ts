@@ -162,8 +162,8 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     addServerHandler({
-      route: `${options.route}/badge`,
-      handler: resolver.resolve('runtime/server/mcp/badge'),
+      route: `${options.route}/deeplink`,
+      handler: resolver.resolve('runtime/server/mcp/deeplink'),
     })
 
     addServerHandler({
