@@ -20,9 +20,8 @@ const IDE_CONFIGS: Record<SupportedIDE, IDEConfig> = {
   vscode: {
     name: 'VS Code',
     generateDeeplink: (serverName: string, mcpUrl: string) => {
-      const config = { type: 'http', url: mcpUrl }
-      const configJson = JSON.stringify(config)
-      return `vscode:mcp/install?name=${encodeURIComponent(serverName)}&config=${encodeURIComponent(configJson)}`
+      const config = { name: serverName, type: 'http', url: mcpUrl }
+      return `vscode:mcp/install?${encodeURIComponent(JSON.stringify(config))}`
     },
   },
 }

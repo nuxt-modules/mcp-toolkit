@@ -59,8 +59,8 @@ const IDE_CONFIG = {
     name: 'VS Code',
     defaultLabel: 'Install MCP in VS Code',
     generateDeeplink: (name: string, config: McpConfig) => {
-      const configJson = JSON.stringify(config)
-      return `vscode:mcp/install?name=${encodeURIComponent(name)}&config=${encodeURIComponent(configJson)}`
+      const configWithName = { name, ...config }
+      return `vscode:mcp/install?${encodeURIComponent(JSON.stringify(configWithName))}`
     },
   },
 }
