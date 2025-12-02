@@ -32,6 +32,9 @@
     "test": {
       "cache": true
     },
+    "typecheck": {
+      "cache": true
+    },
     "eval": {
       "cache": false
     },
