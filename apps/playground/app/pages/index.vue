@@ -7,9 +7,16 @@ definePageMeta({
   layout: 'auth',
 })
 
+const route = useRoute()
 const auth = useAuth()
 const toast = useToast()
 const loading = ref(false)
+
+// Get redirect URL from query parameter (e.g., from MCP OAuth flow)
+const redirectTo = computed(() => {
+  const redirect = route.query.redirect as string | undefined
+  return redirect ? decodeURIComponent(redirect) : '/app'
+})
 
 const items = ref<TabsItem[]>([
   {
@@ -49,15 +56,15 @@ const signUpFields = [
   },
 ]
 
-const providers = [
+const providers = computed(() => [
   {
     label: 'GitHub',
     icon: 'i-simple-icons-github',
     onClick: () => {
-      auth.signIn.social({ provider: 'github', callbackURL: '/app' })
+      auth.signIn.social({ provider: 'github', callbackURL: redirectTo.value })
     },
   },
-]
+])
 
 const signInSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -84,7 +91,7 @@ async function onSignIn(payload: FormSubmitEvent<SignInSchema>) {
         title: 'Successfully signed in',
         color: 'success',
       })
-      await navigateTo('/app')
+      await navigateTo(redirectTo.value)
     }
     else {
       toast.add({
@@ -118,7 +125,7 @@ async function onSignUp(payload: FormSubmitEvent<SignUpSchema>) {
         title: 'Successfully signed up',
         color: 'success',
       })
-      await navigateTo('/app')
+      await navigateTo(redirectTo.value)
     }
     else {
       toast.add({

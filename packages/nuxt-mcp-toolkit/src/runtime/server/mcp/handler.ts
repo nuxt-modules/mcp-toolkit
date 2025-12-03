@@ -1,16 +1,18 @@
 import { getRouterParam } from 'h3'
 import { useRuntimeConfig } from '#imports'
-import type { H3Event } from 'h3'
+import type { H3Event, EventHandler } from 'h3'
 import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
 import type { McpHandlerOptions } from './definitions/handlers'
-// @ts-expect-error - TODO: Fix this
+// @ts-expect-error - Generated module
 import { tools } from '#nuxt-mcp/tools.mjs'
-// @ts-expect-error - TODO: Fix this
+// @ts-expect-error - Generated module
 import { resources } from '#nuxt-mcp/resources.mjs'
-// @ts-expect-error - TODO: Fix this
+// @ts-expect-error - Generated module
 import { prompts } from '#nuxt-mcp/prompts.mjs'
-// @ts-expect-error - TODO: Fix this
+// @ts-expect-error - Generated module
 import { handlers } from '#nuxt-mcp/handlers.mjs'
+// @ts-expect-error - Generated module
+import { mcpMiddleware } from '#nuxt-mcp/middleware.mjs'
 import { createMcpHandler } from './utils'
 import { getMcpConfig } from './config'
 
@@ -35,6 +37,8 @@ export default createMcpHandler((event: H3Event) => {
       tools: handlerDef.tools,
       resources: handlerDef.resources,
       prompts: handlerDef.prompts,
+      middleware: mcpMiddleware as EventHandler | undefined,
+      mcpRoute: config.route,
     }
   }
 
@@ -45,5 +49,7 @@ export default createMcpHandler((event: H3Event) => {
     tools: tools as McpToolDefinition[],
     resources: resources as McpResourceDefinition[],
     prompts: prompts as McpPromptDefinition[],
+    middleware: mcpMiddleware as EventHandler | undefined,
+    mcpRoute: config.route,
   }
 })

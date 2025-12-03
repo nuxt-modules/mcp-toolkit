@@ -1,10 +1,11 @@
 import { execSync } from 'node:child_process'
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, extendPages, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
+import type { McpOAuthConfig } from './runtime/server/mcp/oauth/types'
 import { name, version } from '../package.json'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
@@ -41,10 +42,15 @@ export interface ModuleOptions {
   version?: string
   /**
    * Base directory for MCP definitions relative to server directory
-   * The module will look for tools, resources, and prompts in subdirectories
+   * The module will look for tools, resources, prompts, and middleware
    * @default 'mcp'
    */
   dir?: string
+  /**
+   * OAuth configuration for MCP authorization
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
+   */
+  oauth?: McpOAuthConfig
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -68,6 +74,7 @@ export default defineNuxtModule<ModuleOptions>({
         name: options.name,
         version: options.version,
         dir: options.dir,
+        oauth: options.oauth,
       },
     )
 
@@ -80,6 +87,21 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolver.resolve('runtime/components/InstallButton.vue'),
     })
 
+    // Add OAuth consent page
+    extendPages((pages) => {
+      pages.push({
+        name: 'mcp-oauth-consent',
+        path: '/__mcp/oauth/consent',
+        file: resolver.resolve('runtime/pages/oauth-consent.vue'),
+      })
+    })
+
+    // Add consent API endpoint
+    addServerHandler({
+      route: '/api/__mcp/consent',
+      handler: resolver.resolve('runtime/server/api/__mcp/consent.get'),
+    })
+
     const mcpDir = options.dir ?? defaultMcpConfig.dir
 
     const paths = {
@@ -87,6 +109,7 @@ export default defineNuxtModule<ModuleOptions>({
       resources: [`${mcpDir}/resources`],
       prompts: [`${mcpDir}/prompts`],
       handlers: [mcpDir],
+      middleware: [mcpDir],
     }
 
     let mcpSummary: string | null = null
@@ -153,6 +176,8 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
 
     const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
+    const mcpAuthPath = resolver.resolve('runtime/server/mcp/auth')
+    const mcpOAuthPath = resolver.resolve('runtime/server/mcp/oauth')
 
     addServerImports([
       'defineMcpTool',
@@ -164,6 +189,28 @@ export default defineNuxtModule<ModuleOptions>({
       'errorResult',
       'imageResult',
     ].map(name => ({ name, from: mcpDefinitionsPath })))
+
+    // Add auth utilities as auto-imports
+    addServerImports([
+      'useMcpEvent',
+      'getMcpContext',
+      'requireMcpContext',
+    ].map(name => ({ name, from: mcpAuthPath })))
+
+    // Add OAuth utilities as auto-imports
+    addServerImports([
+      'extractBearerToken',
+      'sendUnauthorized',
+      'sendForbidden',
+      'getAccessToken',
+      // OAuth flow primitives for custom consent pages
+      'completeAuthorization',
+      'getPendingAuthorization',
+      // Session provider for simplified OAuth integration
+      'setMcpSessionProvider',
+      'getMcpSession',
+      'hasMcpSessionProvider',
+    ].map(name => ({ name, from: mcpOAuthPath })))
 
     addServerHandler({
       route: options.route,
@@ -178,6 +225,84 @@ export default defineNuxtModule<ModuleOptions>({
     addServerHandler({
       route: `${options.route}/badge.svg`,
       handler: resolver.resolve('runtime/server/mcp/badge-image'),
+    })
+
+    // OAuth metadata endpoints (RFC9728 and RFC8414)
+    // These are required for MCP clients to discover authorization information
+
+    // Protected Resource Metadata - root
+    addServerHandler({
+      route: '/.well-known/oauth-protected-resource',
+      handler: resolver.resolve('runtime/server/mcp/oauth/protected-resource-metadata'),
+    })
+
+    // Protected Resource Metadata - with MCP path
+    addServerHandler({
+      route: `/.well-known/oauth-protected-resource${options.route}`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/protected-resource-metadata'),
+    })
+
+    // Authorization Server Metadata - root
+    addServerHandler({
+      route: '/.well-known/oauth-authorization-server',
+      handler: resolver.resolve('runtime/server/mcp/oauth/authorization-server-metadata'),
+    })
+
+    // Authorization Server Metadata - with MCP path
+    addServerHandler({
+      route: `/.well-known/oauth-authorization-server${options.route}`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/authorization-server-metadata'),
+    })
+
+    // OpenID Connect Discovery (fallback for some clients)
+    addServerHandler({
+      route: '/.well-known/openid-configuration',
+      handler: resolver.resolve('runtime/server/mcp/oauth/authorization-server-metadata'),
+    })
+
+    // OpenID Connect Discovery with path
+    addServerHandler({
+      route: `/.well-known/openid-configuration${options.route}`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/authorization-server-metadata'),
+    })
+
+    // OpenID Connect Discovery - path appended (some clients use this format)
+    addServerHandler({
+      route: `${options.route}/.well-known/openid-configuration`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/authorization-server-metadata'),
+    })
+
+    // OAuth 2.1 Flow Endpoints (RFC 6749, RFC 7591, RFC 7636)
+    // These enable MCP clients to authenticate using OAuth
+
+    // Dynamic Client Registration (RFC 7591)
+    addServerHandler({
+      route: `${options.route}/register`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/register'),
+    })
+
+    // Authorization Endpoint (RFC 6749)
+    addServerHandler({
+      route: `${options.route}/oauth/authorize`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/authorize'),
+    })
+
+    // Consent Page
+    addServerHandler({
+      route: `${options.route}/oauth/consent`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/consent'),
+    })
+
+    // Authorization Callback
+    addServerHandler({
+      route: `${options.route}/oauth/callback`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/callback'),
+    })
+
+    // Token Endpoint (RFC 6749)
+    addServerHandler({
+      route: `${options.route}/oauth/token`,
+      handler: resolver.resolve('runtime/server/mcp/oauth/token'),
     })
 
     addDevToolsCustomTabs(nuxt, options)

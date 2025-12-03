@@ -1,4 +1,5 @@
 import { defu } from 'defu'
+import type { McpOAuthConfig } from './oauth/types'
 
 export interface McpConfig {
   enabled: boolean
@@ -7,6 +8,7 @@ export interface McpConfig {
   name: string
   version: string
   dir: string
+  oauth?: McpOAuthConfig
 }
 
 export const defaultMcpConfig: McpConfig = {
@@ -19,5 +21,10 @@ export const defaultMcpConfig: McpConfig = {
 }
 
 export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
-  return defu(partial, defaultMcpConfig)
+  const config = defu(partial, defaultMcpConfig)
+  // Ensure oauth is undefined instead of null
+  if (config.oauth === null) {
+    config.oauth = undefined
+  }
+  return config as McpConfig
 }

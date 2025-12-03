@@ -2,7 +2,7 @@
 declare module '@nuxt/schema' {
   interface NuxtHooks {
     /**
-     * Add additional directories to scan for MCP definition files (tools, resources, prompts, handlers).
+     * Add additional directories to scan for MCP definition files (tools, resources, prompts, handlers, middleware).
      * @param paths - Object containing arrays of directory paths for each definition type.
      * @returns void | Promise<void>
      */
@@ -11,6 +11,7 @@ declare module '@nuxt/schema' {
       resources?: string[]
       prompts?: string[]
       handlers?: string[]
+      middleware?: string[]
     }) => void | Promise<void>
   }
 }

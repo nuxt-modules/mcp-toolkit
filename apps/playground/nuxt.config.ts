@@ -54,5 +54,11 @@ export default defineNuxtConfig({
 
   mcp: {
     name: 'Playground MCP',
+    oauth: {
+      // Scopes supported by this MCP server
+      scopes: ['mcp:read', 'mcp:write', 'todos:read', 'todos:write'],
+      // URL to redirect to when user is not authenticated
+      loginUrl: '/',
+    },
   },
 })

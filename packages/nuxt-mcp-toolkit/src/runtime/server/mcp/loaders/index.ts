@@ -1,4 +1,6 @@
-import { addServerTemplate, logger } from '@nuxt/kit'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { addServerTemplate, logger, useNuxt } from '@nuxt/kit'
 import {
   createExcludePatterns,
   createTemplateContent,
@@ -14,6 +16,7 @@ export interface LoaderPaths {
   resources: string[]
   prompts: string[]
   handlers?: string[]
+  middleware?: string[]
 }
 
 export interface HandlerRouteInfo {
@@ -124,14 +127,52 @@ export async function loadPrompts(paths: string[]) {
 
 export { loadHandlers }
 
+/**
+ * Look for middleware.ts in the MCP directories
+ * Returns the path to the middleware file if found
+ */
+async function loadMiddleware(paths: string[] = []): Promise<string | undefined> {
+  const nuxt = useNuxt()
+  const serverDir = nuxt.options.serverDir
+
+  for (const mcpDir of paths) {
+    // Try common middleware filenames
+    const middlewareNames = ['middleware.ts', 'middleware.mts', 'middleware.js', 'middleware.mjs']
+
+    for (const middlewareName of middlewareNames) {
+      const middlewarePath = join(serverDir, mcpDir, middlewareName)
+
+      if (existsSync(middlewarePath)) {
+        log.info(`Found MCP middleware: ${mcpDir}/${middlewareName}`)
+        return middlewarePath
+      }
+    }
+  }
+
+  return undefined
+}
+
 export async function loadAllDefinitions(paths: LoaderPaths) {
   try {
-    const [tools, resources, prompts, handlers] = await Promise.all([
+    const [tools, resources, prompts, handlers, middlewarePath] = await Promise.all([
       loadTools(paths.tools),
       loadResources(paths.resources),
       loadPrompts(paths.prompts),
       loadHandlers(paths.handlers ?? []),
+      loadMiddleware(paths.middleware ?? []),
     ])
+
+    // Generate middleware template - import and re-export the middleware function
+    addServerTemplate({
+      filename: '#nuxt-mcp/middleware.mjs',
+      getContents: () => {
+        if (!middlewarePath) {
+          return `export const mcpMiddleware = undefined\n`
+        }
+        // Import and re-export the middleware function so it gets bundled properly
+        return `import middleware from ${JSON.stringify(middlewarePath)}\nexport const mcpMiddleware = middleware\n`
+      },
+    })
 
     const results: LoadResults = {
       tools,
@@ -142,6 +183,7 @@ export async function loadAllDefinitions(paths: LoaderPaths) {
 
     return {
       ...results,
+      middlewarePath,
       total: tools.count + resources.count + prompts.count + handlers.count,
     }
   }
