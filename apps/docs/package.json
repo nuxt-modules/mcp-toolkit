@@ -29,7 +29,7 @@
     "docus": "latest",
     "motion-v": "^1.7.4",
     "nuxt": "^4.2.1",
-    "nuxt-studio": "1.0.0-alpha.2",
+    "nuxt-studio": "1.0.0-alpha.3",
     "shaders": "^2.1.10",
     "shiki-stream": "^0.1.2"
   },
