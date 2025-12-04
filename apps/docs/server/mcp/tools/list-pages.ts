@@ -33,17 +33,18 @@ OUTPUT: Returns a structured list with:
         title: page.title,
         path: page.path,
         description: page.description,
-        url: `${siteUrl}${page.path}`
+        url: `${siteUrl}${page.path}`,
       }))
 
       return {
-        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-      }
-    } catch {
-      return {
-        content: [{ type: 'text', text: 'Failed to list pages' }],
-        isError: true
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       }
     }
-  }
+    catch {
+      return {
+        content: [{ type: 'text', text: 'Failed to list pages' }],
+        isError: true,
+      }
+    }
+  },
 })
