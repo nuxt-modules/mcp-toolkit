@@ -3,11 +3,10 @@ import { z } from 'zod'
 export default defineMcpPrompt({
   description: 'Guide for creating a new MCP resource with best practices',
   inputSchema: {
-    resourceName: z.string().describe('Name of the resource to create (kebab-case)'),
-    resourceType: z.enum(['file', 'api', 'database', 'dynamic']).describe('Type of resource'),
+    purpose: z.string().describe('What data the resource should provide (e.g., "read the README file", "fetch user data from the API", "get database records")'),
   },
-  handler: async ({ resourceName, resourceType }) => {
-    const templates: Record<string, string> = {
+  handler: async ({ purpose }) => {
+    const templates = {
       file: `import { readFile } from 'node:fs/promises'
 
 export default defineMcpResource({
@@ -99,23 +98,46 @@ export default defineMcpResource({
 - **File Operations Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/file-operations.md
 
 **IMPORTANT**: Before generating code, always:
-1. Proofread and fix any spelling or grammar mistakes in the provided name and description
-2. Use consistent naming conventions (kebab-case for filenames, camelCase for variables)
-3. Ensure descriptions are clear, professional, and grammatically correct
-4. Convert the corrected description to proper English if needed
+1. Generate an appropriate resource name in kebab-case based on the purpose
+2. Determine the appropriate resource type (file, api, database, or dynamic)
+3. Use consistent naming conventions (kebab-case for filenames, camelCase for variables)
+4. Ensure descriptions are clear, professional, and grammatically correct
+5. Proofread and fix any spelling or grammar mistakes in the provided purpose
 
 ---
 
-Create an MCP resource named "${resourceName}" of type "${resourceType}".
+Create an MCP resource that: ${purpose}
 
-## File Location
+## Instructions
 
-Create the file at: \`server/mcp/resources/${resourceName}.ts\`
+1. First, determine an appropriate resource name in kebab-case based on the purpose
+2. Determine the resource type based on the data source:
+   - **file**: For filesystem operations
+   - **api**: For external API calls
+   - **database**: For database queries
+   - **dynamic**: For resources with variable URIs (e.g., fetching by ID)
+3. Create the file at: \`server/mcp/resources/<resource-name>.ts\`
 
-## Resource Template (${resourceType})
+## Resource Templates
 
+### File Resource
 \`\`\`typescript
-${templates[resourceType]}
+${templates.file}
+\`\`\`
+
+### API Resource
+\`\`\`typescript
+${templates.api}
+\`\`\`
+
+### Database Resource
+\`\`\`typescript
+${templates.database}
+\`\`\`
+
+### Dynamic Resource (URI Template)
+\`\`\`typescript
+${templates.dynamic}
 \`\`\`
 
 ## Key Concepts

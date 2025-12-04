@@ -3,13 +3,11 @@ import { z } from 'zod'
 export default defineMcpPrompt({
   description: 'Guide for creating a new MCP prompt with best practices',
   inputSchema: {
-    promptName: z.string().describe('Name of the prompt to create (kebab-case)'),
-    promptPurpose: z.string().describe('What the prompt helps with'),
-    hasArguments: z.enum(['yes', 'no']).default('yes').describe('Whether the prompt accepts arguments'),
+    purpose: z.string().describe('What the prompt should help with (e.g., "code review for Vue components", "generate unit tests for a function")'),
   },
-  handler: async ({ promptName, promptPurpose, hasArguments }) => {
+  handler: async ({ purpose }) => {
     const simpleTemplate = `export default defineMcpPrompt({
-  description: '${promptPurpose}',
+  description: 'Clear description of what the prompt helps with',
   handler: async () => {
     return {
       messages: [{
@@ -26,7 +24,7 @@ export default defineMcpPrompt({
     const withArgsTemplate = `import { z } from 'zod'
 
 export default defineMcpPrompt({
-  description: '${promptPurpose}',
+  description: 'Clear description of what the prompt helps with',
   inputSchema: {
     // Define arguments that customize the prompt
     topic: z.string().describe('The topic to focus on'),
@@ -60,23 +58,34 @@ export default defineMcpPrompt({
 - **Prompt Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/prompt-examples.md
 
 **IMPORTANT**: Before generating code, always:
-1. Proofread and fix any spelling or grammar mistakes in the provided name and description
+1. Generate an appropriate prompt name in kebab-case based on the purpose
 2. Use consistent naming conventions (kebab-case for filenames, camelCase for variables)
 3. Ensure descriptions are clear, professional, and grammatically correct
-4. Convert the corrected description to proper English if needed
+4. Proofread and fix any spelling or grammar mistakes in the provided purpose
+5. Decide if the prompt needs arguments based on the purpose
 
 ---
 
-Create an MCP prompt named "${promptName}" that ${promptPurpose}.
+Create an MCP prompt that: ${purpose}
 
-## File Location
+## Instructions
 
-Create the file at: \`server/mcp/prompts/${promptName}.ts\`
+1. First, determine an appropriate prompt name in kebab-case based on the purpose
+2. Decide if the prompt needs input arguments (for customization) or not
+3. Create the file at: \`server/mcp/prompts/<prompt-name>.ts\`
 
-## Prompt Template
+## Prompt Templates
+
+### Without Arguments (Static Prompt)
 
 \`\`\`typescript
-${hasArguments === 'yes' ? withArgsTemplate : simpleTemplate}
+${simpleTemplate}
+\`\`\`
+
+### With Arguments (Dynamic Prompt)
+
+\`\`\`typescript
+${withArgsTemplate}
 \`\`\`
 
 ## Message Roles
