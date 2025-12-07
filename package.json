@@ -28,9 +28,9 @@
     "automd": "npx automd --config .github/automd.json"
   },
   "devDependencies": {
-    "@nuxt/eslint-config": "^1.10.0",
+    "@nuxt/eslint-config": "^1.11.0",
     "eslint": "^9.39.1",
-    "turbo": "^2.6.1",
+    "turbo": "^2.6.3",
     "typescript": "~5.9.3"
   },
   "workspaces": [
