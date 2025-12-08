@@ -9,11 +9,19 @@
         "dist/**",
         ".output/**",
         ".nuxt/**"
+      ],
+      "env": [
+        "STUDIO_GITHUB_CLIENT_ID",
+        "STUDIO_GITHUB_CLIENT_SECRET"
       ]
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": [
+        "STUDIO_GITHUB_CLIENT_ID",
+        "STUDIO_GITHUB_CLIENT_SECRET"
+      ]
     },
     "dev:prepare": {
       "cache": false,
