@@ -48,12 +48,9 @@ export interface McpToolDefinition<
  * Register a tool from a McpToolDefinition
  * @internal
  */
-export function registerToolFromDefinition<
-  InputSchema extends ZodRawShape | undefined = ZodRawShape,
-  OutputSchema extends ZodRawShape = ZodRawShape,
->(
+export function registerToolFromDefinition(
   server: McpServer,
-  tool: McpToolDefinition<InputSchema, OutputSchema>,
+  tool: McpToolDefinition,
 ) {
   const { name, title } = enrichNameTitle({
     name: tool.name,
@@ -63,7 +60,7 @@ export function registerToolFromDefinition<
   })
 
   // Wrap handler with cache if cache is defined
-  let handler = tool.handler as unknown as ToolCallback<ZodRawShape>
+  let handler: ToolCallback<ZodRawShape> = tool.handler as ToolCallback<ZodRawShape>
 
   if (tool.cache !== undefined) {
     const defaultGetKey = tool.inputSchema
@@ -76,38 +73,21 @@ export function registerToolFromDefinition<
     const cacheOptions = createCacheOptions(tool.cache, `mcp-tool:${name}`, defaultGetKey)
 
     handler = wrapWithCache(
-      tool.handler as unknown as (...args: unknown[]) => unknown,
+      tool.handler as (...args: unknown[]) => unknown,
       cacheOptions,
-    ) as unknown as ToolCallback<ZodRawShape>
+    ) as ToolCallback<ZodRawShape>
   }
 
-  if (tool.inputSchema) {
-    return server.registerTool<ZodRawShape, OutputSchema>(
-      name,
-      {
-        title,
-        description: tool.description,
-        inputSchema: tool.inputSchema as ZodRawShape,
-        outputSchema: tool.outputSchema,
-        annotations: tool.annotations,
-        _meta: tool._meta,
-      },
-      handler,
-    )
+  const options = {
+    title,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+    outputSchema: tool.outputSchema,
+    annotations: tool.annotations,
+    _meta: tool._meta,
   }
-  else {
-    return server.registerTool<ZodRawShape, OutputSchema>(
-      name,
-      {
-        title,
-        description: tool.description,
-        outputSchema: tool.outputSchema,
-        annotations: tool.annotations,
-        _meta: tool._meta,
-      },
-      handler,
-    )
-  }
+
+  return server.registerTool(name, options, handler)
 }
 
 /**
