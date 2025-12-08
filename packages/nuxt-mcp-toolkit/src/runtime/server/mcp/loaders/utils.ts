@@ -163,7 +163,7 @@ export async function loadDefinitionFiles(
     const layerFiles = await glob(layerPatterns, {
       absolute: true,
       onlyFiles: true,
-      ignore: options.excludePatterns,
+      ignore: [...(options.excludePatterns || []), '**/*.d.ts'],
     })
 
     const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
