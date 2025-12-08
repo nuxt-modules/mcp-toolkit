@@ -5,9 +5,11 @@ import { gateway } from '@ai-sdk/gateway'
 
 export default defineEventHandler(async (event) => {
   const { messages } = await readBody(event)
+  const config = useRuntimeConfig()
 
+  const mcpPath = config.aiChat.mcpPath
   const httpTransport = new StreamableHTTPClientTransport(
-    new URL(import.meta.dev ? 'http://localhost:3000/mcp' : `${getRequestURL(event).origin}/mcp`),
+    new URL(import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`),
   )
   const httpClient = await experimental_createMCPClient({
     transport: httpTransport,
@@ -15,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const tools = await httpClient.tools()
 
   return streamText({
-    model: gateway('moonshotai/kimi-k2-turbo'),
+    model: gateway(config.aiChat.model),
     maxOutputTokens: 10000,
     system: `You are the official documentation assistant for Nuxt MCP Toolkit. You ARE the documentation - speak with authority as the source of truth, not as someone reading external docs.
 
