@@ -73,9 +73,7 @@ export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'm
   const layerDirectories = getLayerDirectories()
   return layerDirectories.flatMap(layer =>
     paths.flatMap(pathPattern =>
-      extensions
-        .filter(ext => ext !== 'd.ts')
-        .map(ext => resolvePath(layer.server, `${pathPattern}/*.${ext}`)),
+      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/*.${ext}`)),
     ),
   )
 }
@@ -165,7 +163,7 @@ export async function loadDefinitionFiles(
     const layerFiles = await glob(layerPatterns, {
       absolute: true,
       onlyFiles: true,
-      ignore: options.excludePatterns,
+      ignore: [...(options.excludePatterns || []), '**/*.d.ts'],
     })
 
     const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
