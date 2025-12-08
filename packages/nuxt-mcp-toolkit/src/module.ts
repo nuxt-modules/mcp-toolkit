@@ -57,6 +57,13 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: defaultMcpConfig,
   async setup(options, nuxt) {
+    // Cannot be used with `nuxt generate`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (nuxt.options.nitro.static || (nuxt.options as any)._generate) {
+      log.warn('@nuxtjs/mcp-toolkit is not compatible with `nuxt generate` as it needs a server to run.')
+      return
+    }
+
     const resolver = createResolver(import.meta.url)
 
     nuxt.options.runtimeConfig.mcp = defu(
