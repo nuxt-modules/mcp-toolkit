@@ -73,7 +73,9 @@ export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'm
   const layerDirectories = getLayerDirectories()
   return layerDirectories.flatMap(layer =>
     paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/*.${ext}`)),
+      extensions
+        .filter(ext => ext !== 'd.ts')
+        .map(ext => resolvePath(layer.server, `${pathPattern}/*.${ext}`)),
     ),
   )
 }
