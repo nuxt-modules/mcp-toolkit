@@ -53,9 +53,7 @@ function getToolLabel(toolName: string, args: any) {
 
   const labels: Record<string, string> = {
     'list-pages': 'Listed documentation pages',
-    'list_pages': 'Listed documentation pages',
-    'get-page': `Read ${path}`,
-    'get_page': `Read ${path}`,
+    'get-page': `Read ${path || 'page'}`,
   }
 
   return labels[toolName] || toolName
@@ -197,11 +195,14 @@ onMounted(() => {
                 class="*:first:mt-0 *:last:mb-0"
               />
 
-              <AiChatToolCall
-                v-else-if="part.type === 'tool-invocation' || part.type === 'dynamic-tool'"
-                :text="getToolLabel((part as any).toolName, (part as any).args || (part as any).input)"
-                :is-loading="(part as any).state !== 'output-available'"
-              />
+              <template v-else-if="part.type === 'data-tool-calls'">
+                <AiChatToolCall
+                  v-for="tool in (part as any).data.tools"
+                  :key="tool.toolCallId"
+                  :text="getToolLabel(tool.toolName, tool.input)"
+                  :is-loading="false"
+                />
+              </template>
             </template>
           </div>
         </template>
