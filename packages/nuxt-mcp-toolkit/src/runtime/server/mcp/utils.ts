@@ -1,42 +1,30 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { sendRedirect, getHeader, defineEventHandler } from 'h3'
+import type { H3Event } from 'h3'
 import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
 import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
-import { sendRedirect, getHeader, readBody, defineEventHandler } from 'h3'
-import type { H3Event } from 'h3'
+// @ts-expect-error - Generated template that re-exports from provider
+import handleMcpRequest from '#nuxt-mcp/transport.mjs'
 
-export type CreateMcpHandlerConfig
-  = {
-    name: string
-    version: string
-    browserRedirect: string
-    tools?: McpToolDefinition[]
-    resources?: McpResourceDefinition[]
-    prompts?: McpPromptDefinition[]
-  }
-  | ((event: H3Event) => {
-    name: string
-    version: string
-    browserRedirect: string
-    tools?: McpToolDefinition[]
-    resources?: McpResourceDefinition[]
-    prompts?: McpPromptDefinition[]
-  })
+export type { McpTransportHandler } from './providers/types'
+export { createMcpTransportHandler } from './providers/types'
 
-function resolveConfig(
-  config: CreateMcpHandlerConfig,
-  event: H3Event,
-) {
-  return typeof config === 'function' ? config(event) : config
-}
-
-function createMcpServer(config: {
+export interface ResolvedMcpConfig {
   name: string
   version: string
+  browserRedirect: string
   tools?: McpToolDefinition[]
   resources?: McpResourceDefinition[]
   prompts?: McpPromptDefinition[]
-}) {
+}
+
+export type CreateMcpHandlerConfig = ResolvedMcpConfig | ((event: H3Event) => ResolvedMcpConfig)
+
+function resolveConfig(config: CreateMcpHandlerConfig, event: H3Event): ResolvedMcpConfig {
+  return typeof config === 'function' ? config(event) : config
+}
+
+export function createMcpServer(config: ResolvedMcpConfig): McpServer {
   const server = new McpServer({
     name: config.name,
     version: config.version,
@@ -66,17 +54,6 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
     }
 
     const server = createMcpServer(resolvedConfig)
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-    })
-
-    event.node.res.on('close', () => {
-      transport.close()
-      server.close()
-    })
-
-    await server.connect(transport)
-    const body = await readBody(event)
-    await transport.handleRequest(event.node.req, event.node.res, body)
+    return handleMcpRequest(server, event)
   })
 }
