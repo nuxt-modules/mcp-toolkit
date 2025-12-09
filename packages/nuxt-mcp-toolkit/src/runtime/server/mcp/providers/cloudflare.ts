@@ -18,7 +18,8 @@ const fallbackCtx: ExecutionContext = {
 }
 
 export default createMcpTransportHandler((server, event) => {
-  const handler = createMcpHandler(server)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handler = createMcpHandler(server as any) // version mismatch
   const request = toWebRequest(event)
   const cf = event.context.cloudflare as CloudflareContext | undefined
   return handler(request, cf?.env ?? {}, cf?.ctx ?? fallbackCtx)

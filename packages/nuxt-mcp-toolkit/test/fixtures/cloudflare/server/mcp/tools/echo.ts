@@ -1,3 +1,4 @@
+import { defineMcpTool } from '../../../../../../src/runtime/server/types'
 import { z } from 'zod'
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -10,6 +11,8 @@ export default defineMcpTool({
   handler: async ({ message }) => {
     // cloudflare MCP would only break when there was an async response
     await sleep(1000)
-    return textResult(`Echo: ${message}`)
+    return {
+      content: [{ type: 'text', text: `Echo: ${message}` }],
+    }
   },
 })
