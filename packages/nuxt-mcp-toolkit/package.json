@@ -56,11 +56,15 @@
     "tinyglobby": "^0.2.15"
   },
   "peerDependencies": {
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "agents": ">=0.2.31"
   },
   "peerDependenciesMeta": {
     "zod": {
       "optional": false
+    },
+    "agents": {
+      "optional": true
     }
   },
   "devDependencies": {
