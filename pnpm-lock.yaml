@@ -140,8 +140,8 @@ importers:
         specifier: ^0.4.2
         version: 0.4.2(magicast@0.5.1)
       chokidar:
-        specifier: ^4.0.3
-        version: 4.0.3
+        specifier: ^5.0.0
+        version: 5.0.0
       defu:
         specifier: ^6.1.4
         version: 6.1.4
