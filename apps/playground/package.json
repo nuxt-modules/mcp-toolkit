@@ -26,7 +26,7 @@
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "better-auth": "^1.4.6",
     "drizzle-orm": "^0.45.1",
-    "nuxt": "^4.2.1",
+    "nuxt": "^4.2.2",
     "zod": "^4.1.13"
   },
   "devDependencies": {
