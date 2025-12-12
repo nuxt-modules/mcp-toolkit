@@ -2,13 +2,28 @@
 import type { DefineComponent } from 'vue'
 import { Chat } from '@ai-sdk/vue'
 import { DefaultChatTransport } from 'ai'
-import ProseStreamPre from './prose/PreStream.vue'
+import AiChatPreStream from './AiChatPreStream.vue'
+
+export interface FaqCategory {
+  category: string
+  items: string[]
+}
+
+const props = withDefaults(defineProps<{
+  title?: string
+  placeholder?: string
+  faqQuestions?: FaqCategory[]
+}>(), {
+  title: 'Ask AI',
+  placeholder: 'Ask a question...',
+})
 
 const components = {
-  pre: ProseStreamPre as unknown as DefineComponent,
+  pre: AiChatPreStream as unknown as DefineComponent,
 }
 
 const { isOpen, messages, pendingMessage, clearPending } = useAIChat()
+const config = useRuntimeConfig()
 
 const input = ref('')
 
@@ -30,33 +45,6 @@ watch(messages, (newMessages) => {
   }
 }, { deep: true })
 
-const faqQuestions = [
-  {
-    category: 'Getting Started',
-    items: [
-      'What is Nuxt MCP Toolkit?',
-      'How do I install the module?',
-      'How do I use the DevTools?',
-    ],
-  },
-  {
-    category: 'Core Features',
-    items: [
-      'How do I create a new MCP Tool?',
-      'How do I add an MCP Resource?',
-      'How do I configure Prompts?',
-    ],
-  },
-  {
-    category: 'Advanced',
-    items: [
-      'Can I expose my API routes as MCP Tools?',
-      'Does it support TypeScript?',
-      'How do I add a custom MCP server?',
-    ],
-  },
-]
-
 const toast = useToast()
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,7 +64,7 @@ function getToolLabel(toolName: string, args: any) {
 const chat = new Chat({
   messages: messages.value,
   transport: new DefaultChatTransport({
-    api: '/api/search',
+    api: config.public.aiChat.apiPath,
   }),
   onError: (error: Error) => {
     const { message } = typeof error.message === 'string' && error.message[0] === '{' ? JSON.parse(error.message) : error
@@ -153,7 +141,7 @@ onMounted(() => {
               class="size-3.5 text-primary"
             />
           </div>
-          <span class="font-medium text-highlighted">Ask AI</span>
+          <span class="font-medium text-highlighted">{{ props.title }}</span>
         </div>
         <div class="flex items-center gap-1">
           <UTooltip
@@ -209,7 +197,7 @@ onMounted(() => {
                 class="*:first:mt-0 *:last:mb-0"
               />
 
-              <ChatToolCall
+              <AiChatToolCall
                 v-else-if="part.type === 'tool-invocation' || part.type === 'dynamic-tool'"
                 :text="getToolLabel((part as any).toolName, (part as any).args || (part as any).input)"
                 :is-loading="(part as any).state !== 'output-available'"
@@ -229,7 +217,7 @@ onMounted(() => {
 
         <div class="flex flex-col gap-5">
           <div
-            v-for="category in faqQuestions"
+            v-for="category in props.faqQuestions"
             :key="category.category"
             class="flex flex-col gap-1.5"
           >
@@ -259,7 +247,7 @@ onMounted(() => {
             :rows="1"
             autoresize
             variant="none"
-            placeholder="Ask me a question about Nuxt MCP..."
+            :placeholder="props.placeholder"
             class="flex-1 text-sm bg-transparent resize-none"
             :ui="{
               base: 'bg-transparent! ring-0! shadow-none!',
