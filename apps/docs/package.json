@@ -30,7 +30,7 @@
     "motion-v": "^1.7.4",
     "nuxt": "^4.2.2",
     "nuxt-studio": "1.0.0-alpha.4",
-    "shaders": "^2.2.11",
+    "shaders": "^2.2.12",
     "shiki-stream": "^0.1.3"
   },
   "devDependencies": {
