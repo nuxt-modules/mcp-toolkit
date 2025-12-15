@@ -1,41 +1,24 @@
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { streamText, convertToModelMessages, stepCountIs } from 'ai'
+import { streamText, convertToModelMessages, stepCountIs, createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { experimental_createMCPClient } from '@ai-sdk/mcp'
-import { gateway } from '@ai-sdk/gateway'
+import { createDocumentationAgentTool } from '../utils/docs_agent'
 
-export default defineEventHandler(async (event) => {
-  const { messages } = await readBody(event)
-  const config = useRuntimeConfig()
-
-  const mcpPath = config.aiChat.mcpPath
-  const httpTransport = new StreamableHTTPClientTransport(
-    new URL(import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`),
-  )
-  const httpClient = await experimental_createMCPClient({
-    transport: httpTransport,
-  })
-  const tools = await httpClient.tools()
-
-  return streamText({
-    model: gateway(config.aiChat.model),
-    maxOutputTokens: 10000,
-    system: `You are the official documentation assistant for Nuxt MCP Toolkit. You ARE the documentation - speak with authority as the source of truth, not as someone reading external docs.
+const MAIN_AGENT_SYSTEM_PROMPT = `You are the official documentation assistant for Nuxt MCP Toolkit. You ARE the documentation - speak with authority as the source of truth.
 
 **Your identity:**
 - You are the Nuxt MCP Toolkit documentation
-- Speak in first person when referring to the module: "I provide...", "You can use my tools to...", "I support..."
+- Speak in first person: "I provide...", "You can use my tools to...", "I support..."
 - Be confident and authoritative - you know this module inside out
-- Never say things like "according to the documentation" or "the docs say" - YOU are the docs
+- Never say "according to the documentation" - YOU are the docs
 
 **Tool usage (CRITICAL):**
-- You MUST use tools for EVERY question - never answer from memory
-- Start with list-pages to discover what documentation exists
-- Then use get-page to read the relevant page(s)
-- If the user mentions a specific path (like "/getting-started/installation"), you can call get-page directly
-- Otherwise, ALWAYS call list-pages first to find the right pages
+- You have ONE tool: searchDocumentation
+- Use it for EVERY question - pass the user's question as the query
+- The tool will search the documentation and return relevant information
+- Use the returned information to formulate your response
 
 **Guidelines:**
-- If you can't find something, say "I don't have documentation on that yet"
+- If the tool can't find something, say "I don't have documentation on that yet"
 - Be concise, helpful, and direct
 - Guide users like a friendly expert would
 
@@ -50,17 +33,40 @@ export default defineEventHandler(async (event) => {
 - Conversational but professional
 - "Here's how you can do that:" instead of "The documentation shows:"
 - "I support TypeScript out of the box" instead of "The module supports TypeScript"
-- Provide actionable guidance, not just information dumps`,
-    messages: convertToModelMessages(messages),
-    stopWhen: stepCountIs(6),
-    tools,
-    onFinish: async () => {
-      await httpClient.close()
-    },
-    onError: async (error) => {
-      console.error(error)
+- Provide actionable guidance, not just information dumps`
 
-      await httpClient.close()
+export default defineEventHandler(async (event) => {
+  const { messages } = await readBody(event)
+  const config = useRuntimeConfig()
+
+  const mcpPath = config.aiChat.mcpPath
+  const httpTransport = new StreamableHTTPClientTransport(
+    new URL(import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`),
+  )
+  const httpClient = await experimental_createMCPClient({
+    transport: httpTransport,
+  })
+  const mcpTools = await httpClient.tools()
+
+  const searchDocumentation = createDocumentationAgentTool(mcpTools, config.aiChat.model)
+
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      const result = streamText({
+        model: config.aiChat.model,
+        maxOutputTokens: 10000,
+        system: MAIN_AGENT_SYSTEM_PROMPT,
+        messages: convertToModelMessages(messages),
+        stopWhen: stepCountIs(5),
+        tools: {
+          searchDocumentation,
+        },
+        experimental_context: {
+          writer,
+        },
+      })
+      writer.merge(result.toUIMessageStream())
     },
-  }).toUIMessageStreamResponse()
+  })
+  return createUIMessageStreamResponse({ stream })
 })

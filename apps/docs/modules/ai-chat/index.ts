@@ -26,7 +26,7 @@ export default defineNuxtModule<AiChatModuleOptions>({
   defaults: {
     apiPath: '/api/ai-chat',
     mcpPath: '/mcp',
-    model: '  moonshotai/kimi-k2-turbo',
+    model: 'moonshotai/kimi-k2-turbo',
   },
   setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url)
