@@ -12,3 +12,10 @@ declare module '#nuxt-mcp/resources.mjs' {
 declare module '#nuxt-mcp/prompts.mjs' {
   export const prompts: McpPromptDefinition[]
 }
+
+declare module '#nuxt-mcp/transport.mjs' {
+  import type { McpTransportHandler } from './mcp/providers/types'
+
+  const handleMcpRequest: McpTransportHandler
+  export default handleMcpRequest
+}

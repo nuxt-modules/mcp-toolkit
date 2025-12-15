@@ -93,6 +93,16 @@ export default defineMcpTool({
 
 The tool will be automatically discovered and registered. No imports needed - all helpers are auto-imported!
 
+## ☁️ Cloudflare Workers
+
+For Cloudflare Workers/Pages deployment, install the [`agents`](https://developers.cloudflare.com/agents/model-context-protocol/mcp-handler-api/) package:
+
+```bash
+pnpm add agents
+```
+
+The module automatically detects Cloudflare presets and uses the native MCP handler.
+
 ## 📚 Documentation
 
 📖 **[Full Documentation →](https://mcp-toolkit.nuxt.dev)**

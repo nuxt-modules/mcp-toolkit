@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
@@ -158,6 +158,21 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.typescript.tsConfig ??= {}
     nuxt.options.nitro.typescript.tsConfig.include ??= []
     nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
+
+    // Generate transport template based on preset (cloudflare vs node)
+    let isCloudflare = false
+    nuxt.hook('nitro:config', (nitroConfig) => {
+      const preset = nitroConfig.preset || process.env.NITRO_PRESET || ''
+      isCloudflare = preset.includes('cloudflare')
+    })
+
+    addServerTemplate({
+      filename: '#nuxt-mcp/transport.mjs',
+      getContents: () => {
+        const provider = isCloudflare ? 'cloudflare' : 'node'
+        return `export { default } from '${resolver.resolve(`runtime/server/mcp/providers/${provider}`)}'`
+      },
+    })
 
     const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
 
