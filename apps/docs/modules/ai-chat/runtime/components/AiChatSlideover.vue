@@ -46,6 +46,12 @@ watch(messages, (newMessages) => {
 }, { deep: true })
 
 const toast = useToast()
+const lastMessage = computed(() => chat.messages.at(-1))
+const showThinking = computed(() =>
+  chat.status === 'streaming'
+  && lastMessage.value?.role === 'assistant'
+  && lastMessage.value?.parts?.length === 0,
+)
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getToolLabel(toolName: string, args: any) {
@@ -182,6 +188,9 @@ onMounted(() => {
       >
         <template #content="{ message }">
           <div class="flex flex-col gap-2">
+            <div v-if="showThinking && message.role === 'assistant'">
+              <TextShimmer text="Thinking..." />
+            </div>
             <template
               v-for="(part, index) in message.parts"
               :key="`${message.id}-${part.type}-${index}${'state' in part ? `-${part.state}` : ''}`"

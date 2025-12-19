@@ -142,3 +142,15 @@ Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.co
 </a>
 
 <!-- /automd -->
+
+<!-- automd:fetch url="gh:hugorcd/markdown/main/src/sponsors.md" -->
+
+## Sponsors
+
+<p align="center">
+  <a href="https://github.com/sponsors/HugoRCD">
+    <img src='https://cdn.jsdelivr.net/gh/hugorcd/static/sponsors.svg' alt="HugoRCD sponsors" />
+  </a>
+</p>
+
+<!-- /automd -->
