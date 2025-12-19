@@ -52,11 +52,12 @@ export default defineEventHandler(async (event) => {
 
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
+      const modelMessages = await convertToModelMessages(messages)
       const result = streamText({
         model: config.aiChat.model,
         maxOutputTokens: 10000,
         system: MAIN_AGENT_SYSTEM_PROMPT,
-        messages: convertToModelMessages(messages),
+        messages: modelMessages,
         stopWhen: stepCountIs(5),
         tools: {
           searchDocumentation,

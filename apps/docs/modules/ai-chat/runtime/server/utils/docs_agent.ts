@@ -28,7 +28,7 @@ export function createDocumentationAgentTool(mcpTools: Record<string, any>, mode
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const writer = (executionOptions as any)?.experimental_context?.writer
 
-      return generateText({
+      const result = await generateText({
         model: model,
         tools: mcpTools,
         system: SUB_AGENT_SYSTEM_PROMPT,
@@ -44,6 +44,8 @@ export function createDocumentationAgentTool(mcpTools: Record<string, any>, mode
         },
         prompt: query,
       })
+
+      return result.text
     },
   })
 }
