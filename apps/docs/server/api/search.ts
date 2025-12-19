@@ -14,6 +14,8 @@ export default defineEventHandler(async (event) => {
   })
   const tools = await httpClient.tools()
 
+  const modelMessages = await convertToModelMessages(messages)
+
   return streamText({
     model: gateway('moonshotai/kimi-k2-turbo'),
     maxOutputTokens: 10000,
@@ -49,7 +51,7 @@ export default defineEventHandler(async (event) => {
 - "Here's how you can do that:" instead of "The documentation shows:"
 - "I support TypeScript out of the box" instead of "The module supports TypeScript"
 - Provide actionable guidance, not just information dumps`,
-    messages: convertToModelMessages(messages),
+    messages: modelMessages,
     stopWhen: stepCountIs(6),
     tools,
     onFinish: async () => {
