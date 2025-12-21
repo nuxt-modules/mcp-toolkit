@@ -38,6 +38,7 @@ export default createMcpHandler((event: H3Event) => {
       tools: handlerDef.tools,
       resources: handlerDef.resources,
       prompts: handlerDef.prompts,
+      middleware: handlerDef.middleware,
     }
   }
 
@@ -52,6 +53,7 @@ export default createMcpHandler((event: H3Event) => {
       tools: defaultHandlerDef.tools ?? (tools as McpToolDefinition[]),
       resources: defaultHandlerDef.resources ?? (resources as McpResourceDefinition[]),
       prompts: defaultHandlerDef.prompts ?? (prompts as McpPromptDefinition[]),
+      middleware: defaultHandlerDef.middleware,
     }
   }
 

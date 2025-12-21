@@ -1,6 +1,6 @@
 {
   "name": "@nuxtjs/mcp-toolkit",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Create MCP servers directly in your Nuxt application. Define tools, resources, and prompts with a simple and intuitive API.",
   "repository": {
     "type": "git",
