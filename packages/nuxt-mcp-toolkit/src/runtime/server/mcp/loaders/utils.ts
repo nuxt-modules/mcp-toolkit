@@ -136,6 +136,38 @@ export function createTemplateContent(
   return `${imports}\n\nexport const ${type} = [\n  ${enrichedExports}\n]\n`
 }
 
+/**
+ * Find index files (index.ts, index.js, etc.) in the given paths
+ * Returns the file path from the highest priority layer (app overrides extended layers)
+ */
+export async function findIndexFile(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs']): Promise<string | null> {
+  if (paths.length === 0) {
+    return null
+  }
+
+  // Get layer directories - first one is the main app (highest priority)
+  const layerDirectories = getLayerDirectories()
+
+  // Check each layer in order (main app first)
+  for (const layer of layerDirectories) {
+    const indexPatterns = paths.flatMap(pathPattern =>
+      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/index.${ext}`)),
+    )
+
+    const indexFiles = await glob(indexPatterns, {
+      absolute: true,
+      onlyFiles: true,
+    })
+
+    if (indexFiles.length > 0) {
+      // Return the first found index file in this layer
+      return indexFiles[0]!
+    }
+  }
+
+  return null
+}
+
 export async function loadDefinitionFiles(
   paths: string[],
   options: {

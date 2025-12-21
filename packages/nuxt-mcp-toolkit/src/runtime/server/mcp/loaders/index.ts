@@ -2,6 +2,7 @@ import { addServerTemplate, logger } from '@nuxt/kit'
 import {
   createExcludePatterns,
   createTemplateContent,
+  findIndexFile,
   loadDefinitionFiles,
   toIdentifier,
   type LoadResult,
@@ -26,6 +27,7 @@ interface LoadResults {
   resources: LoadResult
   prompts: LoadResult
   handlers: LoadResult
+  hasDefaultHandler: boolean
 }
 
 async function loadMcpDefinitions(
@@ -78,9 +80,13 @@ async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
       excludePatterns,
       filter: (filePath) => {
         const relativePath = filePath.replace(/.*\/server\//, '')
+        const filename = filePath.split('/').pop()!
+        // Exclude index files (they are used as default handler override)
+        const isIndexFile = /^index\.(?:ts|js|mts|mjs)$/.test(filename)
         return !relativePath.includes('/tools/')
           && !relativePath.includes('/resources/')
           && !relativePath.includes('/prompts/')
+          && !isIndexFile
       },
     })
 
@@ -124,13 +130,47 @@ export async function loadPrompts(paths: string[]) {
 
 export { loadHandlers }
 
+/**
+ * Load the default handler from index.ts file if it exists
+ * This allows users to override the default /mcp handler configuration
+ */
+async function loadDefaultHandler(paths: string[] = []): Promise<boolean> {
+  try {
+    const indexFile = await findIndexFile(paths)
+
+    // Always generate the template file
+    addServerTemplate({
+      filename: '#nuxt-mcp/default-handler.mjs',
+      getContents: () => {
+        if (!indexFile) {
+          return `export const defaultHandler = null\n`
+        }
+        return `import handler from '${indexFile}'\nexport const defaultHandler = handler\n`
+      },
+    })
+
+    return indexFile !== null
+  }
+  catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    log.error(`Failed to load default handler: ${errorMessage}`)
+    // Generate empty template on error
+    addServerTemplate({
+      filename: '#nuxt-mcp/default-handler.mjs',
+      getContents: () => `export const defaultHandler = null\n`,
+    })
+    return false
+  }
+}
+
 export async function loadAllDefinitions(paths: LoaderPaths) {
   try {
-    const [tools, resources, prompts, handlers] = await Promise.all([
+    const [tools, resources, prompts, handlers, hasDefaultHandler] = await Promise.all([
       loadTools(paths.tools),
       loadResources(paths.resources),
       loadPrompts(paths.prompts),
       loadHandlers(paths.handlers ?? []),
+      loadDefaultHandler(paths.handlers ?? []),
     ])
 
     const results: LoadResults = {
@@ -138,6 +178,7 @@ export async function loadAllDefinitions(paths: LoaderPaths) {
       resources,
       prompts,
       handlers,
+      hasDefaultHandler,
     }
 
     return {
