@@ -5,21 +5,27 @@ import type { McpPromptDefinition } from './prompts'
 
 /**
  * MCP middleware function that runs before/after MCP request processing.
- * Receives the H3 event and a next function to call the MCP handler.
+ *
+ * If you don't call `next()`, it will be called automatically after your middleware.
+ * Call `next()` explicitly if you need to run code after the handler or modify the response.
  *
  * @param event - The H3 event object
  * @param next - Function to call the MCP handler
- * @returns The response or void
  *
- * @example
+ * @example Simple middleware (next() called automatically)
+ * ```ts
+ * middleware: async (event) => {
+ *   // Just set context - next() is called automatically
+ *   event.context.userId = 'user-123'
+ * }
+ * ```
+ *
+ * @example Full control middleware
  * ```ts
  * middleware: async (event, next) => {
- *   // Before: set context, validate auth, log, etc.
- *   event.context.userId = await validateToken(getHeader(event, 'authorization'))
- *
+ *   const start = Date.now()
  *   const response = await next()
- *
- *   // After: log duration, modify response, etc.
+ *   console.log(`Request took ${Date.now() - start}ms`)
  *   return response
  * }
  * ```
@@ -49,14 +55,21 @@ export interface McpHandlerOptions {
   browserRedirect?: string
   /**
    * Middleware to run before/after MCP request processing.
-   * Receives the H3 event and a next() function to call the handler.
+   * If you don't call next(), it will be called automatically.
    *
-   * @example
+   * @example Simple (next() auto-called)
+   * ```ts
+   * middleware: async (event) => {
+   *   event.context.userId = 'user-123'
+   * }
+   * ```
+   *
+   * @example Full control
    * ```ts
    * middleware: async (event, next) => {
-   *   console.log('Before MCP request')
+   *   const start = Date.now()
    *   const response = await next()
-   *   console.log('After MCP request')
+   *   console.log(`Took ${Date.now() - start}ms`)
    *   return response
    * }
    * ```
