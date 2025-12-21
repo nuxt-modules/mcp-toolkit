@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { sendRedirect, getHeader, defineEventHandler } from 'h3'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
+import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpMiddleware } from './definitions'
 import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp/transport.mjs'
@@ -16,6 +16,7 @@ export interface ResolvedMcpConfig {
   tools?: McpToolDefinition[]
   resources?: McpResourceDefinition[]
   prompts?: McpPromptDefinition[]
+  middleware?: McpMiddleware
 }
 
 export type CreateMcpHandlerConfig = ResolvedMcpConfig | ((event: H3Event) => ResolvedMcpConfig)
@@ -53,7 +54,16 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
       return sendRedirect(event, resolvedConfig.browserRedirect)
     }
 
-    const server = createMcpServer(resolvedConfig)
-    return handleMcpRequest(server, event)
+    const handler = async () => {
+      const server = createMcpServer(resolvedConfig)
+      return handleMcpRequest(server, event)
+    }
+
+    // If middleware is defined, wrap the handler with it
+    if (resolvedConfig.middleware) {
+      return resolvedConfig.middleware(event, handler)
+    }
+
+    return handler()
   })
 }

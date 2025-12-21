@@ -1,6 +1,33 @@
+import type { H3Event } from 'h3'
 import type { McpToolDefinition } from './tools'
 import type { McpResourceDefinition } from './resources'
 import type { McpPromptDefinition } from './prompts'
+
+/**
+ * MCP middleware function that runs before/after MCP request processing.
+ * Receives the H3 event and a next function to call the MCP handler.
+ *
+ * @param event - The H3 event object
+ * @param next - Function to call the MCP handler
+ * @returns The response or void
+ *
+ * @example
+ * ```ts
+ * middleware: async (event, next) => {
+ *   // Before: set context, validate auth, log, etc.
+ *   event.context.userId = await validateToken(getHeader(event, 'authorization'))
+ *
+ *   const response = await next()
+ *
+ *   // After: log duration, modify response, etc.
+ *   return response
+ * }
+ * ```
+ */
+export type McpMiddleware = (
+  event: H3Event,
+  next: () => Promise<Response | undefined>,
+) => Promise<Response | undefined> | Response | undefined
 
 /**
  * Options for defining a custom MCP handler
@@ -20,17 +47,33 @@ export interface McpHandlerOptions {
    */
   route?: string
   browserRedirect?: string
+  /**
+   * Middleware to run before/after MCP request processing.
+   * Receives the H3 event and a next() function to call the handler.
+   *
+   * @example
+   * ```ts
+   * middleware: async (event, next) => {
+   *   console.log('Before MCP request')
+   *   const response = await next()
+   *   console.log('After MCP request')
+   *   return response
+   * }
+   * ```
+   */
+  middleware?: McpMiddleware
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: Array<McpToolDefinition<any, any>>
   resources?: McpResourceDefinition[]
   prompts?: McpPromptDefinition[]
 }
 
-export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts'>> {
+export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware'>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Array<McpToolDefinition<any, any>>
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
+  middleware?: McpMiddleware
 }
 
 /**
