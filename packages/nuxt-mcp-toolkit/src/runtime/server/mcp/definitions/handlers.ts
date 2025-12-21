@@ -33,7 +33,7 @@ import type { McpPromptDefinition } from './prompts'
 export type McpMiddleware = (
   event: H3Event,
   next: () => Promise<Response | undefined>,
-) => Promise<Response | undefined> | Response | undefined
+) => Promise<Response | undefined | void> | Response | undefined | void
 
 /**
  * Options for defining a custom MCP handler

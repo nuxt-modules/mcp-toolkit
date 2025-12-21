@@ -7,6 +7,5 @@ export default defineMcpHandler({
   middleware: async (event) => {
     event.context.userId = 'user-123'
     event.context.middlewareExecuted = true
-    // No next() - will be called automatically
   },
 })
