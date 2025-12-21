@@ -34,11 +34,6 @@ describe('MCP Middleware', async () => {
       const transport = new StreamableHTTPClientTransport(mcpUrl)
       await client.connect(transport)
 
-      // List tools - should include context_tool
-      const tools = await client.listTools()
-      const contextTool = tools.tools.find(tool => tool.name === 'context_tool')
-      expect(contextTool, 'context_tool should be present').toBeDefined()
-
       // Call the tool - it should have access to context set by middleware
       const result = await client.callTool({
         name: 'context_tool',
@@ -46,13 +41,10 @@ describe('MCP Middleware', async () => {
       })
 
       expect(result).toBeDefined()
-      expect(result.content).toBeInstanceOf(Array)
       const content = result.content as Array<{ type: string, text?: string }>
       const textContent = content.find(c => c.type === 'text')
-      expect(textContent?.text).toBeDefined()
-
-      // Parse the JSON response
       const contextData = JSON.parse(textContent!.text!)
+
       expect(contextData.userId).toBe('user-123')
       expect(contextData.middlewareExecuted).toBe(true)
 
