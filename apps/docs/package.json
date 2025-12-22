@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@ai-sdk/mcp": "^0.0.12",
-    "@ai-sdk/vue": "3.0.0-beta.166",
+    "@ai-sdk/vue": "3.0.0-beta.167",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@rollup/plugin-yaml": "^4.1.2",
     "@vercel/analytics": "^1.6.1",
