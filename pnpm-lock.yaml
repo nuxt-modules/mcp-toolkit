@@ -27,8 +27,8 @@ importers:
         specifier: ^0.0.12
         version: 0.0.12(zod@4.2.1)
       '@ai-sdk/vue':
-        specifier: 3.0.0-beta.167
-        version: 3.0.0-beta.167(vue@3.5.26(typescript@5.9.3))(zod@4.2.1)
+        specifier: 3.0.0-beta.168
+        version: 3.0.0-beta.168(vue@3.5.26(typescript@5.9.3))(zod@4.2.1)
       '@nuxtjs/mcp-toolkit':
         specifier: workspace:*
         version: link:../../packages/nuxt-mcp-toolkit
@@ -42,8 +42,8 @@ importers:
         specifier: ^1.3.1
         version: 1.3.1(react@19.2.3)(vue-router@4.6.4(vue@3.5.26(typescript@5.9.3)))(vue@3.5.26(typescript@5.9.3))
       ai:
-        specifier: 6.0.0-beta.167
-        version: 6.0.0-beta.167(zod@4.2.1)
+        specifier: 6.0.0-beta.168
+        version: 6.0.0-beta.168(zod@4.2.1)
       better-sqlite3:
         specifier: ^12.5.0
         version: 12.5.0
@@ -74,7 +74,7 @@ importers:
         version: 9.39.2(jiti@2.6.1)
       evalite:
         specifier: ^1.0.0-beta.15
-        version: 1.0.0-beta.15(ai@6.0.0-beta.167(zod@4.2.1))(better-sqlite3@12.5.0)
+        version: 1.0.0-beta.15(ai@6.0.0-beta.168(zod@4.2.1))(better-sqlite3@12.5.0)
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.2)
@@ -203,8 +203,8 @@ importers:
 
 packages:
 
-  '@ai-sdk/gateway@2.0.0-beta.92':
-    resolution: {integrity: sha512-6faK/9c2/bMSTEZsbiZU+7sDMU7LKZYn1KJJ469uZ8JwRlEFN6mwfhWNZHplWMRAUO5h71hohYfxVk0IAX2GEQ==}
+  '@ai-sdk/gateway@2.0.0-beta.93':
+    resolution: {integrity: sha512-yN0QzF4esw2XePXk/wCpGm+9SU45kYAGCiYLheDlS3iL6D+91rtb8RXL/5+iFENYFwqWyxEIj4Qiktm9djPFAg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -235,8 +235,8 @@ packages:
     resolution: {integrity: sha512-JWYyFAWiGRkB8lkKykPPmV+s2fwjApvOQ7vuf2lNWuPJGOWIBXQy3SBrNxhgPZwkm8QquKuPtB+LILT2PisE4w==}
     engines: {node: '>=18'}
 
-  '@ai-sdk/vue@3.0.0-beta.167':
-    resolution: {integrity: sha512-fO/ILl+qK0uiWTeT0KzMv8GWVzaEjn9v1OvmUmMsE10ct3OkkuBNnO6IwT6z4oxpis3cdszIXGNcj5JxYMEXmg==}
+  '@ai-sdk/vue@3.0.0-beta.168':
+    resolution: {integrity: sha512-z5xZZwiQwROrkXLYrhfRZA2JumgXKturxcn91Usc6OdsG26F6OGHMOgwRFIRXD0H4qw6cWkj4xuh/UKBooPzsw==}
     engines: {node: '>=18'}
     peerDependencies:
       vue: ^3.3.4
@@ -3582,8 +3582,8 @@ packages:
       x402:
         optional: true
 
-  ai@6.0.0-beta.167:
-    resolution: {integrity: sha512-4kcWWOVdEBD0i09wc8wlJ6jgFx6K3dXt6HaYiNwd5Er5NdqYJF/rlLWXvXooIfl1bDZIClU9Y2fdfjbSOaEDkA==}
+  ai@6.0.0-beta.168:
+    resolution: {integrity: sha512-z0O616kF89nzSUg+xU0xpm7A8KTiKm5YK8++ErwAWFAaphWpDO3ZvogltDxCidVgcTx0v3uiyh1LCEjwfEc16g==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -8143,7 +8143,7 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/gateway@2.0.0-beta.92(zod@4.2.1)':
+  '@ai-sdk/gateway@2.0.0-beta.93(zod@4.2.1)':
     dependencies:
       '@ai-sdk/provider': 3.0.0-beta.32
       '@ai-sdk/provider-utils': 4.0.0-beta.59(zod@4.2.1)
@@ -8179,10 +8179,10 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/vue@3.0.0-beta.167(vue@3.5.26(typescript@5.9.3))(zod@4.2.1)':
+  '@ai-sdk/vue@3.0.0-beta.168(vue@3.5.26(typescript@5.9.3))(zod@4.2.1)':
     dependencies:
       '@ai-sdk/provider-utils': 4.0.0-beta.59(zod@4.2.1)
-      ai: 6.0.0-beta.167(zod@4.2.1)
+      ai: 6.0.0-beta.168(zod@4.2.1)
       swrv: 1.1.0(vue@3.5.26(typescript@5.9.3))
       vue: 3.5.26(typescript@5.9.3)
     transitivePeerDependencies:
@@ -11826,9 +11826,9 @@ snapshots:
       - supports-color
       - typescript
 
-  ai@6.0.0-beta.167(zod@4.2.1):
+  ai@6.0.0-beta.168(zod@4.2.1):
     dependencies:
-      '@ai-sdk/gateway': 2.0.0-beta.92(zod@4.2.1)
+      '@ai-sdk/gateway': 2.0.0-beta.93(zod@4.2.1)
       '@ai-sdk/provider': 3.0.0-beta.32
       '@ai-sdk/provider-utils': 4.0.0-beta.59(zod@4.2.1)
       '@opentelemetry/api': 1.9.0
@@ -13053,7 +13053,7 @@ snapshots:
 
   etag@1.8.1: {}
 
-  evalite@1.0.0-beta.15(ai@6.0.0-beta.167(zod@4.2.1))(better-sqlite3@12.5.0):
+  evalite@1.0.0-beta.15(ai@6.0.0-beta.168(zod@4.2.1))(better-sqlite3@12.5.0):
     dependencies:
       '@fastify/static': 8.3.0
       '@fastify/websocket': 11.2.0
@@ -13070,7 +13070,7 @@ snapshots:
       table: 6.9.0
       tinyrainbow: 3.0.3
     optionalDependencies:
-      ai: 6.0.0-beta.167(zod@4.2.1)
+      ai: 6.0.0-beta.168(zod@4.2.1)
       better-sqlite3: 12.5.0
     transitivePeerDependencies:
       - bufferutil
