@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
-    "@nuxt/ui": "^4.2.1",
+    "@nuxt/ui": "^4.3.0",
     "@nuxthub/core": "npm:@nuxthub/core-nightly@0.10.0-20251210-113644-c25eff9",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "better-auth": "^1.4.7",
@@ -30,7 +30,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.81",
+    "@iconify-json/lucide": "^1.2.82",
     "@iconify-json/simple-icons": "^1.2.63",
     "@nuxt/eslint-config": "^1.12.1",
     "drizzle-kit": "^0.31.8",
