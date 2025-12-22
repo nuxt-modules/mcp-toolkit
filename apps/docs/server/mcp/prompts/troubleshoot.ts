@@ -3,16 +3,28 @@ import { z } from 'zod'
 export default defineMcpPrompt({
   description: 'Help diagnose and fix common MCP server issues',
   inputSchema: {
-    issue: z.enum([
-      'auto-imports',
-      'endpoint-not-accessible',
-      'zod-validation',
-      'resource-cache',
-      'tool-not-found',
-      'general',
-    ]).describe('The type of issue you are experiencing'),
+    problem: z.string().describe('Describe the issue you are experiencing (e.g., "auto-imports not working", "cannot connect to MCP endpoint", "tool not being discovered")'),
   },
-  handler: async ({ issue }) => {
+  handler: async ({ problem }) => {
+    // Determine the issue type based on the problem description
+    const problemLower = problem.toLowerCase()
+    let issue: string = 'general'
+
+    if (problemLower.includes('auto-import') || problemLower.includes('definemcp') || problemLower.includes('not imported')) {
+      issue = 'auto-imports'
+    }
+    else if (problemLower.includes('endpoint') || problemLower.includes('connect') || problemLower.includes('accessible') || problemLower.includes('curl') || problemLower.includes('url')) {
+      issue = 'endpoint-not-accessible'
+    }
+    else if (problemLower.includes('zod') || problemLower.includes('validation') || problemLower.includes('schema') || problemLower.includes('type error')) {
+      issue = 'zod-validation'
+    }
+    else if (problemLower.includes('cache') || problemLower.includes('stale') || problemLower.includes('fresh')) {
+      issue = 'resource-cache'
+    }
+    else if (problemLower.includes('not found') || problemLower.includes('discover') || problemLower.includes('missing') || problemLower.includes('not showing')) {
+      issue = 'tool-not-found'
+    }
     const docsHeader = `## Documentation
 
 - **Official Documentation**: https://mcp-toolkit.nuxt.dev/

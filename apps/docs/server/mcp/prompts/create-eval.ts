@@ -3,22 +3,9 @@ import { z } from 'zod'
 export default defineMcpPrompt({
   description: 'Guide for creating MCP eval tests with Evalite to verify tool selection and behavior',
   inputSchema: {
-    toolNames: z.string().describe('Comma-separated list of tool names to test (e.g., "list-pages, get-page, calculate-bmi")'),
-    projectContext: z.string().optional().describe('Optional description of the project or MCP server context'),
+    purpose: z.string().describe('What tools or functionality to test (e.g., "test the documentation tools", "verify the BMI calculator", "test all my MCP tools")'),
   },
-  handler: async ({ toolNames, projectContext }) => {
-    const tools = toolNames.split(',').map(t => t.trim()).filter(Boolean)
-    const toolList = tools.map(t => `- \`${t}\``).join('\n')
-
-    const exampleTests = tools.map(tool => `    {
-      input: 'User prompt that should trigger ${tool}',
-      expected: [{ toolName: '${tool}' }],
-    }`).join(',\n')
-
-    const contextSection = projectContext
-      ? `\n## Project Context\n\n${projectContext}\n`
-      : ''
-
+  handler: async ({ purpose }) => {
     return {
       messages: [
         {
@@ -33,15 +20,21 @@ export default defineMcpPrompt({
 - **Evals Guide**: https://mcp-toolkit.nuxt.dev/raw/advanced/evals.md
 
 **IMPORTANT**: Before generating code, always:
-1. Understand the purpose of each tool being tested
-2. Create realistic user prompts that would naturally trigger each tool
-3. Include both simple and complex test scenarios
-4. Consider edge cases and multi-step workflows
-${contextSection}
+1. Identify the tools that need to be tested based on the purpose
+2. Understand the purpose of each tool being tested
+3. Create realistic user prompts that would naturally trigger each tool
+4. Include both simple and complex test scenarios
+5. Consider edge cases and multi-step workflows
+
 ---
 
-Create eval tests for the following MCP tools:
-${toolList}
+Create eval tests for: ${purpose}
+
+## Instructions
+
+1. First, identify which MCP tools need to be tested based on the purpose
+2. For each tool, create test cases with realistic user prompts
+3. Create the file at: \`test/mcp.eval.ts\`
 
 ## File Location
 

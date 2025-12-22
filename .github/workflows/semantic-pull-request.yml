@@ -25,6 +25,7 @@ jobs:
             docs
             playground
             module
+            deps
           types: |
             breaking
             feat

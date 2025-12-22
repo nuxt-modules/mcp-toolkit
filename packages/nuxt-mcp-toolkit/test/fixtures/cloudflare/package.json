@@ -1,0 +1,8 @@
+{
+  "name": "cloudflare-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "agents": "^0.2.31"
+  }
+}

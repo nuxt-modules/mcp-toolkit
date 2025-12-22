@@ -3,10 +3,9 @@ import { z } from 'zod'
 export default defineMcpPrompt({
   description: 'Guide for creating a new MCP tool with best practices',
   inputSchema: {
-    toolName: z.string().describe('Name of the tool to create (kebab-case)'),
-    toolDescription: z.string().describe('What the tool does'),
+    purpose: z.string().describe('What the tool should do (e.g., "calculate BMI from height and weight", "fetch weather data for a city")'),
   },
-  handler: async ({ toolName, toolDescription }) => {
+  handler: async ({ purpose }) => {
     return {
       messages: [
         {
@@ -23,18 +22,19 @@ export default defineMcpPrompt({
 - **Common Patterns**: https://mcp-toolkit.nuxt.dev/raw/examples/common-patterns.md
 
 **IMPORTANT**: Before generating code, always:
-1. Proofread and fix any spelling or grammar mistakes in the provided name and description
+1. Generate an appropriate tool name in kebab-case based on the purpose
 2. Use consistent naming conventions (kebab-case for filenames, camelCase for variables)
 3. Ensure descriptions are clear, professional, and grammatically correct
-4. Convert the corrected description to proper English if needed
+4. Proofread and fix any spelling or grammar mistakes in the provided purpose
 
 ---
 
-Create an MCP tool named "${toolName}" that ${toolDescription}.
+Create an MCP tool that: ${purpose}
 
-## File Location
+## Instructions
 
-Create the file at: \`server/mcp/tools/${toolName}.ts\`
+1. First, determine an appropriate tool name in kebab-case based on the purpose
+2. Create the file at: \`server/mcp/tools/<tool-name>.ts\`
 
 ## Tool Template
 
@@ -43,9 +43,7 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   // name and title are auto-generated from filename
-  // name: '${toolName}',
-  // title: '${toolName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}',
-  description: '${toolDescription}',
+  description: 'Clear description of what the tool does',
   inputSchema: {
     // Define input parameters with Zod
     // Always use .describe() for better AI understanding

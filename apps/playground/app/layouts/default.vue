@@ -61,16 +61,39 @@ const items = computed(() => ([
   <div class="min-h-dvh flex flex-col bg-default">
     <header class="sticky top-0 z-50 border-b border-default bg-elevated/80 backdrop-blur-sm">
       <div class="flex h-14 items-center justify-between px-4 lg:px-6">
-        <NuxtLink
-          to="/app"
-          class="flex items-center gap-2"
-        >
-          <UIcon
-            name="i-lucide-check-square"
-            class="size-6 text-primary"
-          />
-          <span class="font-semibold text-lg">Playground</span>
-        </NuxtLink>
+        <div class="flex items-center gap-6">
+          <NuxtLink
+            to="/app"
+            class="flex items-center gap-2"
+          >
+            <UIcon
+              name="i-lucide-check-square"
+              class="size-6 text-primary"
+            />
+            <span class="font-semibold text-lg">Playground</span>
+          </NuxtLink>
+
+          <nav class="flex items-center gap-1">
+            <UButton
+              to="/app"
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              icon="i-lucide-list-todo"
+              label="Todos"
+              :class="{ 'bg-elevated': $route.path === '/app' }"
+            />
+            <UButton
+              to="/app/api-keys"
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              icon="i-lucide-key"
+              label="API Keys"
+              :class="{ 'bg-elevated': $route.path === '/app/api-keys' }"
+            />
+          </nav>
+        </div>
 
         <UDropdownMenu
           :items

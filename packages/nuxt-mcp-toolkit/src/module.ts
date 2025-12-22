@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process'
-import { defineNuxtModule, addServerHandler, createResolver, addServerImports, addComponent, extendPages, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
@@ -63,6 +63,13 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: defaultMcpConfig,
   async setup(options, nuxt) {
+    // Cannot be used with `nuxt generate`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (nuxt.options.nitro.static || (nuxt.options as any)._generate) {
+      log.warn('@nuxtjs/mcp-toolkit is not compatible with `nuxt generate` as it needs a server to run.')
+      return
+    }
+
     const resolver = createResolver(import.meta.url)
 
     nuxt.options.runtimeConfig.mcp = defu(
@@ -174,6 +181,21 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.typescript.tsConfig ??= {}
     nuxt.options.nitro.typescript.tsConfig.include ??= []
     nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
+
+    // Generate transport template based on preset (cloudflare vs node)
+    let isCloudflare = false
+    nuxt.hook('nitro:config', (nitroConfig) => {
+      const preset = nitroConfig.preset || process.env.NITRO_PRESET || ''
+      isCloudflare = preset.includes('cloudflare')
+    })
+
+    addServerTemplate({
+      filename: '#nuxt-mcp/transport.mjs',
+      getContents: () => {
+        const provider = isCloudflare ? 'cloudflare' : 'node'
+        return `export { default } from '${resolver.resolve(`runtime/server/mcp/providers/${provider}`)}'`
+      },
+    })
 
     const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
     const mcpAuthPath = resolver.resolve('runtime/server/mcp/auth')

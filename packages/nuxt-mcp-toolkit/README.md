@@ -93,6 +93,16 @@ export default defineMcpTool({
 
 The tool will be automatically discovered and registered. No imports needed - all helpers are auto-imported!
 
+## ☁️ Cloudflare Workers
+
+For Cloudflare Workers/Pages deployment, install the [`agents`](https://developers.cloudflare.com/agents/model-context-protocol/mcp-handler-api/) package:
+
+```bash
+pnpm add agents
+```
+
+The module automatically detects Cloudflare presets and uses the native MCP handler.
+
 ## 📚 Documentation
 
 📖 **[Full Documentation →](https://mcp-toolkit.nuxt.dev)**
@@ -130,5 +140,17 @@ Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.co
 <a href="https://github.com/nuxt-modules/mcp-toolkit/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=nuxt-modules/mcp-toolkit" />
 </a>
+
+<!-- /automd -->
+
+<!-- automd:fetch url="gh:hugorcd/markdown/main/src/sponsors.md" -->
+
+## Sponsors
+
+<p align="center">
+  <a href="https://github.com/sponsors/HugoRCD">
+    <img src='https://cdn.jsdelivr.net/gh/hugorcd/static/sponsors.svg' alt="HugoRCD sponsors" />
+  </a>
+</p>
 
 <!-- /automd -->
