@@ -51,6 +51,10 @@ export default defineNuxtModule<AiChatModuleOptions>({
       name: 'AiChatToolCall',
       filePath: resolve('./runtime/components/AiChatToolCall.vue'),
     })
+    addComponent({
+      name: 'AiChatFloatingInput',
+      filePath: resolve('./runtime/components/AiChatFloatingInput.vue'),
+    })
 
     addImports([
       {

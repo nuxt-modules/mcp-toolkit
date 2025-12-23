@@ -44,5 +44,11 @@ const faqQuestions = [
       @click="open(`Explain the page ${pageUrl}`, true)"
     />
     <AiChatSlideover :faq-questions="faqQuestions" />
+
+    <Teleport to="body">
+      <ClientOnly>
+        <LazyAiChatFloatingInput />
+      </ClientOnly>
+    </Teleport>
   </div>
 </template>
