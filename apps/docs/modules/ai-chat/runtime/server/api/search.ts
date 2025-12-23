@@ -1,6 +1,5 @@
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { streamText, convertToModelMessages, stepCountIs, createUIMessageStream, createUIMessageStreamResponse } from 'ai'
-import { experimental_createMCPClient } from '@ai-sdk/mcp'
+import { createMCPClient } from '@ai-sdk/mcp'
 import { createDocumentationAgentTool } from '../utils/docs_agent'
 
 const MAIN_AGENT_SYSTEM_PROMPT = `You are the official documentation assistant for Nuxt MCP Toolkit. You ARE the documentation - speak with authority as the source of truth.
@@ -40,11 +39,11 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
   const mcpPath = config.aiChat.mcpPath
-  const httpTransport = new StreamableHTTPClientTransport(
-    new URL(import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`),
-  )
-  const httpClient = await experimental_createMCPClient({
-    transport: httpTransport,
+  const httpClient = await createMCPClient({
+    transport: {
+      type: 'http',
+      url: new URL(import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`),
+    },
   })
   const mcpTools = await httpClient.tools()
 
@@ -67,6 +66,9 @@ export default defineEventHandler(async (event) => {
         },
       })
       writer.merge(result.toUIMessageStream())
+    },
+    onFinish: async () => {
+      await httpClient.close()
     },
   })
   return createUIMessageStreamResponse({ stream })
