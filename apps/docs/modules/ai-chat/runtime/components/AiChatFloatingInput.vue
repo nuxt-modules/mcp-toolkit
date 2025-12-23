@@ -26,6 +26,12 @@ defineShortcuts({
       inputRef.value?.inputRef?.focus()
     },
   },
+  escape: {
+    usingInput: true,
+    handler: () => {
+      inputRef.value?.inputRef?.blur()
+    },
+  },
 })
 </script>
 
