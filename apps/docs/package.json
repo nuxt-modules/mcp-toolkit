@@ -18,7 +18,7 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^0.0.12",
+    "@ai-sdk/mcp": "^1.0.0",
     "@ai-sdk/vue": "3.0.1",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@rollup/plugin-yaml": "^4.1.2",
