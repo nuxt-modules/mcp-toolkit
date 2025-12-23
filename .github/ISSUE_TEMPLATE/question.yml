@@ -1,0 +1,66 @@
+name: "❓ Question"
+description: Ask a question about Nuxt MCP Toolkit
+title: "[question] "
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in Nuxt MCP Toolkit! Before asking, please check:
+        - [Documentation](https://mcp-toolkit.nuxt.dev)
+        - [Existing issues](https://github.com/nuxt-modules/mcp-toolkit/issues)
+        - [GitHub Discussions](https://github.com/nuxt-modules/mcp-toolkit/discussions)
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question Category
+      description: What area is your question about?
+      options:
+        - Installation / Setup
+        - Configuration
+        - Tools
+        - Resources
+        - Prompts
+        - MCP Protocol
+        - Integration with AI assistants
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: Describe your question in detail...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: |
+        Provide any relevant context that might help us answer your question.
+        - What are you trying to achieve?
+        - What have you already tried?
+      placeholder: |
+        I'm trying to...
+        I've already looked at...
+    validations:
+      required: false
+  - type: textarea
+    id: code
+    attributes:
+      label: Code Example
+      description: If applicable, share relevant code snippets
+      render: typescript
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Nuxt MCP Toolkit Version
+      description: Which version are you using?
+      placeholder: e.g., 0.1.0
+    validations:
+      required: false
+
