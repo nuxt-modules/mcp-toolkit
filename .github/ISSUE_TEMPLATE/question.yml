@@ -63,4 +63,3 @@ body:
       placeholder: e.g., 0.1.0
     validations:
       required: false
-
