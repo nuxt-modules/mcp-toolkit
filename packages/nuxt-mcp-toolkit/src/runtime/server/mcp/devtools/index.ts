@@ -175,6 +175,7 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env,
+      shell: true,
     })
 
     const childProcess = inspectorProcess
