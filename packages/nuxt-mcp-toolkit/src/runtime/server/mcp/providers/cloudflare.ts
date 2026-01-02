@@ -1,4 +1,3 @@
-import { createMcpHandler } from 'agents/mcp'
 import { toWebRequest } from 'h3'
 import { createMcpTransportHandler } from './types'
 
@@ -17,9 +16,12 @@ const fallbackCtx: ExecutionContext = {
   passThroughOnException: () => {},
 }
 
-export default createMcpTransportHandler((server, event) => {
+export default createMcpTransportHandler(async (server, event) => {
+  const { createMcpHandler } = await import('agents/mcp')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handler = createMcpHandler(server as any) // version mismatch
+  const handler = createMcpHandler(server as any, {
+    route: '', // allow any route
+  }) // version mismatch
   const request = toWebRequest(event)
   const cf = event.context.cloudflare as CloudflareContext | undefined
   return handler(request, cf?.env ?? {}, cf?.ctx ?? fallbackCtx)
