@@ -161,10 +161,12 @@ export default defineNuxtModule<ModuleOptions>({
 
     // Generate transport template based on preset (cloudflare vs node)
     let isCloudflare = false
-    nuxt.hook('nitro:config', (nitroConfig) => {
-      const preset = nitroConfig.preset || process.env.NITRO_PRESET || ''
-      isCloudflare = preset.includes('cloudflare')
-    })
+    if (!nuxt.options.dev) {
+      nuxt.hook('nitro:config', (nitroConfig) => {
+        const preset = nitroConfig.preset || process.env.NITRO_PRESET || ''
+        isCloudflare = preset.includes('cloudflare')
+      })
+    }
 
     addServerTemplate({
       filename: '#nuxt-mcp/transport.mjs',
