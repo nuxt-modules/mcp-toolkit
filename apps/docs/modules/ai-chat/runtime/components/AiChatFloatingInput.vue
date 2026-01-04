@@ -73,7 +73,6 @@ defineShortcuts({
                 color="primary"
                 size="xs"
                 :disabled="!input.trim()"
-                class="rounded-lg"
               />
             </div>
           </template>

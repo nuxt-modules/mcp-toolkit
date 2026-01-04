@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   const httpClient = await createMCPClient({
     transport: {
       type: 'http',
-      url: new URL(import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`),
+      url: import.meta.dev ? `http://localhost:3000${mcpPath}` : `${getRequestURL(event).origin}${mcpPath}`,
     },
   })
   const mcpTools = await httpClient.tools()
