@@ -29,16 +29,6 @@ export default defineNuxtModule<AiChatModuleOptions>({
     model: 'moonshotai/kimi-k2-turbo',
   },
   setup(options, nuxt) {
-    const hasApiKey = !!(
-      process.env.AI_GATEWAY_API_KEY
-      || process.env.OPENAI_API_KEY
-    )
-
-    if (!hasApiKey) {
-      console.info('[ai-chat] Module disabled: no AI_GATEWAY_API_KEY or OPENAI_API_KEY found')
-      return
-    }
-
     const { resolve } = createResolver(import.meta.url)
 
     nuxt.options.runtimeConfig.public.aiChat = {
