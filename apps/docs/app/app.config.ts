@@ -7,6 +7,34 @@ export default defineAppConfig({
   github: {
     rootDir: 'apps/docs',
   },
+  aiChat: {
+    faqQuestions: [
+      {
+        category: 'Getting Started',
+        items: [
+          'What is Nuxt MCP Toolkit?',
+          'How do I install the module?',
+          'How do I use the DevTools?',
+        ],
+      },
+      {
+        category: 'Core Features',
+        items: [
+          'How do I create a new MCP Tool?',
+          'How do I add an MCP Resource?',
+          'How do I configure Prompts?',
+        ],
+      },
+      {
+        category: 'Advanced',
+        items: [
+          'Can I expose my API routes as MCP Tools?',
+          'Does it support TypeScript?',
+          'How do I add a custom MCP server?',
+        ],
+      },
+    ],
+  },
   ui: {
     colors: {
       neutral: 'zinc',
