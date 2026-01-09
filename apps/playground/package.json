@@ -30,7 +30,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.82",
+    "@iconify-json/lucide": "^1.2.83",
     "@iconify-json/simple-icons": "^1.2.65",
     "@nuxt/eslint-config": "^1.12.1",
     "drizzle-kit": "^0.31.8",
