@@ -24,7 +24,7 @@ importers:
   apps/docs:
     dependencies:
       '@ai-sdk/mcp':
-        specifier: ^1.0.3
+        specifier: ^1.0.5
         version: 1.0.5(zod@4.3.5)
       '@nuxtjs/mcp-toolkit':
         specifier: workspace:*
@@ -45,7 +45,7 @@ importers:
         specifier: https://pkg.pr.new/docus@bc926af
         version: https://pkg.pr.new/docus@bc926af(203b343996d16147be1a2d6f1f8c110b)
       motion-v:
-        specifier: ^1.7.5
+        specifier: ^1.7.6
         version: 1.7.6(@vueuse/core@14.1.0(vue@3.5.26(typescript@5.9.3)))(react@19.2.3)(vue@3.5.26(typescript@5.9.3))
       nuxt:
         specifier: ^4.2.2
@@ -54,7 +54,7 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(db0@0.3.4(@electric-sql/pglite@0.3.14)(better-sqlite3@12.5.0)(drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260108.0)(@electric-sql/pglite@0.3.14)(@opentelemetry/api@1.9.0)(better-sqlite3@12.5.0)(kysely@0.28.9)))(ioredis@5.9.0)(magicast@0.5.1)(vue@3.5.26(typescript@5.9.3))
       shaders:
-        specifier: ^2.2.40
+        specifier: ^2.2.41
         version: 2.2.41
     devDependencies:
       '@nuxt/eslint-config':
@@ -65,7 +65,7 @@ importers:
         version: 9.39.2(jiti@2.6.1)
       evalite:
         specifier: ^1.0.0-beta.15
-        version: 1.0.0-beta.15(ai@6.0.20(zod@4.3.5))(better-sqlite3@12.5.0)
+        version: 1.0.0-beta.15(ai@6.0.23(zod@4.3.5))(better-sqlite3@12.5.0)
       vitest:
         specifier: ^4.0.16
         version: 4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.2)
@@ -98,7 +98,7 @@ importers:
         version: 4.3.5
     devDependencies:
       '@iconify-json/lucide':
-        specifier: ^1.2.82
+        specifier: ^1.2.83
         version: 1.2.83
       '@iconify-json/simple-icons':
         specifier: ^1.2.65
@@ -119,14 +119,14 @@ importers:
         specifier: ^0.11.0
         version: 0.11.0
       '@modelcontextprotocol/sdk':
-        specifier: ^1.25.1
+        specifier: ^1.25.2
         version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.3.5)
       '@nuxt/kit':
         specifier: ^4.2.2
         version: 4.2.2(magicast@0.5.1)
       agents:
         specifier: '>=0.3.3'
-        version: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
+        version: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
       automd:
         specifier: ^0.4.2
         version: 0.4.2(magicast@0.5.1)
@@ -168,7 +168,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       '@nuxt/test-utils':
-        specifier: ^3.22.0
+        specifier: ^3.23.0
         version: 3.23.0(magicast@0.5.1)(playwright-core@1.57.0)(typescript@5.9.3)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(yaml@2.8.2))
       '@types/node':
         specifier: latest
@@ -3601,8 +3601,8 @@ packages:
       x402:
         optional: true
 
-  ai@6.0.20:
-    resolution: {integrity: sha512-1KaQkSJoVHaAKFBKpKGAMduNTI0OAG/RQssoUIHKNOXhdVroQVhOzdVY+wiW8BNQusODMBMSgsxnyveuy3AX0A==}
+  ai@6.0.23:
+    resolution: {integrity: sha512-IV8hqp6sQvZ0XVlu8bCnFlwG7+2d40ff26RZ1k4yw/zVuk2F6SXlONURtTo9vwPOPYeF7auXvyPA+dMDoepWxg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -8546,17 +8546,17 @@ snapshots:
       picocolors: 1.1.1
       sisteransi: 1.0.5
 
-  '@cloudflare/ai-chat@0.0.3(agents@0.3.3)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5)':
+  '@cloudflare/ai-chat@0.0.3(agents@0.3.3)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5)':
     dependencies:
-      agents: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
-      ai: 6.0.20(zod@4.3.5)
+      agents: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
+      ai: 6.0.23(zod@4.3.5)
       react: 19.2.3
       zod: 4.3.5
 
-  '@cloudflare/codemode@0.0.3(agents@0.3.3)(ai@6.0.20(zod@4.3.5))(typescript@5.9.3)(zod@4.3.5)':
+  '@cloudflare/codemode@0.0.3(agents@0.3.3)(ai@6.0.23(zod@4.3.5))(typescript@5.9.3)(zod@4.3.5)':
     dependencies:
-      agents: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
-      ai: 6.0.20(zod@4.3.5)
+      agents: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
+      ai: 6.0.23(zod@4.3.5)
       zod: 4.3.5
       zod-to-ts: 2.0.0(typescript@5.9.3)(zod@4.3.5)
     transitivePeerDependencies:
@@ -10275,7 +10275,7 @@ snapshots:
       tinyglobby: 0.2.15
       zod: 4.3.5
     optionalDependencies:
-      agents: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
+      agents: 0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - hono
@@ -11939,13 +11939,13 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  agents@0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5):
+  agents@0.3.3(@cloudflare/ai-chat@0.0.3)(@cloudflare/codemode@0.0.3)(@cloudflare/workers-types@4.20260108.0)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5):
     dependencies:
       '@cfworker/json-schema': 4.1.1
-      '@cloudflare/ai-chat': 0.0.3(agents@0.3.3)(ai@6.0.20(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
-      '@cloudflare/codemode': 0.0.3(agents@0.3.3)(ai@6.0.20(zod@4.3.5))(typescript@5.9.3)(zod@4.3.5)
+      '@cloudflare/ai-chat': 0.0.3(agents@0.3.3)(ai@6.0.23(zod@4.3.5))(react@19.2.3)(zod@4.3.5)
+      '@cloudflare/codemode': 0.0.3(agents@0.3.3)(ai@6.0.23(zod@4.3.5))(typescript@5.9.3)(zod@4.3.5)
       '@modelcontextprotocol/sdk': 1.23.0(@cfworker/json-schema@4.1.1)(zod@4.3.5)
-      ai: 6.0.20(zod@4.3.5)
+      ai: 6.0.23(zod@4.3.5)
       cron-schedule: 6.0.0
       json-schema: 0.4.0
       json-schema-to-typescript: 15.0.4
@@ -11960,7 +11960,7 @@ snapshots:
       - '@cloudflare/workers-types'
       - supports-color
 
-  ai@6.0.20(zod@4.3.5):
+  ai@6.0.23(zod@4.3.5):
     dependencies:
       '@ai-sdk/gateway': 3.0.10(zod@4.3.5)
       '@ai-sdk/provider': 3.0.2
@@ -13221,7 +13221,7 @@ snapshots:
 
   etag@1.8.1: {}
 
-  evalite@1.0.0-beta.15(ai@6.0.20(zod@4.3.5))(better-sqlite3@12.5.0):
+  evalite@1.0.0-beta.15(ai@6.0.23(zod@4.3.5))(better-sqlite3@12.5.0):
     dependencies:
       '@fastify/static': 8.3.0
       '@fastify/websocket': 11.2.0
@@ -13238,7 +13238,7 @@ snapshots:
       table: 6.9.0
       tinyrainbow: 3.0.3
     optionalDependencies:
-      ai: 6.0.20(zod@4.3.5)
+      ai: 6.0.23(zod@4.3.5)
       better-sqlite3: 12.5.0
     transitivePeerDependencies:
       - bufferutil

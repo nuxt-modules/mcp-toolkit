@@ -18,17 +18,17 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.3",
+    "@ai-sdk/mcp": "^1.0.5",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@rollup/plugin-yaml": "^4.1.2",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
     "better-sqlite3": "^12.5.0",
     "docus": "https://pkg.pr.new/docus@bc926af",
-    "motion-v": "^1.7.5",
+    "motion-v": "^1.7.6",
     "nuxt": "^4.2.2",
     "nuxt-studio": "^1.0.0",
-    "shaders": "^2.2.40"
+    "shaders": "^2.2.41"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.12.1",
