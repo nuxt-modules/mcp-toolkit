@@ -12,6 +12,5 @@ const route = useRoute()
       trailing
       icon="i-lucide-arrow-right"
     />
-    <AiChat v-else />
   </div>
 </template>

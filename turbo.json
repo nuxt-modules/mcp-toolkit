@@ -12,6 +12,7 @@
         ".nuxt/**"
       ],
       "env": [
+        "AI_GATEWAY_API_KEY",
         "STUDIO_GITHUB_CLIENT_ID",
         "STUDIO_GITHUB_CLIENT_SECRET"
       ]
@@ -20,6 +21,7 @@
       "cache": false,
       "persistent": true,
       "env": [
+        "AI_GATEWAY_API_KEY",
         "STUDIO_GITHUB_CLIENT_ID",
         "STUDIO_GITHUB_CLIENT_SECRET"
       ]
