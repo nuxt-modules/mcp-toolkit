@@ -25,6 +25,11 @@ export default defineNuxtConfig({
     plugins: [
       yaml(),
     ],
+    optimizeDeps: {
+      include: [
+        '@vercel/oidc',
+      ],
+    },
   },
 
   icon: {
