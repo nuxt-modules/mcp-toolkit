@@ -1,10 +1,10 @@
-import { execSync } from 'node:child_process'
 import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
+import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
 import { name, version } from '../package.json'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
@@ -137,11 +137,20 @@ export default defineNuxtModule<ModuleOptions>({
 
       const ide = detectIDE()
       if (ide) {
-        const ideName = ide === 'cursor' ? 'Cursor' : 'VS Code'
-        const mcpName = `local-${(options.name || 'mcp-server').toLowerCase().replace(/\s+/g, '-')}`
         const baseUrl = listener.url.replace(/\/$/, '')
-        const deeplinkUrl = `${baseUrl}${options.route}/deeplink?ide=${ide}&name=${encodeURIComponent(mcpName)}`
-        log.success(`\`${options.route}\` enabled with ${mcpSummary} · ${terminalLink(`Install local MCP in ${ideName}`, deeplinkUrl)}`)
+        const mcpUrl = `${baseUrl}${options.route}`
+
+        // Check if the MCP server is already installed
+        const installedConfig = findInstalledMCPConfig(ide, nuxt.options.rootDir, mcpUrl)
+        if (installedConfig) {
+          log.success(`\`${options.route}\` enabled with ${mcpSummary} · MCP server already installed in \`${installedConfig.displayPath}\``)
+          return
+        }
+
+        const ideName = IDE_CONFIGS[ide].name
+        const deeplinkUrl = generateDeeplinkUrl(baseUrl, options.route!, ide, options.name || 'mcp-server')
+        log.info(`${ideName} detected. ${terminalLink('Install Nuxt MCP server', deeplinkUrl)}`)
+        log.success(`\`${options.route}\` enabled with ${mcpSummary}`)
       }
       else {
         log.success(`\`${options.route}\` enabled with ${mcpSummary}`)
@@ -207,33 +216,3 @@ export default defineNuxtModule<ModuleOptions>({
     addDevToolsCustomTabs(nuxt, options)
   },
 })
-
-function terminalLink(text: string, url: string): string {
-  return `\x1B]8;;${url}\x07${text}\x1B]8;;\x07`
-}
-
-function detectIDE(): 'cursor' | 'vscode' | null {
-  const env = process.env
-  if (env.__CFBundleIdentifier === 'com.todesktop.230313mzl4w4u92') return 'cursor'
-  if (env.__CFBundleIdentifier === 'com.microsoft.VSCode') return 'vscode'
-  if (env.CURSOR_TRACE_ID) return 'cursor'
-  const ipc = env.VSCODE_IPC_HOOK || ''
-  if (ipc.includes('/Cursor/')) return 'cursor'
-  if (ipc.includes('/Code/')) return 'vscode'
-
-  // Fallback: walk up the process tree to find Cursor or VS Code
-  try {
-    let pid = process.ppid
-    for (let i = 0; i < 10 && pid > 1; i++) {
-      const name = execSync(`ps -o comm= -p ${pid}`, { stdio: ['pipe', 'pipe', 'ignore'] }).toString().toLowerCase()
-      if (name.includes('cursor')) return 'cursor'
-      if (name.includes('code helper') || name.includes('code.app')) return 'vscode'
-      pid = Number.parseInt(execSync(`ps -o ppid= -p ${pid}`, { stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim())
-    }
-  }
-  catch {
-    // Process tree detection failed, continue with null
-  }
-
-  return null
-}
