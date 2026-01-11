@@ -57,7 +57,7 @@
   },
   "peerDependencies": {
     "zod": "^4.1.13",
-    "agents": ">=0.3.3"
+    "agents": ">=0.3.4"
   },
   "peerDependenciesMeta": {
     "zod": {
