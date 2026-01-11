@@ -8,7 +8,7 @@
   },
   "author": "Hugo Richard <hugo.richard@vercel.com>",
   "license": "MIT",
-  "packageManager": "pnpm@10.27.0",
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
     "dev": "turbo dev --filter=@nuxtjs/mcp-toolkit-playground",
     "dev:prepare": "turbo dev:prepare",
