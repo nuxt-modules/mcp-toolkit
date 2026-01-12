@@ -78,7 +78,7 @@
     "eslint": "^9.39.2",
     "nuxt": "^4.2.2",
     "typescript": "~5.9.3",
-    "vitest": "^4.0.16",
+    "vitest": "^4.0.17",
     "vue-tsc": "^3.2.2"
   },
   "publishConfig": {
