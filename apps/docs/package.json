@@ -27,7 +27,7 @@
     "docus": "https://pkg.pr.new/docus@bc926af",
     "motion-v": "^1.9.0",
     "nuxt": "^4.2.2",
-    "nuxt-studio": "^1.1.0",
+    "nuxt-studio": "^1.1.1",
     "shaders": "^2.2.45"
   },
   "devDependencies": {
