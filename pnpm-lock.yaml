@@ -102,7 +102,7 @@ importers:
         version: 1.2.86
       '@iconify-json/simple-icons':
         specifier: ^1.2.66
-        version: 1.2.66
+        version: 1.2.67
       '@nuxt/eslint-config':
         specifier: ^1.12.1
         version: 1.12.1(@typescript-eslint/utils@8.52.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.26)(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
@@ -1062,8 +1062,8 @@ packages:
   '@iconify-json/lucide@1.2.86':
     resolution: {integrity: sha512-W/Jz7/gGOkI9u43r+UHmQtZtcyw2YLvMwiHa01WV6V4DYltrPNXiD+bCa+djV8LZB1uwF8CiympOMIbgiQ74nA==}
 
-  '@iconify-json/simple-icons@1.2.66':
-    resolution: {integrity: sha512-D1OnnXwiQXFkVMw5M+Bt8mPsXeMkQyGmMdrmN7lsQlKMUkfLOp6JWhnUJ92po51WXT046aF/zzqSmkKqg08p4Q==}
+  '@iconify-json/simple-icons@1.2.67':
+    resolution: {integrity: sha512-RGJRwlxyup54L1UDAjCshy3ckX5zcvYIU74YLSnUgHGvqh6B4mvksbGNHAIEp7dZQ6cM13RZVT5KC07CmnFNew==}
 
   '@iconify-json/vscode-icons@1.2.38':
     resolution: {integrity: sha512-GzfsGvZGiPmdtrSOC/37gtVpZrE4NTKsVy4/sePglzueqYv+AQbwd43OpyeZYiQEAez1UCCWmgTJbJLfBgNypw==}
@@ -9026,7 +9026,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/simple-icons@1.2.66':
+  '@iconify-json/simple-icons@1.2.67':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -12681,7 +12681,7 @@ snapshots:
       '@ai-sdk/mcp': 1.0.10(zod@4.3.5)
       '@ai-sdk/vue': 3.0.6(vue@3.5.26(typescript@5.9.3))(zod@4.3.5)
       '@iconify-json/lucide': 1.2.86
-      '@iconify-json/simple-icons': 1.2.66
+      '@iconify-json/simple-icons': 1.2.67
       '@iconify-json/vscode-icons': 1.2.38
       '@nuxt/content': 3.10.0(@electric-sql/pglite@0.3.15)(better-sqlite3@12.6.2)(drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260111.0)(@electric-sql/pglite@0.3.15)(@opentelemetry/api@1.9.0)(better-sqlite3@12.6.2)(kysely@0.28.9))(magicast@0.5.1)
       '@nuxt/image': 2.0.0(db0@0.3.4(@electric-sql/pglite@0.3.15)(better-sqlite3@12.6.2)(drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260111.0)(@electric-sql/pglite@0.3.15)(@opentelemetry/api@1.9.0)(better-sqlite3@12.6.2)(kysely@0.28.9)))(ioredis@5.9.1)(magicast@0.5.1)
