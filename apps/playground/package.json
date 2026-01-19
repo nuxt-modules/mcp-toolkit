@@ -20,17 +20,17 @@
     "db:migrate": "nuxt db migrate"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.3.14",
+    "@electric-sql/pglite": "^0.3.15",
     "@nuxt/ui": "^4.3.0",
     "@nuxthub/core": "npm:@nuxthub/core-nightly@0.10.0-20251210-113644-c25eff9",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "better-auth": "^1.4.12",
+    "better-auth": "^1.4.15",
     "drizzle-orm": "^0.45.1",
     "nuxt": "^4.2.2",
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.84",
+    "@iconify-json/lucide": "^1.2.86",
     "@iconify-json/simple-icons": "^1.2.66",
     "@nuxt/eslint-config": "^1.12.1",
     "drizzle-kit": "^0.31.8",
