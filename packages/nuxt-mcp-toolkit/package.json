@@ -17,6 +17,10 @@
     ".": {
       "types": "./dist/types.d.mts",
       "import": "./dist/module.mjs"
+    },
+    "./server": {
+      "types": "./dist/runtime/server/mcp/definitions/index.d.ts",
+      "import": "./dist/runtime/server/mcp/definitions/index.js"
     }
   },
   "main": "./dist/module.mjs",
@@ -24,6 +28,9 @@
     "*": {
       ".": [
         "./dist/types.d.mts"
+      ],
+      "server": [
+        "./dist/runtime/server/mcp/definitions/index.d.ts"
       ]
     }
   },
