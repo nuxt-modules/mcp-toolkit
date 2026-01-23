@@ -100,6 +100,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     nuxt.hook('modules:done', async () => {
       try {
+        // @ts-expect-error - Custom hook defined in runtime/server/types/hooks.ts
         await nuxt.callHook('mcp:definitions:paths', paths)
 
         const result = await loadAllDefinitions(paths)

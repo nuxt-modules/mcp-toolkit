@@ -363,6 +363,7 @@ function stopMcpInspector() {
 }
 
 export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
+  // @ts-expect-error - Devtools hook from @nuxt/devtools-kit
   nuxt.hook('devtools:customTabs', (tabs) => {
     if (!options.enabled) {
       return
