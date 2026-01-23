@@ -52,7 +52,7 @@
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
-    "@nuxt/kit": "^4.2.2",
+    "@nuxt/kit": "^4.3.0",
     "automd": "^0.4.2",
     "chokidar": "^5.0.0",
     "defu": "^6.1.4",
@@ -78,12 +78,12 @@
     "@nuxt/devtools": "^3.1.1",
     "@nuxt/eslint-config": "^1.12.1",
     "@nuxt/module-builder": "^1.0.2",
-    "@nuxt/schema": "^4.2.2",
+    "@nuxt/schema": "^4.3.0",
     "@nuxt/test-utils": "^3.23.0",
     "@types/node": "latest",
     "changelogen": "^0.6.2",
     "eslint": "^9.39.2",
-    "nuxt": "^4.2.2",
+    "nuxt": "^4.3.0",
     "typescript": "~5.9.3",
     "vitest": "^4.0.17",
     "vue-tsc": "^3.2.2"
