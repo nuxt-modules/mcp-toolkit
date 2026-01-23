@@ -1,50 +1,40 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://turborepo.dev/schema.v2.json",
+  "globalEnv": [
+    "AI_GATEWAY_API_KEY",
+    "STUDIO_GITHUB_CLIENT_ID",
+    "STUDIO_GITHUB_CLIENT_SECRET"
+  ],
+  "globalDependencies": [".env"],
   "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        ".vercel/output/**",
-        "dist/**",
-        ".output/**",
-        ".nuxt/**"
-      ],
-      "env": [
-        "AI_GATEWAY_API_KEY",
-        "STUDIO_GITHUB_CLIENT_ID",
-        "STUDIO_GITHUB_CLIENT_SECRET"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".vercel/output/**", "dist/**", ".output/**", ".nuxt/**"]
     },
     "dev": {
+      "dependsOn": ["dev:prepare"],
       "cache": false,
-      "persistent": true,
-      "env": [
-        "AI_GATEWAY_API_KEY",
-        "STUDIO_GITHUB_CLIENT_ID",
-        "STUDIO_GITHUB_CLIENT_SECRET"
-      ]
+      "persistent": true
     },
     "dev:prepare": {
-      "cache": false,
-      "outputs": [
-        "dist/**",
-        ".output/**",
-        ".nuxt/**"
-      ]
+      "dependsOn": ["^dev:prepare"],
+      "outputs": ["dist/**", ".output/**", ".nuxt/**"]
     },
     "lint": {
-      "cache": true
+      "dependsOn": ["transit"]
     },
     "lint:fix": {
       "cache": false
     },
     "test": {
-      "cache": true
+      "dependsOn": ["build"]
     },
     "typecheck": {
-      "cache": true
+      "dependsOn": ["transit"]
     },
     "eval": {
       "cache": false
