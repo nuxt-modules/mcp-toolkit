@@ -1,4 +1,5 @@
 import { logger } from '@nuxt/kit'
+import { addCustomTab } from '@nuxt/devtools-kit'
 import type { Nuxt } from 'nuxt/schema'
 import type { ModuleOptions } from '../../../../module'
 import { spawn } from 'node:child_process'
@@ -363,48 +364,46 @@ function stopMcpInspector() {
 }
 
 export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
-  nuxt.hook('devtools:customTabs', (tabs) => {
-    if (!options.enabled) {
-      return
-    }
+  if (!options.enabled) {
+    return
+  }
 
-    tabs.push({
-      category: 'server',
-      name: 'mcp-inspector',
-      title: 'MCP Inspector',
-      icon: 'i-lucide-circuit-board',
-      view: isReady && inspectorUrl
-        ? {
-            type: 'iframe',
-            src: inspectorUrl,
-          }
-        : {
-            type: 'launch',
-            description: 'Launch MCP Inspector to test/debug your MCP server',
-            actions: [
-              {
-                label: promise ? 'Starting...' : 'Launch Inspector',
-                pending: !!promise,
-                handle() {
-                  promise = promise || launchMcpInspector(nuxt, options).finally(() => {
-                    promise = null
-                  })
-                  return promise
-                },
+  addCustomTab(() => ({
+    category: 'server',
+    name: 'mcp-inspector',
+    title: 'MCP Inspector',
+    icon: 'i-lucide-circuit-board',
+    view: isReady && inspectorUrl
+      ? {
+          type: 'iframe',
+          src: inspectorUrl,
+        }
+      : {
+          type: 'launch',
+          description: 'Launch MCP Inspector to test/debug your MCP server',
+          actions: [
+            {
+              label: promise ? 'Starting...' : 'Launch Inspector',
+              pending: !!promise,
+              handle() {
+                promise = promise || launchMcpInspector(nuxt, options).finally(() => {
+                  promise = null
+                })
+                return promise
               },
-              ...(inspectorProcess
-                ? [{
-                    label: 'Stop Inspector',
-                    handle() {
-                      stopMcpInspector()
-                      promise = null
-                    },
-                  }]
-                : []),
-            ],
-          },
-    })
-  })
+            },
+            ...(inspectorProcess
+              ? [{
+                  label: 'Stop Inspector',
+                  handle() {
+                    stopMcpInspector()
+                    promise = null
+                  },
+                }]
+              : []),
+          ],
+        },
+  }), nuxt)
 
   nuxt.hook('close', () => {
     stopMcpInspector()
