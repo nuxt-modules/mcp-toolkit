@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type { McpToolDefinition } from './tools'
 import type { McpResourceDefinition } from './resources'
 import type { McpPromptDefinition } from './prompts'
+import type { McpAppDefinition } from './apps'
 
 /**
  * MCP middleware function that runs before/after MCP request processing.
@@ -79,13 +80,17 @@ export interface McpHandlerOptions {
   tools?: Array<McpToolDefinition<any, any>>
   resources?: McpResourceDefinition[]
   prompts?: McpPromptDefinition[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apps?: Array<McpAppDefinition<any, any>>
 }
 
-export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware'>> {
+export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'apps' | 'middleware'>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Array<McpToolDefinition<any, any>>
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apps: Array<McpAppDefinition<any, any>>
   middleware?: McpMiddleware
 }
 

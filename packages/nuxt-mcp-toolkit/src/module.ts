@@ -93,6 +93,7 @@ export default defineNuxtModule<ModuleOptions>({
       tools: [`${mcpDir}/tools`],
       resources: [`${mcpDir}/resources`],
       prompts: [`${mcpDir}/prompts`],
+      apps: [`${mcpDir}/apps`],
       handlers: [mcpDir],
     }
 
@@ -120,6 +121,7 @@ export default defineNuxtModule<ModuleOptions>({
           if (result.tools.count > 0) summary.push(`${result.tools.count} tool${result.tools.count > 1 ? 's' : ''}`)
           if (result.resources.count > 0) summary.push(`${result.resources.count} resource${result.resources.count > 1 ? 's' : ''}`)
           if (result.prompts.count > 0) summary.push(`${result.prompts.count} prompt${result.prompts.count > 1 ? 's' : ''}`)
+          if (result.apps.count > 0) summary.push(`${result.apps.count} app${result.apps.count > 1 ? 's' : ''}`)
           if (result.handlers.count > 0) summary.push(`${result.handlers.count} handler${result.handlers.count > 1 ? 's' : ''}`)
 
           mcpSummary = summary.join(', ')
@@ -193,6 +195,7 @@ export default defineNuxtModule<ModuleOptions>({
       'defineMcpResource',
       'defineMcpPrompt',
       'defineMcpHandler',
+      'defineMcpApp',
       'textResult',
       'jsonResult',
       'errorResult',

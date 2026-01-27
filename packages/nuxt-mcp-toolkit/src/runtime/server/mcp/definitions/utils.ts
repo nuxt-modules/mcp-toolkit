@@ -4,7 +4,7 @@ export interface EnrichNameTitleOptions {
   name?: string
   title?: string
   _meta?: Record<string, unknown>
-  type: 'tool' | 'resource' | 'prompt'
+  type: 'tool' | 'resource' | 'prompt' | 'app'
 }
 
 export interface EnrichNameTitleResult {

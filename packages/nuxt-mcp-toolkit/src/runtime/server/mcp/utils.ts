@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { sendRedirect, getHeader, defineEventHandler } from 'h3'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpMiddleware } from './definitions'
-import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
+import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpAppDefinition, McpMiddleware } from './definitions'
+import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition, registerAppFromDefinition } from './definitions'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp/transport.mjs'
 
@@ -16,6 +16,7 @@ export interface ResolvedMcpConfig {
   tools?: McpToolDefinition[]
   resources?: McpResourceDefinition[]
   prompts?: McpPromptDefinition[]
+  apps?: McpAppDefinition[]
   middleware?: McpMiddleware
 }
 
@@ -41,6 +42,10 @@ export function createMcpServer(config: ResolvedMcpConfig): McpServer {
 
   for (const prompt of (config.prompts || []) as McpPromptDefinition[]) {
     registerPromptFromDefinition(server, prompt)
+  }
+
+  for (const app of (config.apps || []) as McpAppDefinition[]) {
+    registerAppFromDefinition(server, app)
   }
 
   return server

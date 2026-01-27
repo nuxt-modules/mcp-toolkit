@@ -14,6 +14,7 @@ export interface LoaderPaths {
   tools: string[]
   resources: string[]
   prompts: string[]
+  apps: string[]
   handlers?: string[]
 }
 
@@ -26,12 +27,13 @@ interface LoadResults {
   tools: LoadResult
   resources: LoadResult
   prompts: LoadResult
+  apps: LoadResult
   handlers: LoadResult
   hasDefaultHandler: boolean
 }
 
 async function loadMcpDefinitions(
-  type: 'tools' | 'resources' | 'prompts',
+  type: 'tools' | 'resources' | 'prompts' | 'apps',
   templateFilename: string,
   paths: string[],
 ): Promise<LoadResult> {
@@ -128,6 +130,10 @@ export async function loadPrompts(paths: string[]) {
   return loadMcpDefinitions('prompts', '#nuxt-mcp/prompts.mjs', paths)
 }
 
+export async function loadApps(paths: string[]) {
+  return loadMcpDefinitions('apps', '#nuxt-mcp/apps.mjs', paths)
+}
+
 export { loadHandlers }
 
 /**
@@ -165,10 +171,11 @@ async function loadDefaultHandler(paths: string[] = []): Promise<boolean> {
 
 export async function loadAllDefinitions(paths: LoaderPaths) {
   try {
-    const [tools, resources, prompts, handlers, hasDefaultHandler] = await Promise.all([
+    const [tools, resources, prompts, apps, handlers, hasDefaultHandler] = await Promise.all([
       loadTools(paths.tools),
       loadResources(paths.resources),
       loadPrompts(paths.prompts),
+      loadApps(paths.apps),
       loadHandlers(paths.handlers ?? []),
       loadDefaultHandler(paths.handlers ?? []),
     ])
@@ -177,13 +184,14 @@ export async function loadAllDefinitions(paths: LoaderPaths) {
       tools,
       resources,
       prompts,
+      apps,
       handlers,
       hasDefaultHandler,
     }
 
     return {
       ...results,
-      total: tools.count + resources.count + prompts.count + handlers.count,
+      total: tools.count + resources.count + prompts.count + apps.count + handlers.count,
     }
   }
   catch (error) {

@@ -1,7 +1,7 @@
 import { getRouterParam } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
+import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpAppDefinition } from './definitions'
 import type { McpHandlerOptions } from './definitions/handlers'
 // @ts-expect-error - TODO: Fix this
 import { tools } from '#nuxt-mcp/tools.mjs'
@@ -9,6 +9,8 @@ import { tools } from '#nuxt-mcp/tools.mjs'
 import { resources } from '#nuxt-mcp/resources.mjs'
 // @ts-expect-error - TODO: Fix this
 import { prompts } from '#nuxt-mcp/prompts.mjs'
+// @ts-expect-error - TODO: Fix this
+import { apps } from '#nuxt-mcp/apps.mjs'
 // @ts-expect-error - TODO: Fix this
 import { handlers } from '#nuxt-mcp/handlers.mjs'
 // @ts-expect-error - TODO: Fix this
@@ -38,6 +40,7 @@ export default createMcpHandler((event: H3Event) => {
       tools: handlerDef.tools,
       resources: handlerDef.resources,
       prompts: handlerDef.prompts,
+      apps: handlerDef.apps,
       middleware: handlerDef.middleware,
     }
   }
@@ -53,11 +56,12 @@ export default createMcpHandler((event: H3Event) => {
       tools: defaultHandlerDef.tools ?? (tools as McpToolDefinition[]),
       resources: defaultHandlerDef.resources ?? (resources as McpResourceDefinition[]),
       prompts: defaultHandlerDef.prompts ?? (prompts as McpPromptDefinition[]),
+      apps: defaultHandlerDef.apps ?? (apps as McpAppDefinition[]),
       middleware: defaultHandlerDef.middleware,
     }
   }
 
-  // Default behavior: expose all global tools, resources, and prompts
+  // Default behavior: expose all global tools, resources, prompts, and apps
   return {
     name: config.name || 'MCP Server',
     version: config.version,
@@ -65,5 +69,6 @@ export default createMcpHandler((event: H3Event) => {
     tools: tools as McpToolDefinition[],
     resources: resources as McpResourceDefinition[],
     prompts: prompts as McpPromptDefinition[],
+    apps: apps as McpAppDefinition[],
   }
 })

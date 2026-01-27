@@ -16,7 +16,6 @@
       "outputs": [".vercel/output/**", "dist/**", ".output/**", ".nuxt/**"]
     },
     "dev": {
-      "dependsOn": ["dev:prepare"],
       "cache": false,
       "persistent": true
     },
