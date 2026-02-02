@@ -30,7 +30,7 @@
   "devDependencies": {
     "@nuxt/eslint-config": "^1.13.0",
     "eslint": "^9.39.2",
-    "turbo": "^2.7.6",
+    "turbo": "^2.8.1",
     "typescript": "~5.9.3"
   },
   "workspaces": [
