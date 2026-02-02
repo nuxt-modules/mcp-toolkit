@@ -32,10 +32,6 @@ export default defineNuxtConfig({
     },
   },
 
-  aiChat: {
-    model: 'google/gemini-3-flash',
-  },
-
   icon: {
     customCollections: [
       {
