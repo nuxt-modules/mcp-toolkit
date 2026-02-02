@@ -7,7 +7,7 @@ export default defineAppConfig({
   github: {
     rootDir: 'apps/docs',
   },
-  aiChat: {
+  assistant: {
     faqQuestions: [
       {
         category: 'Getting Started',
