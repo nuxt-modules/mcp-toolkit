@@ -54,10 +54,7 @@
     "release": "pnpm run typecheck && pnpm run test && pnpm run lint && pnpm run build && npm publish && git push --follow-tags"
   },
   "dependencies": {
-    "@clack/prompts": "^1.0.0",
     "@nuxt/kit": "^4.3.0",
-    "automd": "^0.4.3",
-    "chokidar": "^5.0.0",
     "defu": "^6.1.4",
     "nitro-mcp-toolkit": "workspace:*",
     "pathe": "^2.0.3",
