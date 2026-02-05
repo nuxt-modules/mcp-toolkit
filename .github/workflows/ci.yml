@@ -104,4 +104,4 @@ jobs:
       - name: Build module
         run: pnpm run build:module
       - name: Publish
-        run: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/nuxt-mcp-toolkit'
+        run: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/nuxt-mcp-toolkit' './packages/nitro-mcp-toolkit'
