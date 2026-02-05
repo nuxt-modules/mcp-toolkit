@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { textResult, jsonResult, errorResult, imageResult } from '../src/runtime/server/mcp/definitions/results'
+import { textResult, jsonResult, errorResult, imageResult } from 'nitro-mcp-toolkit/definitions'
 
 describe('Result Helpers', () => {
   describe('textResult', () => {

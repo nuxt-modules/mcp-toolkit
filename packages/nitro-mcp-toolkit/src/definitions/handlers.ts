@@ -49,7 +49,6 @@ export interface McpHandlerOptions {
   /**
    * Custom route for the handler.
    * Only used for custom handlers (not for default handler override in index.ts).
-   * To change the default route, use `mcp.route` in nuxt.config.ts.
    */
   route?: string
   browserRedirect?: string
@@ -101,17 +100,6 @@ export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, '
  *   name: 'my-handler',
  *   tools: [myTool],
  *   resources: [myResource]
- * })
- * ```
- *
- * @example Default handler override (server/mcp/index.ts)
- * ```ts
- * // server/mcp/index.ts - overrides the default /mcp handler config
- * export default defineMcpHandler({
- *   version: '2.0.0',
- *   browserRedirect: '/docs',
- *   // Note: 'route' is ignored here. Use mcp.route in nuxt.config.ts instead.
- *   // If tools/resources/prompts not specified, uses global definitions
  * })
  * ```
  */

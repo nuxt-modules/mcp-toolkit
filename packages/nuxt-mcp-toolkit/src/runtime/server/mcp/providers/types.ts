@@ -1,6 +1,2 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { H3Event } from 'h3'
-
-export type McpTransportHandler = (server: McpServer, event: H3Event) => Promise<Response | void> | Response | void
-
-export const createMcpTransportHandler = (handler: McpTransportHandler): McpTransportHandler => handler
+export type { McpTransportHandler } from 'nitro-mcp-toolkit/handler'
+export { createMcpTransportHandler } from 'nitro-mcp-toolkit/handler'

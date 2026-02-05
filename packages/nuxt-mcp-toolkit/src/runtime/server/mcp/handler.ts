@@ -1,8 +1,7 @@
 import { getRouterParam } from 'h3'
 import { useRuntimeConfig } from '#imports'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
-import type { McpHandlerOptions } from './definitions/handlers'
+import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpHandlerOptions } from './definitions'
 // @ts-expect-error - TODO: Fix this
 import { tools } from '#nuxt-mcp/tools.mjs'
 // @ts-expect-error - TODO: Fix this

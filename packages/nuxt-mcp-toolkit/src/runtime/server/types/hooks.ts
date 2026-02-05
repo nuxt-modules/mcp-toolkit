@@ -14,3 +14,5 @@ declare module '@nuxt/schema' {
     }) => void | Promise<void>
   }
 }
+
+export {}

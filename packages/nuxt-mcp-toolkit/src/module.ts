@@ -1,11 +1,14 @@
-import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger, getLayerDirectories } from '@nuxt/kit'
 import { defu } from 'defu'
-import { loadAllDefinitions } from './runtime/server/mcp/loaders'
+import { resolve as resolvePath } from 'pathe'
+import { glob } from 'tinyglobby'
 import { defaultMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
 import { name, version } from '../package.json'
+
+import './runtime/server/types/hooks'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
@@ -45,6 +48,141 @@ export interface ModuleOptions {
    * @default 'mcp'
    */
   dir?: string
+}
+
+// Internal types for loader results
+interface LoadResult {
+  count: number
+  files: string[]
+  overriddenCount: number
+}
+
+// Helper functions for loading definitions with Nuxt layers support
+function createLayerFilePatterns(
+  layerServer: string,
+  paths: string[],
+  extensions = ['ts', 'js', 'mts', 'mjs'],
+): string[] {
+  return paths.flatMap(pathPattern =>
+    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/*.${ext}`)),
+  )
+}
+
+function toIdentifier(filename: string): string {
+  const RESERVED_KEYWORDS = new Set([
+    'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+    'delete', 'do', 'else', 'export', 'extends', 'finally', 'for', 'function',
+    'if', 'import', 'in', 'instanceof', 'new', 'return', 'super', 'switch',
+    'this', 'throw', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+    'enum', 'implements', 'interface', 'let', 'package', 'private', 'protected',
+    'public', 'static', 'await', 'abstract', 'boolean', 'byte', 'char', 'double',
+    'final', 'float', 'goto', 'int', 'long', 'native', 'short', 'synchronized',
+    'transient', 'volatile',
+  ])
+  const id = filename.replace(/\.(ts|js|mts|mjs)$/, '').replace(/\W/g, '_')
+  if (RESERVED_KEYWORDS.has(id)) {
+    return `_${id}`
+  }
+  return id
+}
+
+function createTemplateContent(
+  type: string,
+  entries: Array<[string, string]>,
+): string {
+  const imports = entries.map(([name, path]) =>
+    `import ${name.replace(/-/g, '_')} from '${path}'`,
+  ).join('\n')
+
+  const enrichedExports = entries.map(([name, path]) => {
+    const identifier = name.replace(/-/g, '_')
+    const filename = path.split('/').pop()!
+
+    return `(function() {
+  const def = ${identifier}
+  return {
+    ...def,
+    _meta: {
+      ...def._meta,
+      filename: ${JSON.stringify(filename)}
+    }
+  }
+})()`
+  }).join(',\n  ')
+
+  return `${imports}\n\nexport const ${type} = [\n  ${enrichedExports}\n]\n`
+}
+
+async function loadDefinitionFilesWithLayers(
+  paths: string[],
+  options: {
+    excludePatterns?: string[]
+    filter?: (filePath: string) => boolean
+  } = {},
+): Promise<LoadResult> {
+  if (paths.length === 0) {
+    return { count: 0, files: [], overriddenCount: 0 }
+  }
+
+  const layerDirectories = getLayerDirectories()
+  const reversedLayers = [...layerDirectories].reverse()
+
+  const definitionsMap = new Map<string, string>()
+  let overriddenCount = 0
+
+  for (const layer of reversedLayers) {
+    const layerPatterns = createLayerFilePatterns(layer.server, paths)
+    const layerFiles = await glob(layerPatterns, {
+      absolute: true,
+      onlyFiles: true,
+      ignore: [...(options.excludePatterns || []), '**/*.d.ts'],
+    })
+
+    const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
+
+    for (const filePath of filteredFiles) {
+      const filename = filePath.split('/').pop()!
+      const identifier = toIdentifier(filename)
+      if (definitionsMap.has(identifier)) {
+        overriddenCount++
+      }
+      definitionsMap.set(identifier, filePath)
+    }
+  }
+
+  return {
+    count: definitionsMap.size,
+    files: Array.from(definitionsMap.values()),
+    overriddenCount,
+  }
+}
+
+async function findIndexFileWithLayers(
+  paths: string[],
+  extensions = ['ts', 'js', 'mts', 'mjs'],
+): Promise<string | null> {
+  if (paths.length === 0) {
+    return null
+  }
+
+  const layerDirectories = getLayerDirectories()
+
+  for (const layer of layerDirectories) {
+    const indexPatterns = paths.flatMap(pathPattern =>
+      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/index.${ext}`)),
+    )
+
+    const indexFiles = await glob(indexPatterns, {
+      absolute: true,
+      onlyFiles: true,
+    })
+
+    if (indexFiles.length > 0) {
+      return indexFiles[0]!
+    }
+  }
+
+  return null
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -100,27 +238,117 @@ export default defineNuxtModule<ModuleOptions>({
 
     nuxt.hook('modules:done', async () => {
       try {
-        // @ts-expect-error - mcp:definitions:paths hook is provided by @nuxt/devtools-kit (optional)
+        // @ts-expect-error - Custom hook for MCP definitions paths (see runtime/server/types/hooks.ts)
         await nuxt.callHook('mcp:definitions:paths', paths)
 
-        const result = await loadAllDefinitions(paths)
+        // Load definitions with Nuxt layers support
+        const [toolsResult, resourcesResult, promptsResult, handlersResult, indexFile] = await Promise.all([
+          loadDefinitionFilesWithLayers(paths.tools),
+          loadDefinitionFilesWithLayers(paths.resources),
+          loadDefinitionFilesWithLayers(paths.prompts),
+          loadDefinitionFilesWithLayers(paths.handlers, {
+            filter: (filePath) => {
+              const relativePath = filePath.replace(/.*\/server\//, '')
+              const filename = filePath.split('/').pop()!
+              const isIndexFile = /^index\.(?:ts|js|mts|mjs)$/.test(filename)
+              return !relativePath.includes('/tools/')
+                && !relativePath.includes('/resources/')
+                && !relativePath.includes('/prompts/')
+                && !isIndexFile
+            },
+          }),
+          findIndexFileWithLayers(paths.handlers),
+        ])
 
-        if (result.handlers && result.handlers.count > 0) {
+        // Generate virtual modules for definitions
+        addServerTemplate({
+          filename: '#nuxt-mcp/tools.mjs',
+          getContents: () => {
+            if (toolsResult.count === 0) {
+              return `export const tools = []\n`
+            }
+            const entries = toolsResult.files.map((file) => {
+              const filename = file.split('/').pop()!
+              const identifier = toIdentifier(filename)
+              return [identifier, file] as [string, string]
+            })
+            return createTemplateContent('tools', entries)
+          },
+        })
+
+        addServerTemplate({
+          filename: '#nuxt-mcp/resources.mjs',
+          getContents: () => {
+            if (resourcesResult.count === 0) {
+              return `export const resources = []\n`
+            }
+            const entries = resourcesResult.files.map((file) => {
+              const filename = file.split('/').pop()!
+              const identifier = toIdentifier(filename)
+              return [identifier, file] as [string, string]
+            })
+            return createTemplateContent('resources', entries)
+          },
+        })
+
+        addServerTemplate({
+          filename: '#nuxt-mcp/prompts.mjs',
+          getContents: () => {
+            if (promptsResult.count === 0) {
+              return `export const prompts = []\n`
+            }
+            const entries = promptsResult.files.map((file) => {
+              const filename = file.split('/').pop()!
+              const identifier = toIdentifier(filename)
+              return [identifier, file] as [string, string]
+            })
+            return createTemplateContent('prompts', entries)
+          },
+        })
+
+        addServerTemplate({
+          filename: '#nuxt-mcp/handlers.mjs',
+          getContents: () => {
+            if (handlersResult.count === 0) {
+              return `export const handlers = []\n`
+            }
+            const entries = handlersResult.files.map((file) => {
+              const filename = file.split('/').pop()!
+              const identifier = toIdentifier(filename)
+              return [identifier, file] as [string, string]
+            })
+            return createTemplateContent('handlers', entries)
+          },
+        })
+
+        addServerTemplate({
+          filename: '#nuxt-mcp/default-handler.mjs',
+          getContents: () => {
+            if (!indexFile) {
+              return `export const defaultHandler = null\n`
+            }
+            return `import handler from '${indexFile}'\nexport const defaultHandler = handler\n`
+          },
+        })
+
+        if (handlersResult.count > 0) {
           addServerHandler({
             route: ROUTES.CUSTOM_HANDLER,
             handler: resolver.resolve('runtime/server/mcp/handler'),
           })
         }
 
-        if (result.total === 0) {
+        const totalCount = toolsResult.count + resourcesResult.count + promptsResult.count + handlersResult.count
+
+        if (totalCount === 0) {
           log.warn('No MCP definitions found. Create tools, resources, or prompts in server/mcp/')
         }
         else {
           const summary: string[] = []
-          if (result.tools.count > 0) summary.push(`${result.tools.count} tool${result.tools.count > 1 ? 's' : ''}`)
-          if (result.resources.count > 0) summary.push(`${result.resources.count} resource${result.resources.count > 1 ? 's' : ''}`)
-          if (result.prompts.count > 0) summary.push(`${result.prompts.count} prompt${result.prompts.count > 1 ? 's' : ''}`)
-          if (result.handlers.count > 0) summary.push(`${result.handlers.count} handler${result.handlers.count > 1 ? 's' : ''}`)
+          if (toolsResult.count > 0) summary.push(`${toolsResult.count} tool${toolsResult.count > 1 ? 's' : ''}`)
+          if (resourcesResult.count > 0) summary.push(`${resourcesResult.count} resource${resourcesResult.count > 1 ? 's' : ''}`)
+          if (promptsResult.count > 0) summary.push(`${promptsResult.count} prompt${promptsResult.count > 1 ? 's' : ''}`)
+          if (handlersResult.count > 0) summary.push(`${handlersResult.count} handler${handlersResult.count > 1 ? 's' : ''}`)
 
           mcpSummary = summary.join(', ')
         }
@@ -214,6 +442,7 @@ export default defineNuxtModule<ModuleOptions>({
       handler: resolver.resolve('runtime/server/mcp/badge-image'),
     })
 
+    // Add Nuxt DevTools integration
     addDevToolsCustomTabs(nuxt, options)
   },
 })

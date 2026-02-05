@@ -1,4 +1,3 @@
-import { defineCachedFunction } from 'nitropack/runtime'
 import ms from 'ms'
 
 /**
@@ -84,15 +83,38 @@ export function createCacheOptions<Args>(
   }
 }
 
+// Lazy-loaded defineCachedFunction to avoid loading nitropack/runtime at module setup time
+let _defineCachedFunction: typeof import('nitropack/runtime').defineCachedFunction | null = null
+
+async function getDefineCachedFunction() {
+  if (!_defineCachedFunction) {
+    const runtime = await import('nitropack/runtime')
+    _defineCachedFunction = runtime.defineCachedFunction
+  }
+  return _defineCachedFunction
+}
+
 /**
  * Wrap a function with caching
+ * Returns a wrapper that lazily initializes caching on first call
  */
 export function wrapWithCache<T extends (...args: unknown[]) => unknown>(
   fn: T,
   cacheOptions: Record<string, unknown>,
 ): T {
-  return defineCachedFunction(
-    fn,
-    cacheOptions as Parameters<typeof defineCachedFunction>[1],
-  ) as T
+  let cachedFn: T | null = null
+
+  // Return a wrapper that lazily initializes the cached function
+  const wrapper = (async (...args: unknown[]) => {
+    if (!cachedFn) {
+      const defineCachedFunction = await getDefineCachedFunction()
+      cachedFn = defineCachedFunction(
+        fn,
+        cacheOptions as Parameters<typeof defineCachedFunction>[1],
+      ) as T
+    }
+    return cachedFn(...args)
+  }) as unknown as T
+
+  return wrapper
 }
