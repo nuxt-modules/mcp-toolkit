@@ -1,5 +1,8 @@
 import { defu } from 'defu'
-import { defaultMcpConfig as baseDefaultConfig, getMcpConfig as baseGetMcpConfig, type McpConfig as BaseMcpConfig } from 'nitro-mcp-toolkit'
+import {
+  defaultMcpConfig as baseDefaultConfig,
+  type McpConfig as BaseMcpConfig,
+} from 'nitro-mcp-toolkit'
 
 // Nuxt-specific config extends base config with 'enabled' field
 export interface McpConfig extends BaseMcpConfig {

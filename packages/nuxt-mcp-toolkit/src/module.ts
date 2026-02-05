@@ -8,6 +8,8 @@ import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
 import { name, version } from '../package.json'
 
+import './runtime/server/types/hooks'
+
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
 export const { resolve } = createResolver(import.meta.url)
@@ -236,6 +238,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     nuxt.hook('modules:done', async () => {
       try {
+        // @ts-expect-error - Custom hook for MCP definitions paths (see runtime/server/types/hooks.ts)
         await nuxt.callHook('mcp:definitions:paths', paths)
 
         // Load definitions with Nuxt layers support

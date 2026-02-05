@@ -15,7 +15,6 @@ export interface LoaderPaths {
   handlers?: string[]
 }
 
-
 interface LoadResults {
   tools: LoadResult
   resources: LoadResult
