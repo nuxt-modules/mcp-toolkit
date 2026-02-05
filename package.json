@@ -11,10 +11,12 @@
   "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "turbo run dev --filter=@nuxtjs/mcp-toolkit-playground",
+    "dev:nitro": "turbo run dev --filter=nitro-mcp-toolkit-playground",
     "dev:prepare": "turbo run dev:prepare",
     "dev:docs": "turbo run dev --filter=@nuxtjs/mcp-toolkit-docs",
     "build": "turbo run build",
     "build:module": "turbo run build --filter=@nuxtjs/mcp-toolkit",
+    "build:nitro-module": "turbo run build --filter=nitro-mcp-toolkit",
     "build:docs": "turbo run build --filter=@nuxtjs/mcp-toolkit-docs",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",

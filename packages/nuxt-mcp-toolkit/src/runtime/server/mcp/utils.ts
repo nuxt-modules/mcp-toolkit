@@ -1,13 +1,15 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { sendRedirect, getHeader, defineEventHandler } from 'h3'
 import type { H3Event } from 'h3'
 import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpMiddleware } from './definitions'
-import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp/transport.mjs'
 
-export type { McpTransportHandler } from './providers/types'
-export { createMcpTransportHandler } from './providers/types'
+// Import createMcpServer for internal use
+import { createMcpServer } from 'nitro-mcp-toolkit/handler'
+
+// Re-export from nitro-mcp-toolkit
+export { createMcpServer, createMcpTransportHandler } from 'nitro-mcp-toolkit/handler'
+export type { McpTransportHandler } from 'nitro-mcp-toolkit/handler'
 
 export interface ResolvedMcpConfig {
   name: string
@@ -25,27 +27,10 @@ function resolveConfig(config: CreateMcpHandlerConfig, event: H3Event): Resolved
   return typeof config === 'function' ? config(event) : config
 }
 
-export function createMcpServer(config: ResolvedMcpConfig): McpServer {
-  const server = new McpServer({
-    name: config.name,
-    version: config.version,
-  })
-
-  for (const tool of (config.tools || []) as McpToolDefinition[]) {
-    registerToolFromDefinition(server, tool)
-  }
-
-  for (const resource of (config.resources || []) as McpResourceDefinition[]) {
-    registerResourceFromDefinition(server, resource)
-  }
-
-  for (const prompt of (config.prompts || []) as McpPromptDefinition[]) {
-    registerPromptFromDefinition(server, prompt)
-  }
-
-  return server
-}
-
+/**
+ * Create an MCP handler for Nuxt
+ * Uses the Nuxt-specific transport template
+ */
 export function createMcpHandler(config: CreateMcpHandlerConfig) {
   return defineEventHandler(async (event: H3Event) => {
     const resolvedConfig = resolveConfig(config, event)

@@ -1,0 +1,87 @@
+{
+  "name": "nitro-mcp-toolkit",
+  "version": "0.0.1",
+  "description": "Create MCP servers directly in your Nitro application. Define tools, resources, and prompts with a simple and intuitive API.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git"
+  },
+  "homepage": "https://mcp-toolkit.nuxt.dev",
+  "bugs": {
+    "url": "https://github.com/nuxt-modules/mcp-toolkit/issues"
+  },
+  "author": "Hugo Richard <hugo.richard@vercel.com>",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/module.d.ts",
+      "import": "./dist/module.mjs"
+    },
+    "./definitions": {
+      "types": "./dist/definitions/index.d.ts",
+      "import": "./dist/definitions/index.mjs"
+    },
+    "./handler": {
+      "types": "./dist/handler.d.ts",
+      "import": "./dist/handler.mjs"
+    },
+    "./providers/node": {
+      "types": "./dist/providers/node.d.ts",
+      "import": "./dist/providers/node.mjs"
+    },
+    "./providers/cloudflare": {
+      "types": "./dist/providers/cloudflare.d.ts",
+      "import": "./dist/providers/cloudflare.mjs"
+    }
+  },
+  "main": "./dist/module.mjs",
+  "types": "./dist/module.d.ts",
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "dev": "unbuild --stub",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "defu": "^6.1.4",
+    "ms": "^2.1.3",
+    "pathe": "^2.0.3",
+    "scule": "^1.3.0",
+    "tinyglobby": "^0.2.15"
+  },
+  "peerDependencies": {
+    "nitropack": "^2.10.0",
+    "zod": "^4.1.13",
+    "agents": ">=0.3.6"
+  },
+  "peerDependenciesMeta": {
+    "nitropack": {
+      "optional": false
+    },
+    "zod": {
+      "optional": false
+    },
+    "agents": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/ms": "^2.1.0",
+    "@types/node": "latest",
+    "eslint": "^9.39.2",
+    "h3": "^1.15.5",
+    "nitropack": "^2.11.11",
+    "typescript": "~5.9.3",
+    "unbuild": "^3.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,23 +1,19 @@
 import { defu } from 'defu'
+import { defaultMcpConfig as baseDefaultConfig, getMcpConfig as baseGetMcpConfig, type McpConfig as BaseMcpConfig } from 'nitro-mcp-toolkit'
 
-export interface McpConfig {
+// Nuxt-specific config extends base config with 'enabled' field
+export interface McpConfig extends BaseMcpConfig {
   enabled: boolean
-  route: string
-  browserRedirect: string
-  name: string
-  version: string
-  dir: string
 }
 
 export const defaultMcpConfig: McpConfig = {
+  ...baseDefaultConfig,
   enabled: true,
-  route: '/mcp',
-  browserRedirect: '/',
-  name: '',
-  version: '1.0.0',
-  dir: 'mcp',
 }
 
 export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
   return defu(partial, defaultMcpConfig)
 }
+
+// Re-export base types for convenience
+export type { BaseMcpConfig }

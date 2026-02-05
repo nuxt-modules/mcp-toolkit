@@ -1,0 +1,18 @@
+{
+  "name": "nitro-mcp-toolkit-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nitro dev",
+    "build": "nitro build",
+    "preview": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "nitro-mcp-toolkit": "workspace:*"
+  },
+  "devDependencies": {
+    "nitropack": "^2.13.1",
+    "typescript": "~5.9.3",
+    "zod": "^4.3.6"
+  }
+}

@@ -18,6 +18,7 @@ dist
 
 # Nuxt
 .nuxt
+.nitro
 .output
 .data
 .vercel_build_output

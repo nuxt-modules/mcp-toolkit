@@ -13,11 +13,30 @@ This is a pnpm monorepo managed with Turborepo:
 ```
 nuxt-mcp-toolkit/
 ├── packages/
-│   └── nuxt-mcp-toolkit/     # Main module (published as @nuxtjs/mcp-toolkit)
+│   ├── nitro-mcp-toolkit/    # Standalone Nitro module (published as nitro-mcp-toolkit)
+│   └── nuxt-mcp-toolkit/     # Nuxt wrapper module (published as @nuxtjs/mcp-toolkit)
 ├── apps/
 │   ├── docs/                 # Documentation site (mcp-toolkit.nuxt.dev)
 │   └── playground/           # Development playground for testing
 ```
+
+### Package Architecture
+
+The MCP toolkit is split into two packages:
+
+1. **nitro-mcp-toolkit**: Core MCP functionality as a Nitro module
+   - Pure server-side MCP implementation
+   - Works with any Nitro-based project
+   - Provides `defineMcpTool`, `defineMcpResource`, `defineMcpPrompt`, etc.
+   - Handles file discovery, virtual modules, and transport providers
+
+2. **@nuxtjs/mcp-toolkit**: Nuxt wrapper with additional features
+   - Uses nitro-mcp-toolkit internally
+   - Adds Nuxt-specific features:
+     - `InstallButton` Vue component
+     - Nuxt DevTools integration
+     - Nuxt layers support for definition overrides
+     - Deep link generation for IDE installation
 
 ## Development Environment Setup
 
@@ -62,21 +81,55 @@ Run from the repository root:
 
 ## Project Structure
 
-### Main Module (`packages/nuxt-mcp-toolkit/`)
+### Nitro Module (`packages/nitro-mcp-toolkit/`)
+
+The standalone Nitro module with core MCP functionality:
+
+```
+packages/nitro-mcp-toolkit/
+├── src/
+│   ├── module.ts          # Nitro module entry point (defineMcpNitroModule)
+│   ├── handler.ts         # MCP HTTP handler and server creation
+│   ├── config.ts          # Configuration defaults
+│   ├── types.ts           # TypeScript type exports
+│   ├── definitions/       # MCP definition helpers
+│   │   ├── tools.ts       # defineMcpTool, registerToolFromDefinition
+│   │   ├── resources.ts   # defineMcpResource, registerResourceFromDefinition
+│   │   ├── prompts.ts     # defineMcpPrompt, registerPromptFromDefinition
+│   │   ├── handlers.ts    # defineMcpHandler
+│   │   ├── cache.ts       # Caching utilities
+│   │   ├── results.ts     # textResult, jsonResult, errorResult helpers
+│   │   └── utils.ts       # Name/title enrichment
+│   ├── loaders/           # File discovery (framework-agnostic)
+│   │   ├── index.ts       # loadAllDefinitions, loadTools, etc.
+│   │   └── utils.ts       # Pattern creation, template generation
+│   └── providers/         # Transport providers
+│       ├── types.ts       # McpTransportHandler type
+│       ├── node.ts        # Node.js StreamableHTTP transport
+│       └── cloudflare.ts  # Cloudflare Workers transport
+└── build.config.ts        # Unbuild configuration
+```
+
+### Nuxt Module (`packages/nuxt-mcp-toolkit/`)
+
+The Nuxt wrapper with additional integrations:
 
 ```
 packages/nuxt-mcp-toolkit/
 ├── src/
-│   ├── module.ts                    # Main module entry point
+│   ├── module.ts                    # Nuxt module entry point (wrapper)
+│   ├── utils/
+│   │   └── ide.ts                   # IDE detection and deep links
 │   └── runtime/
 │       ├── components/              # Vue components (InstallButton)
 │       └── server/
 │           ├── mcp/
-│           │   ├── definitions/     # Tool, resource, prompt definitions
-│           │   ├── loaders/         # File discovery and loading
-│           │   ├── validators/      # Zod validation logic
+│           │   ├── definitions/     # Re-exported from core (with layers support)
+│           │   ├── devtools/        # Nuxt DevTools integration
+│           │   ├── providers/       # Transport providers
 │           │   ├── handler.ts       # MCP HTTP handler
-│           │   └── utils.ts         # Utility functions
+│           │   ├── deeplink.ts      # IDE installation deep links
+│           │   └── badge-image.ts   # SVG badge generation
 │           └── types/               # TypeScript types
 └── test/
     ├── *.test.ts                    # Test files
@@ -243,13 +296,27 @@ This module uses `@modelcontextprotocol/sdk` version 1.23.0+. When referencing S
 
 ## Key Files
 
+### Nitro Module (`packages/nitro-mcp-toolkit/`)
+
 | File | Description |
 |------|-------------|
-| `packages/nuxt-mcp-toolkit/src/module.ts` | Main module entry point |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/mcp/handler.ts` | MCP HTTP handler |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/mcp/definitions/` | Definition processors |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/mcp/loaders/` | File discovery logic |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/types/` | TypeScript type definitions |
+| `src/module.ts` | Nitro module entry point with `defineMcpNitroModule()` |
+| `src/handler.ts` | MCP HTTP handler and server creation |
+| `src/definitions/` | Tool, resource, prompt, handler definitions |
+| `src/loaders/` | File discovery logic (framework-agnostic) |
+| `src/providers/` | Transport providers (Node.js, Cloudflare) |
+| `src/config.ts` | Default configuration |
+
+### Nuxt Module (`packages/nuxt-mcp-toolkit/`)
+
+| File | Description |
+|------|-------------|
+| `src/module.ts` | Nuxt module entry point (wrapper) |
+| `src/runtime/components/InstallButton.vue` | Vue component for IDE installation |
+| `src/runtime/server/mcp/devtools/` | Nuxt DevTools integration |
+| `src/runtime/server/mcp/deeplink.ts` | IDE deep link generation |
+| `src/runtime/server/mcp/badge-image.ts` | SVG badge generation |
+| `src/utils/ide.ts` | IDE detection utilities |
 
 ## Troubleshooting
 

@@ -1,4 +1,3 @@
-import { getLayerDirectories } from '@nuxt/kit'
 import { resolve as resolvePath } from 'pathe'
 import { glob } from 'tinyglobby'
 
@@ -69,33 +68,29 @@ const RESERVED_KEYWORDS = new Set([
   'volatile',
 ])
 
-export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs']): string[] {
-  const layerDirectories = getLayerDirectories()
-  return layerDirectories.flatMap(layer =>
+/**
+ * Create file patterns for scanning directories
+ */
+export function createFilePatterns(
+  scanDirs: string[],
+  paths: string[],
+  extensions = ['ts', 'js', 'mts', 'mjs'],
+): string[] {
+  return scanDirs.flatMap(scanDir =>
     paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/*.${ext}`)),
+      extensions.map(ext => resolvePath(scanDir, `${pathPattern}/*.${ext}`)),
     ),
   )
 }
 
-/**
- * Create file patterns for a specific layer
- */
-export function createLayerFilePatterns(
-  layerServer: string,
+export function createExcludePatterns(
+  scanDirs: string[],
   paths: string[],
-  extensions = ['ts', 'js', 'mts', 'mjs'],
+  subdirs: string[],
 ): string[] {
-  return paths.flatMap(pathPattern =>
-    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/*.${ext}`)),
-  )
-}
-
-export function createExcludePatterns(paths: string[], subdirs: string[]): string[] {
-  const layerDirectories = getLayerDirectories()
-  return layerDirectories.flatMap(layer =>
+  return scanDirs.flatMap(scanDir =>
     paths.flatMap(pathPattern =>
-      subdirs.map(subdir => resolvePath(layer.server, `${pathPattern}/${subdir}/**`)),
+      subdirs.map(subdir => resolvePath(scanDir, `${pathPattern}/${subdir}/**`)),
     ),
   )
 }
@@ -138,20 +133,21 @@ export function createTemplateContent(
 
 /**
  * Find index files (index.ts, index.js, etc.) in the given paths
- * Returns the file path from the highest priority layer (app overrides extended layers)
+ * Returns the file path from the first scan directory that has one
  */
-export async function findIndexFile(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs']): Promise<string | null> {
+export async function findIndexFile(
+  scanDirs: string[],
+  paths: string[],
+  extensions = ['ts', 'js', 'mts', 'mjs'],
+): Promise<string | null> {
   if (paths.length === 0) {
     return null
   }
 
-  // Get layer directories - first one is the main app (highest priority)
-  const layerDirectories = getLayerDirectories()
-
-  // Check each layer in order (main app first)
-  for (const layer of layerDirectories) {
+  // Check each scan directory in order
+  for (const scanDir of scanDirs) {
     const indexPatterns = paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/index.${ext}`)),
+      extensions.map(ext => resolvePath(scanDir, `${pathPattern}/index.${ext}`)),
     )
 
     const indexFiles = await glob(indexPatterns, {
@@ -160,7 +156,7 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
     })
 
     if (indexFiles.length > 0) {
-      // Return the first found index file in this layer
+      // Return the first found index file in this directory
       return indexFiles[0]!
     }
   }
@@ -168,37 +164,37 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
   return null
 }
 
+/**
+ * Load definition files from scan directories
+ */
 export async function loadDefinitionFiles(
+  scanDirs: string[],
   paths: string[],
   options: {
     excludePatterns?: string[]
     filter?: (filePath: string) => boolean
   } = {},
 ): Promise<LoadResult> {
-  if (paths.length === 0) {
+  if (paths.length === 0 || scanDirs.length === 0) {
     return { count: 0, files: [], overriddenCount: 0 }
   }
-
-  // Get layer directories and reverse the order so that:
-  // - Extended layers are processed first
-  // - The main app (first in getLayerDirectories) is processed last
-  // This allows the app to override definitions from extended layers
-  const layerDirectories = getLayerDirectories()
-  const reversedLayers = [...layerDirectories].reverse()
 
   const definitionsMap = new Map<string, string>()
   let overriddenCount = 0
 
-  // Process each layer separately to ensure correct override order
-  for (const layer of reversedLayers) {
-    const layerPatterns = createLayerFilePatterns(layer.server, paths)
-    const layerFiles = await glob(layerPatterns, {
+  // Process each scan directory (later ones override earlier ones)
+  for (const scanDir of scanDirs) {
+    const patterns = paths.flatMap(pathPattern =>
+      ['ts', 'js', 'mts', 'mjs'].map(ext => resolvePath(scanDir, `${pathPattern}/*.${ext}`)),
+    )
+
+    const files = await glob(patterns, {
       absolute: true,
       onlyFiles: true,
       ignore: [...(options.excludePatterns || []), '**/*.d.ts'],
     })
 
-    const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
+    const filteredFiles = options.filter ? files.filter(options.filter) : files
 
     for (const filePath of filteredFiles) {
       const filename = filePath.split('/').pop()!
