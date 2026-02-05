@@ -44,6 +44,7 @@
   "scripts": {
     "build": "unbuild",
     "dev": "unbuild --stub",
+    "dev:prepare": "unbuild --stub",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit"
