@@ -1,7 +1,6 @@
 import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
-import { defu } from 'defu'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
-import { defaultMcpConfig } from './runtime/server/mcp/config'
+import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
@@ -66,17 +65,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     const resolver = createResolver(import.meta.url)
 
-    nuxt.options.runtimeConfig.mcp = defu(
-      nuxt.options.runtimeConfig.mcp,
-      {
-        enabled: options.enabled,
-        route: options.route,
-        browserRedirect: options.browserRedirect,
-        name: options.name,
-        version: options.version,
-        dir: options.dir,
-      },
-    )
+    const mcpConfig = getMcpConfig(options)
 
     if (!options.enabled) {
       return
@@ -87,7 +76,12 @@ export default defineNuxtModule<ModuleOptions>({
       filePath: resolver.resolve('runtime/components/InstallButton.vue'),
     })
 
-    const mcpDir = options.dir ?? defaultMcpConfig.dir
+    addServerTemplate({
+      filename: '#nuxt-mcp-toolkit/config.mjs',
+      getContents: () => `export default ${JSON.stringify(mcpConfig)}`,
+    })
+
+    const mcpDir = mcpConfig.dir
 
     const paths = {
       tools: [`${mcpDir}/tools`],
@@ -179,7 +173,7 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     addServerTemplate({
-      filename: '#nuxt-mcp/transport.mjs',
+      filename: '#nuxt-mcp-toolkit/transport.mjs',
       getContents: () => {
         const provider = isCloudflare ? 'cloudflare' : 'node'
         return `export { default } from '${resolver.resolve(`runtime/server/mcp/providers/${provider}`)}'`

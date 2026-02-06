@@ -1,5 +1,6 @@
 import { defineEventHandler, getRequestURL, getQuery, setHeader } from 'h3'
-import { useRuntimeConfig } from '#imports'
+// @ts-expect-error - virtual module
+import mcpConfig from '#nuxt-mcp-toolkit/config.mjs'
 
 export type SupportedIDE = 'cursor' | 'vscode'
 
@@ -47,7 +48,6 @@ function escapeJs(str: string): string {
 }
 
 export default defineEventHandler((event) => {
-  const runtimeConfig = useRuntimeConfig(event).mcp
   const requestUrl = getRequestURL(event)
   const query = getQuery(event)
 
@@ -58,10 +58,10 @@ export default defineEventHandler((event) => {
     return new Response(null, { status: 302 })
   }
 
-  const serverName = (query.name as string) || runtimeConfig.name || 'mcp-server'
+  const serverName = (query.name as string) || mcpConfig.name || 'mcp-server'
 
   // Build the MCP server URL (the /mcp endpoint)
-  const mcpUrl = `${requestUrl.origin}${runtimeConfig.route || '/mcp'}`
+  const mcpUrl = `${requestUrl.origin}${mcpConfig.route || '/mcp'}`
 
   // Generate the deeplink for the selected IDE
   const deeplink = ideConfig.generateDeeplink(serverName, mcpUrl)

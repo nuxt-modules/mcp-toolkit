@@ -1,24 +1,22 @@
 import { getRouterParam } from 'h3'
-import { useRuntimeConfig } from '#imports'
 import type { H3Event } from 'h3'
 import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
 import type { McpHandlerOptions } from './definitions/handlers'
 // @ts-expect-error - TODO: Fix this
-import { tools } from '#nuxt-mcp/tools.mjs'
+import config from '#nuxt-mcp-toolkit/config.mjs'
 // @ts-expect-error - TODO: Fix this
-import { resources } from '#nuxt-mcp/resources.mjs'
+import { tools } from '#nuxt-mcp-toolkit/tools.mjs'
 // @ts-expect-error - TODO: Fix this
-import { prompts } from '#nuxt-mcp/prompts.mjs'
+import { resources } from '#nuxt-mcp-toolkit/resources.mjs'
 // @ts-expect-error - TODO: Fix this
-import { handlers } from '#nuxt-mcp/handlers.mjs'
+import { prompts } from '#nuxt-mcp-toolkit/prompts.mjs'
 // @ts-expect-error - TODO: Fix this
-import { defaultHandler } from '#nuxt-mcp/default-handler.mjs'
+import { handlers } from '#nuxt-mcp-toolkit/handlers.mjs'
+// @ts-expect-error - TODO: Fix this
+import { defaultHandler } from '#nuxt-mcp-toolkit/default-handler.mjs'
 import { createMcpHandler } from './utils'
-import { getMcpConfig } from './config'
 
 export default createMcpHandler((event: H3Event) => {
-  const runtimeConfig = useRuntimeConfig(event).mcp
-  const config = getMcpConfig(runtimeConfig)
   const handlerName = getRouterParam(event, 'handler')
 
   // Custom handler via /mcp/:handler

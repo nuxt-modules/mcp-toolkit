@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpMiddleware } from './definitions'
 import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
 // @ts-expect-error - Generated template that re-exports from provider
-import handleMcpRequest from '#nuxt-mcp/transport.mjs'
+import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
 export type { McpTransportHandler } from './providers/types'
 export { createMcpTransportHandler } from './providers/types'
