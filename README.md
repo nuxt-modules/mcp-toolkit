@@ -28,6 +28,35 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 <!-- /automd -->
 
+## 🧩 Agent Skills
+
+Nuxt MCP Toolkit provides [Agent Skills](https://agentskills.io/) to help AI coding assistants build and manage MCP servers in your Nuxt application.
+
+### Installation
+
+```bash
+npx skills add nuxt-modules/mcp-toolkit
+```
+
+### What it does
+
+Once installed, your AI assistant will:
+- Setup and configure MCP servers in your Nuxt apps
+- Create tools, resources, and prompts following best practices
+- Review your MCP implementation for anti-patterns and improvements
+- Troubleshoot auto-imports, endpoints, and validation issues
+- Create eval suites to verify tool selection
+
+### Examples
+
+```
+Setup an MCP server in my Nuxt app
+Create a tool to fetch user data
+Review my MCP implementation
+```
+
+[Learn more about the skill →](https://mcp-toolkit.nuxt.dev/getting-started/agent-skills)
+
 ## 🚀 Installation
 
 <!-- automd:file src=".github/snippets/installation.md" -->

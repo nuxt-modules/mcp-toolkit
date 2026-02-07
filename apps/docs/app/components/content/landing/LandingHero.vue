@@ -1,6 +1,18 @@
 <script setup lang="ts">
+import { Motion } from 'motion-v'
+
 // @ts-expect-error yaml is not typed
 import hero from './hero.yml'
+
+const copied = ref(false)
+
+async function copyCommand() {
+  await navigator.clipboard.writeText('npx skills add nuxt-modules/mcp-toolkit')
+  copied.value = true
+  setTimeout(() => {
+    copied.value = false
+  }, 2000)
+}
 </script>
 
 <template>
@@ -19,6 +31,21 @@ import hero from './hero.yml'
     }"
   >
     <template #title>
+      <Motion
+        :initial="{ opacity: 0, filter: 'blur(4px)' }"
+        :animate="{ opacity: 1, filter: 'blur(0px)' }"
+        :transition="{ duration: 0.6, delay: 0.5 }"
+      >
+        <button
+          class="group mb-2 flex items-center gap-2 font-mono text-sm transition-colors cursor-copy"
+          :class="copied ? 'text-emerald-500' : 'text-muted hover:text-highlighted'"
+          @click="copyCommand"
+        >
+          <span v-if="copied">Copied!</span>
+          <span v-else>$ npx skills add nuxt-modules/mcp-toolkit</span>
+        </button>
+      </Motion>
+
       <ChromaText>{{ hero.title }}</ChromaText>
     </template>
 
