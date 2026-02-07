@@ -262,3 +262,38 @@ This module uses `@modelcontextprotocol/sdk` version 1.23.0+. When referencing S
 ### MCP Inspector
 
 The module includes a built-in inspector in Nuxt DevTools for debugging MCP definitions. Access it via the DevTools panel when running in development mode.
+
+## Agent Skills
+
+This repository includes agent skills for AI-assisted MCP server development.
+
+### Available Skills
+
+| Skill | Description |
+|-------|-------------|
+| `skills/manage-mcp` | Setup, create, review, troubleshoot, and test MCP servers in Nuxt |
+
+### Skill Structure
+
+```
+skills/
+└── manage-mcp/
+    ├── SKILL.md              # Main skill instructions
+    └── references/
+        ├── middleware.md     # Middleware patterns & examples
+        ├── tools.md          # Tool examples
+        ├── resources.md      # Resource examples
+        ├── prompts.md        # Prompt examples
+        ├── testing.md        # Testing guide with Evalite
+        └── troubleshooting.md # Troubleshooting guide
+```
+
+### Using Skills
+
+Skills follow the [Agent Skills](https://agentskills.io/) specification. Compatible agents (Cursor, Claude Code, etc.) can discover and use these skills automatically.
+
+To manually install with the skills CLI:
+
+```bash
+npx skills add nuxt-modules/mcp-toolkit
+```
