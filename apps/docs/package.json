@@ -26,7 +26,7 @@
     "better-sqlite3": "^12.6.2",
     "docus": "^5.5.0",
     "motion-v": "^1.10.2",
-    "nuxt": "^4.3.0",
+    "nuxt": "^4.3.1",
     "nuxt-studio": "^1.2.0",
     "shaders": "^2.2.48"
   },
