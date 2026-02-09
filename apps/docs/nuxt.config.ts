@@ -24,12 +24,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       yaml(),
-    ],
-    optimizeDeps: {
-      include: [
-        '@vercel/oidc',
-      ],
-    },
+    ]
   },
 
   icon: {
@@ -63,9 +58,6 @@ export default defineNuxtConfig({
   studio: {
     route: '/admin',
     repository: {
-      provider: 'github',
-      owner: 'nuxt-modules',
-      repo: 'mcp-toolkit',
       rootDir: 'apps/docs',
     },
     development: {

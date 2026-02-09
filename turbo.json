@@ -2,8 +2,9 @@
   "$schema": "https://turborepo.dev/schema.v2.json",
   "globalEnv": [
     "AI_GATEWAY_API_KEY",
-    "STUDIO_GITHUB_CLIENT_ID",
-    "STUDIO_GITHUB_CLIENT_SECRET"
+    "STUDIO_SSO_URL",
+    "STUDIO_SSO_CLIENT_ID",
+    "STUDIO_SSO_CLIENT_SECRET"
   ],
   "globalDependencies": [".env"],
   "tasks": {
