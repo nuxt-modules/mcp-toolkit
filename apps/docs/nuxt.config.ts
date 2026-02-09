@@ -24,7 +24,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [
       yaml(),
-    ]
+    ],
   },
 
   icon: {
