@@ -1,5 +1,5 @@
 import { logger } from '@nuxt/kit'
-import { addCustomTab } from '@nuxt/devtools-kit'
+import { refreshCustomTabs } from '@nuxt/devtools-kit'
 import type { Nuxt } from 'nuxt/schema'
 import type { ModuleOptions } from '../../../../module'
 import { spawn } from 'node:child_process'
@@ -171,12 +171,11 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
     inspectorProcess = spawn('npx', [
       '-y',
       '@modelcontextprotocol/inspector',
-      'streamable-http',
-      mcpServerUrl,
+      '--transport', 'http',
+      '--server-url', mcpServerUrl,
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env,
-      shell: true,
     })
 
     const childProcess = inspectorProcess
@@ -368,42 +367,46 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
     return
   }
 
-  addCustomTab(() => ({
-    category: 'server',
-    name: 'mcp-inspector',
-    title: 'MCP Inspector',
-    icon: 'i-lucide-circuit-board',
-    view: isReady && inspectorUrl
-      ? {
-          type: 'iframe',
-          src: inspectorUrl,
-        }
-      : {
-          type: 'launch',
-          description: 'Launch MCP Inspector to test/debug your MCP server',
-          actions: [
-            {
-              label: promise ? 'Starting...' : 'Launch Inspector',
-              pending: !!promise,
-              handle() {
-                promise = promise || launchMcpInspector(nuxt, options).finally(() => {
-                  promise = null
-                })
-                return promise
-              },
-            },
-            ...(inspectorProcess
-              ? [{
-                  label: 'Stop Inspector',
-                  handle() {
-                    stopMcpInspector()
+  nuxt.hook('devtools:customTabs', (tabs) => {
+    tabs.push({
+      category: 'server',
+      name: 'mcp-inspector',
+      title: 'MCP Inspector',
+      icon: 'i-lucide-circuit-board',
+      view: isReady && inspectorUrl
+        ? {
+            type: 'iframe',
+            src: inspectorUrl,
+          }
+        : {
+            type: 'launch',
+            description: 'Launch MCP Inspector to test/debug your MCP server',
+            actions: [
+              {
+                label: promise ? 'Starting...' : 'Launch Inspector',
+                pending: !!promise,
+                handle() {
+                  promise = promise || launchMcpInspector(nuxt, options).then(() => {
+                    refreshCustomTabs(nuxt)
+                  }).finally(() => {
                     promise = null
-                  },
-                }]
-              : []),
-          ],
-        },
-  }), nuxt)
+                  })
+                  return promise
+                },
+              },
+              ...(inspectorProcess
+                ? [{
+                    label: 'Stop Inspector',
+                    handle() {
+                      stopMcpInspector()
+                      promise = null
+                    },
+                  }]
+                : []),
+            ],
+          },
+    })
+  })
 
   nuxt.hook('close', () => {
     stopMcpInspector()
