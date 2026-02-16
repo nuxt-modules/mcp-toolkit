@@ -58,6 +58,10 @@ export default defineNuxtConfig({
   studio: {
     route: '/admin',
     repository: {
+      provider: 'github',
+      owner: 'nuxt-modules',
+      repo: 'mcp-toolkit',
+      branch: 'main',
       rootDir: 'apps/docs',
     },
     development: {
