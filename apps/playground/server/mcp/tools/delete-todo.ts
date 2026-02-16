@@ -4,6 +4,12 @@ import { eq, and } from 'drizzle-orm'
 export default defineMcpTool({
   name: 'delete_todo',
   description: 'Delete a todo',
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: {
     id: z.number().describe('The ID of the todo to delete'),
   },

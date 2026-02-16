@@ -1,6 +1,11 @@
 export default defineMcpTool({
   name: 'list_todos',
   description: 'List all todos for the authenticated user',
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: false,
+  },
   inputSchema: {},
   handler: async () => {
     const event = useEvent()

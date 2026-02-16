@@ -4,6 +4,16 @@ import { eq, and } from 'drizzle-orm'
 export default defineMcpTool({
   name: 'update_todo',
   description: 'Update an existing todo (title and/or content)',
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
+  inputExamples: [
+    { id: 1, title: 'Updated title', content: 'New content' },
+    { id: 2, title: 'Just rename this' },
+  ],
   inputSchema: {
     id: z.number().describe('The ID of the todo to update'),
     title: z.string().optional().describe('New title for the todo'),

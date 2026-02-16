@@ -1,7 +1,9 @@
-export default defineNuxtConfig({
+import { defineNuxtConfig } from 'nuxt/config'
+
+const config = {
   modules: ['@nuxtjs/mcp-toolkit'],
 
-  compatibilityDate: '2025-05-13',
+  compatibilityDate: '2025-05-13' as const,
 
   nitro: {
     preset: 'cloudflare-module',
@@ -10,4 +12,6 @@ export default defineNuxtConfig({
   mcp: {
     name: 'Cloudflare Test MCP',
   },
-})
+}
+
+export default defineNuxtConfig(config)
