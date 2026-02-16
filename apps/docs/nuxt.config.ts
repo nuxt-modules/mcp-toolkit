@@ -5,12 +5,6 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/mcp-toolkit', 'motion-v/nuxt', 'nuxt-studio'],
 
-  nitro: {
-    externals: {
-      inline: ['minimark'],
-    },
-  },
-
   css: ['~/assets/css/main.css'],
 
   site: {
@@ -25,6 +19,12 @@ export default defineNuxtConfig({
 
   experimental: {
     asyncContext: true,
+  },
+
+  nitro: {
+    externals: {
+      inline: ['minimark'],
+    },
   },
 
   vite: {
