@@ -111,6 +111,42 @@ if (!param) {
 }
 ```
 
+### Annotations
+
+Behavioral hints that help MCP clients decide when to prompt for confirmation:
+
+```typescript
+export default defineMcpTool({
+  annotations: {
+    readOnlyHint: true,     // Only reads data, no side effects
+    destructiveHint: false,  // Does not delete or destroy data
+    idempotentHint: false,   // Multiple calls may have different effects
+    openWorldHint: false,    // No external API calls
+  },
+  // ...
+})
+```
+
+Common patterns: read-only tools → `readOnlyHint: true`, create → `idempotentHint: false`, update → `idempotentHint: true`, delete → `destructiveHint: true, idempotentHint: true`.
+
+### Input Examples
+
+Type-safe usage examples that help AI models fill in parameters correctly:
+
+```typescript
+export default defineMcpTool({
+  inputSchema: {
+    title: z.string().describe('Todo title'),
+    content: z.string().optional().describe('Description'),
+  },
+  inputExamples: [
+    { title: 'Buy groceries', content: 'Milk, eggs, bread' },
+    { title: 'Fix login bug' },
+  ],
+  // ...
+})
+```
+
 ### Caching
 
 ```typescript
@@ -315,6 +351,8 @@ See [detailed middleware guide →](./references/middleware.md)
 ✅ Add caching for expensive ops
 ✅ Clear, actionable descriptions
 ✅ Validate all inputs
+✅ Add `annotations` (readOnlyHint, destructiveHint, etc.)
+✅ Add `inputExamples` for tools with optional/complex params
 
 ❌ Generic descriptions
 ❌ Skip error handling

@@ -4,6 +4,12 @@ import { eq, and } from 'drizzle-orm'
 export default defineMcpTool({
   name: 'toggle_todo',
   description: 'Toggle a todo between done and not done',
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   inputSchema: {
     id: z.number().describe('The ID of the todo to toggle'),
   },
