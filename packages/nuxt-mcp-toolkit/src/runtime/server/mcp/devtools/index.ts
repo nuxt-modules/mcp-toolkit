@@ -153,7 +153,15 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
     return
   }
 
-  const mcpServerUrl = `http://localhost:${nuxt.options.devServer?.port || 3000}${options.route || '/mcp'}`
+  const devServerUrl = nuxt.options.devServer?.url
+  let mcpServerUrl: string
+  if (devServerUrl) {
+    mcpServerUrl = `${devServerUrl.replace(/\/$/, '')}${options.route || '/mcp'}`
+  }
+  else {
+    const protocol = nuxt.options.devServer?.https ? 'https' : 'http'
+    mcpServerUrl = `${protocol}://localhost:${nuxt.options.devServer?.port || 3000}${options.route || '/mcp'}`
+  }
   const inspectorClientPort = getInspectorClientPort()
   const inspectorServerPort = getInspectorServerPort()
   const inspectorBaseUrl = buildInspectorBaseUrl(inspectorClientPort)
@@ -367,7 +375,7 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
     return
   }
 
-  // @ts-ignore devtools:customTabs hook is provided by @nuxt/devtools-kit
+  // @ts-expect-error -- devtools:customTabs hook is provided by @nuxt/devtools-kit
   nuxt.hook('devtools:customTabs', (tabs) => {
     tabs.push({
       category: 'server',
