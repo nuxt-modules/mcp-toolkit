@@ -9,10 +9,18 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   description: 'Calculate Body Mass Index',
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: false,
+  },
   inputSchema: {
     height: z.number().describe('Height in meters'),
     weight: z.number().describe('Weight in kilograms'),
   },
+  inputExamples: [
+    { height: 1.75, weight: 70 },
+  ],
   outputSchema: {
     bmi: z.number(),
     category: z.string(),
@@ -47,6 +55,11 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   description: 'Fetch weather data for a city',
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   inputSchema: {
     city: z.string().describe('City name'),
     units: z.enum(['metric', 'imperial']).default('metric').describe('Temperature units'),
@@ -75,10 +88,20 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   description: 'Create a new todo item',
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
   inputSchema: {
     title: z.string().describe('Todo title'),
     completed: z.boolean().default(false).describe('Completion status'),
   },
+  inputExamples: [
+    { title: 'Buy groceries' },
+    { title: 'Deploy v2', completed: false },
+  ],
   handler: async ({ title, completed }) => {
     const todo = await useDrizzle()
       .insert(todos)
@@ -103,6 +126,11 @@ import { readFile } from 'node:fs/promises'
 
 export default defineMcpTool({
   description: 'Read file contents',
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: false,
+  },
   inputSchema: {
     path: z.string().describe('File path relative to project root'),
   },

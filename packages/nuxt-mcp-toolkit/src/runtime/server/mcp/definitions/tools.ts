@@ -1,10 +1,29 @@
 import type { ZodRawShape } from 'zod'
-import type { CallToolResult, ServerRequest, ServerNotification, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
+import type { CallToolResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { enrichNameTitle } from './utils'
 import { type MsCacheDuration, type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+
+/**
+ * Hints that describe tool behavior to MCP clients.
+ *
+ * Clients may use these to decide whether to prompt the user for confirmation (human-in-the-loop).
+ * All properties are optional hints — they are not guaranteed to be respected by every client.
+ *
+ * @see https://modelcontextprotocol.io/docs/concepts/tools#tool-annotations
+ */
+export interface McpToolAnnotations {
+  /** If `true`, the tool does not modify any state (e.g. a read/search/lookup). Defaults to `false`. */
+  readOnlyHint?: boolean
+  /** If `true`, the tool may perform destructive operations like deleting data. Only meaningful when `readOnlyHint` is `false`. Defaults to `true`. */
+  destructiveHint?: boolean
+  /** If `true`, calling the tool multiple times with the same arguments has no additional effect beyond the first call. Only meaningful when `readOnlyHint` is `false`. Defaults to `false`. */
+  idempotentHint?: boolean
+  /** If `true`, the tool may interact with the outside world (e.g. external APIs, the internet). If `false`, the tool only operates on local/internal data. Defaults to `true`. */
+  openWorldHint?: boolean
+}
 
 // Re-export cache types for convenience
 export type { MsCacheDuration }
@@ -31,7 +50,8 @@ export interface McpToolDefinition<
   description?: string
   inputSchema?: InputSchema
   outputSchema?: OutputSchema
-  annotations?: ToolAnnotations
+  annotations?: McpToolAnnotations
+  inputExamples?: InputSchema extends ZodRawShape ? Partial<ShapeOutput<InputSchema>>[] : never
   _meta?: Record<string, unknown>
   handler: McpToolCallback<InputSchema>
   /**
@@ -84,7 +104,10 @@ export function registerToolFromDefinition(
     inputSchema: tool.inputSchema,
     outputSchema: tool.outputSchema,
     annotations: tool.annotations,
-    _meta: tool._meta,
+    _meta: {
+      ...tool._meta,
+      ...(tool.inputExamples && { inputExamples: tool.inputExamples }),
+    },
   }
 
   return server.registerTool(name, options, handler)

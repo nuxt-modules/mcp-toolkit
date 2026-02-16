@@ -4,6 +4,14 @@ export default defineMcpTool({
   name: 'calculate-bmi',
   title: 'BMI Calculator',
   description: 'Calculate Body Mass Index from weight and height',
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: false,
+  },
+  inputExamples: [
+    { weightKg: 70, heightM: 1.75 },
+  ],
   inputSchema: {
     weightKg: z.number().describe('Weight in kilograms'),
     heightM: z.number().describe('Height in meters'),
