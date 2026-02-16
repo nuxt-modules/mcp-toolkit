@@ -94,7 +94,8 @@ export default defineNuxtModule<ModuleOptions>({
 
     nuxt.hook('modules:done', async () => {
       try {
-        await nuxt.callHook('mcp:definitions:paths', paths)
+        const callCustomHook = nuxt.callHook as (name: string, ...args: unknown[]) => Promise<void>
+        await callCustomHook('mcp:definitions:paths', paths)
 
         const result = await loadAllDefinitions(paths)
 

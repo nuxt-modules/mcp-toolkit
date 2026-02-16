@@ -375,7 +375,10 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
     return
   }
 
-  nuxt.hook('devtools:customTabs', (tabs) => {
+  const registerCustomHook = nuxt.hook as (name: string, callback: (...args: unknown[]) => void) => void
+
+  registerCustomHook('devtools:customTabs', (tabsArg) => {
+    const tabs = tabsArg as { push: (tab: Record<string, unknown>) => number }
     tabs.push({
       category: 'server',
       name: 'mcp-inspector',
