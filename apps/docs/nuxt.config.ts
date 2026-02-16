@@ -21,6 +21,12 @@ export default defineNuxtConfig({
     asyncContext: true,
   },
 
+  nitro: {
+    externals: {
+      inline: ['minimark'],
+    },
+  },
+
   vite: {
     plugins: [
       yaml(),

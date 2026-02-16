@@ -44,6 +44,9 @@ importers:
       docus:
         specifier: ^5.5.1
         version: 5.5.1(be9a39ed6bc9c96d727172ae2d0c9e37)
+      minimark:
+        specifier: ^1.0.0
+        version: 1.0.0
       motion-v:
         specifier: ^1.10.3
         version: 1.10.3(@vueuse/core@14.2.1(vue@3.5.28(typescript@5.9.3)))(react@19.2.4)(vue@3.5.28(typescript@5.9.3))
