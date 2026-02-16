@@ -375,7 +375,6 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
     return
   }
 
-  // @ts-expect-error -- devtools:customTabs hook is provided by @nuxt/devtools-kit
   nuxt.hook('devtools:customTabs', (tabs) => {
     tabs.push({
       category: 'server',
