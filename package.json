@@ -8,7 +8,7 @@
   },
   "author": "Hugo Richard <hugo.richard@vercel.com>",
   "license": "MIT",
-  "packageManager": "pnpm@10.29.2",
+  "packageManager": "pnpm@10.29.3",
   "scripts": {
     "dev": "turbo run dev --filter=@nuxtjs/mcp-toolkit-playground",
     "dev:prepare": "turbo run dev:prepare",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.1",
     "eslint": "^9.39.2",
-    "turbo": "^2.8.3",
+    "turbo": "^2.8.9",
     "typescript": "~5.9.3"
   },
   "workspaces": [
