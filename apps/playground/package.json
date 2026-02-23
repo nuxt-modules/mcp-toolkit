@@ -34,6 +34,6 @@
     "@iconify-json/simple-icons": "^1.2.71",
     "@nuxt/eslint-config": "^1.15.1",
     "drizzle-kit": "^0.31.9",
-    "eslint": "^9.39.3"
+    "eslint": "^10.0.1"
   }
 }
