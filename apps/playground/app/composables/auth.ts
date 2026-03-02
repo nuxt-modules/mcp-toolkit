@@ -1,6 +1,6 @@
 import { defu } from 'defu'
 import { createAuthClient } from 'better-auth/client'
-import { apiKeyClient } from 'better-auth/client/plugins'
+import { apiKeyClient } from '@better-auth/api-key/client'
 import type {
   InferSessionFromClient,
   InferUserFromClient,

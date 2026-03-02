@@ -128,7 +128,7 @@ async function generateBadgeSVG(options: BadgeOptions): Promise<string> {
   const width = Math.max(Math.ceil(iconWidth + textWidth + padding), 140)
   const height = 32
 
-  const svg = await satori(element, {
+  const svg = await satori(element as React.ReactNode, {
     width,
     height,
     fonts: [

@@ -56,9 +56,11 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: defaultMcpConfig,
   async setup(options, nuxt) {
-    // Cannot be used with `nuxt generate`
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (nuxt.options.nitro.static || (nuxt.options as any)._generate) {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const nitroOptions = (nuxt.options as any).nitro as Record<string, any> | undefined
+
+    if (nitroOptions?.static || (nuxt.options as any)._generate) {
+      /* eslint-enable @typescript-eslint/no-explicit-any */
       log.warn('@nuxtjs/mcp-toolkit is not compatible with `nuxt generate` as it needs a server to run.')
       return
     }
@@ -158,15 +160,17 @@ export default defineNuxtModule<ModuleOptions>({
       })
     })
 
-    nuxt.options.nitro.typescript ??= {}
-    nuxt.options.nitro.typescript.tsConfig ??= {}
-    nuxt.options.nitro.typescript.tsConfig.include ??= []
-    nuxt.options.nitro.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
+    if (nitroOptions) {
+      nitroOptions.typescript ??= {}
+      nitroOptions.typescript.tsConfig ??= {}
+      nitroOptions.typescript.tsConfig.include ??= []
+      nitroOptions.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
+    }
 
-    // Generate transport template based on preset (cloudflare vs node)
     let isCloudflare = false
     if (!nuxt.options.dev) {
-      nuxt.hook('nitro:config', (nitroConfig) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(nuxt.hook as any)('nitro:config', (nitroConfig: any) => {
         const preset = nitroConfig.preset || process.env.NITRO_PRESET || ''
         isCloudflare = preset.includes('cloudflare')
       })
