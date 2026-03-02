@@ -22,7 +22,7 @@
   "dependencies": {
     "@better-auth/api-key": "^1.5.1",
     "@electric-sql/pglite": "^0.3.15",
-    "@nuxt/ui": "^4.5.0",
+    "@nuxt/ui": "^4.5.1",
     "@nuxthub/core": "npm:@nuxthub/core-nightly@0.10.0-20251210-113644-c25eff9",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "better-auth": "^1.5.1",
