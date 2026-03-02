@@ -25,14 +25,14 @@
     "@nuxt/ui": "^4.5.0",
     "@nuxthub/core": "npm:@nuxthub/core-nightly@0.10.0-20251210-113644-c25eff9",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "better-auth": "^1.5.0",
+    "better-auth": "^1.5.1",
     "drizzle-orm": "^0.45.1",
     "nuxt": "^4.3.1",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.95",
-    "@iconify-json/simple-icons": "^1.2.71",
+    "@iconify-json/simple-icons": "^1.2.72",
     "@nuxt/eslint-config": "^1.15.2",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9.39.3"
