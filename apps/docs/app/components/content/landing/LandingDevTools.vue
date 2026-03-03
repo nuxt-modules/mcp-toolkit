@@ -1,21 +1,34 @@
 <script setup lang="ts">
-// @ts-expect-error yaml is not typed
-import devtools from './devtools.yml'
+defineProps<{
+  lightImage?: string
+  darkImage?: string
+  imageAlt?: string
+}>()
 </script>
 
 <template>
-  <UPageSection
-    :description="devtools.description"
-    :ui="{ container: 'lg:py-20' }"
-  >
+  <UPageSection :ui="{ container: 'lg:py-20' }">
     <template #title>
-      <ChromaText>{{ devtools.title }}</ChromaText>
+      <ChromaText>
+        <slot
+          name="title"
+          mdc-unwrap="p"
+        />
+      </ChromaText>
+    </template>
+
+    <template #description>
+      <slot
+        name="description"
+        mdc-unwrap="p"
+      />
     </template>
 
     <UColorModeImage
-      :light="devtools.image.light"
-      :dark="devtools.image.dark"
-      :alt="devtools.image.alt"
+      v-if="lightImage && darkImage"
+      :light="lightImage"
+      :dark="darkImage"
+      :alt="imageAlt"
       class="w-full h-auto grayscale"
     />
   </UPageSection>

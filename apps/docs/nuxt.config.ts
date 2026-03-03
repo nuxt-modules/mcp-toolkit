@@ -1,5 +1,3 @@
-import yaml from '@rollup/plugin-yaml'
-
 export default defineNuxtConfig({
   extends: ['docus'],
 
@@ -25,12 +23,6 @@ export default defineNuxtConfig({
     externals: {
       inline: ['minimark'],
     },
-  },
-
-  vite: {
-    plugins: [
-      yaml(),
-    ],
   },
 
   icon: {

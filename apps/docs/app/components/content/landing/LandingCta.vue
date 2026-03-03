@@ -1,12 +1,13 @@
 <script setup lang="ts">
-// @ts-expect-error yaml is not typed
-import cta from './cta.yml'
+defineProps<{
+  links?: Array<Record<string, unknown>>
+}>()
 </script>
 
 <template>
   <div class="relative overflow-hidden">
     <UPageCTA
-      v-bind="cta"
+      :links="links"
       class="relative z-10"
       :ui="{
         title: 'text-3xl sm:text-4xl',
@@ -15,7 +16,19 @@ import cta from './cta.yml'
       }"
     >
       <template #title>
-        <ChromaText>{{ cta.title }}</ChromaText>
+        <ChromaText>
+          <slot
+            name="title"
+            mdc-unwrap="p"
+          />
+        </ChromaText>
+      </template>
+
+      <template #description>
+        <slot
+          name="description"
+          mdc-unwrap="p"
+        />
       </template>
     </UPageCTA>
   </div>

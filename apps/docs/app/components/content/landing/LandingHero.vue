@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { Motion } from 'motion-v'
-
-// @ts-expect-error yaml is not typed
-import hero from './hero.yml'
+const props = defineProps<{
+  command?: string
+  installCommand?: string
+  linkLabel?: string
+  linkTo?: string
+}>()
 
 const copied = ref(false)
 
 async function copyCommand() {
-  await navigator.clipboard.writeText('npx skills add nuxt-modules/mcp-toolkit')
+  if (!props.command) return
+  await navigator.clipboard.writeText(props.command)
   copied.value = true
   setTimeout(() => {
     copied.value = false
@@ -17,10 +20,7 @@ async function copyCommand() {
 
 <template>
   <UPageHero
-    v-if="hero"
     orientation="horizontal"
-    :description="hero.description"
-    :links="hero.links"
     :ui="{
       root: 'relative overflow-hidden',
       container: 'py-18 sm:py-24 lg:py-32',
@@ -32,6 +32,7 @@ async function copyCommand() {
   >
     <template #title>
       <Motion
+        v-if="command"
         :initial="{ opacity: 0, filter: 'blur(4px)' }"
         :animate="{ opacity: 1, filter: 'blur(0px)' }"
         :transition="{ duration: 0.6, delay: 0.5 }"
@@ -42,27 +43,35 @@ async function copyCommand() {
           @click="copyCommand"
         >
           <span v-if="copied">Copied!</span>
-          <span v-else>$ npx skills add nuxt-modules/mcp-toolkit</span>
+          <span v-else>$ {{ command }}</span>
         </button>
       </Motion>
 
-      <ChromaText>{{ hero.title }}</ChromaText>
+      <ChromaText>
+        <slot
+          name="title"
+          mdc-unwrap="p"
+        />
+      </ChromaText>
+    </template>
+
+    <template #description>
+      <slot
+        name="description"
+        mdc-unwrap="p"
+      />
     </template>
 
     <template #links>
-      <template
-        v-for="(link, index) in hero.links"
-        :key="index"
-      >
-        <UInputCopy
-          v-if="link.value"
-          :value="link.value"
-        />
-        <UButton
-          v-else
-          v-bind="link"
-        />
-      </template>
+      <UInputCopy
+        v-if="installCommand"
+        :value="installCommand"
+      />
+      <UButton
+        v-if="linkTo"
+        :label="linkLabel || 'Get Started'"
+        :to="linkTo"
+      />
     </template>
 
     <HeroShader class="hidden md:block absolute inset-0 translate-x-1/4 pointer-events-none" />
