@@ -1,9 +1,8 @@
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, afterAll } from 'vitest'
-import { setup, $fetch, url } from '@nuxt/test-utils/e2e'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { cleanupMcpTests } from './helpers/mcp-setup.js'
+import { setup, $fetch } from '@nuxt/test-utils/e2e'
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { cleanupMcpTests, createMcpClient } from './helpers/mcp-setup.js'
 
 describe('Handler', async () => {
   await setup({
@@ -32,21 +31,9 @@ describe('Handler', async () => {
   })
 
   it('should be able to use the custom handler', async () => {
-    // Create a client for the custom handler endpoint
-    const baseUrl = url('/')
-    const baseUrlObj = new URL(baseUrl)
-    const origin = `${baseUrlObj.protocol}//${baseUrlObj.host}`
-    const handlerUrl = new URL('/mcp/test_handler', origin)
-
-    const handlerClient = new Client({
-      name: 'test-handler-client',
-      version: '1.0.0',
-    })
+    const handlerClient: Client = await createMcpClient('/mcp/test_handler', 'test-handler-client')
 
     try {
-      const transport = new StreamableHTTPClientTransport(handlerUrl)
-      await handlerClient.connect(transport)
-
       // List tools from the handler
       const tools = await handlerClient.listTools()
       expect(tools.tools.length).toBeGreaterThan(0)
