@@ -1,9 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { CallToolRequestSchema, ErrorCode, GetPromptRequestSchema, ListPromptsRequestSchema, ListResourcesRequestSchema, ListResourceTemplatesRequestSchema, ListToolsRequestSchema, McpError, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { sendRedirect, getHeader, defineEventHandler } from 'h3'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpMiddleware } from './definitions'
-import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
+import type { McpMiddleware } from './definitions/handlers'
+import type { McpPromptDefinition } from './definitions/prompts'
+import { registerPromptFromDefinition } from './definitions/prompts'
+import type { McpResourceDefinition } from './definitions/resources'
+import { registerResourceFromDefinition } from './definitions/resources'
+import type { McpToolDefinition } from './definitions/tools'
+import { registerToolFromDefinition } from './definitions/tools'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
@@ -26,67 +30,23 @@ function resolveConfig(config: CreateMcpHandlerConfig, event: H3Event): Resolved
   return typeof config === 'function' ? config(event) : config
 }
 
-function registerEmptyToolsFallback(server: McpServer) {
-  server.server.registerCapabilities({
-    tools: {
-      listChanged: true,
-    },
-  })
-  server.server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: [],
-  }))
-  server.server.setRequestHandler(CallToolRequestSchema, request => ({
-    content: [{
-      type: 'text',
-      text: `Tool ${request.params.name} not found`,
-    }],
-    isError: true,
-  }))
-}
-
-function registerEmptyResourcesFallback(server: McpServer) {
-  server.server.registerCapabilities({
-    resources: {
-      listChanged: true,
-    },
-  })
-  server.server.setRequestHandler(ListResourcesRequestSchema, () => ({
-    resources: [],
-  }))
-  server.server.setRequestHandler(ListResourceTemplatesRequestSchema, () => ({
-    resourceTemplates: [],
-  }))
-  server.server.setRequestHandler(ReadResourceRequestSchema, (request) => {
-    const uri = new URL(request.params.uri)
-    throw new McpError(ErrorCode.InvalidParams, `Resource ${uri} not found`)
-  })
-}
-
-function registerEmptyPromptsFallback(server: McpServer) {
-  server.server.registerCapabilities({
-    prompts: {
-      listChanged: true,
-    },
-  })
-  server.server.setRequestHandler(ListPromptsRequestSchema, () => ({
-    prompts: [],
-  }))
-  server.server.setRequestHandler(GetPromptRequestSchema, (request) => {
-    throw new McpError(ErrorCode.InvalidParams, `Prompt ${request.params.name} not found`)
-  })
-}
-
 function registerEmptyDefinitionFallbacks(server: McpServer, config: ResolvedMcpConfig) {
+  const internalServer = server as McpServer & {
+    setToolRequestHandlers: () => void
+    setResourceRequestHandlers: () => void
+    setPromptRequestHandlers: () => void
+  }
+
   if ((config.tools?.length ?? 0) === 0) {
-    registerEmptyToolsFallback(server)
+    internalServer.setToolRequestHandlers()
   }
 
   if ((config.resources?.length ?? 0) === 0) {
-    registerEmptyResourcesFallback(server)
+    internalServer.setResourceRequestHandlers()
   }
 
   if ((config.prompts?.length ?? 0) === 0) {
-    registerEmptyPromptsFallback(server)
+    internalServer.setPromptRequestHandlers()
   }
 }
 
