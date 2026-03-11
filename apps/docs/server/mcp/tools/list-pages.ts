@@ -22,7 +22,7 @@ OUTPUT: Returns a structured list with:
   cache: '1h',
   handler: async () => {
     const event = useEvent()
-    const siteUrl = import.meta.dev ? 'http://localhost:3000' : getRequestURL(event).origin
+    const siteUrl = getRequestURL(event).origin
 
     try {
       const pages = await queryCollection(event, 'docs')
