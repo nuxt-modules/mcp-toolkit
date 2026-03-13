@@ -1,8 +1,16 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { url } from '@nuxt/test-utils/e2e'
 
 let mcpClient: Client | undefined
 let mcpUrl: URL | undefined
+
+export function createMcpUrl(path = '/mcp') {
+  const baseUrl = url('/')
+  const baseUrlObj = new URL(baseUrl)
+  const origin = `${baseUrlObj.protocol}//${baseUrlObj.host}`
+  return new URL(path, origin)
+}
 
 export async function setupMcpClient(mcpEndpointUrl: URL) {
   // Only create client once and reuse it
@@ -46,4 +54,15 @@ export function getMcpClient() {
 
 export function getMcpUrl() {
   return mcpUrl
+}
+
+export async function createMcpClient(path = '/mcp', name = 'test-client') {
+  const client = new Client({
+    name,
+    version: '1.0.0',
+  })
+
+  await client.connect(new StreamableHTTPClientTransport(createMcpUrl(path)))
+
+  return client
 }

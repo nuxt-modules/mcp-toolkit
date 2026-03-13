@@ -1,9 +1,8 @@
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, afterAll } from 'vitest'
-import { setup, $fetch, url } from '@nuxt/test-utils/e2e'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { cleanupMcpTests } from './helpers/mcp-setup.js'
+import { setup, $fetch } from '@nuxt/test-utils/e2e'
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { cleanupMcpTests, createMcpClient } from './helpers/mcp-setup.js'
 
 describe('Default Handler Override', async () => {
   await setup({
@@ -40,20 +39,9 @@ describe('Default Handler Override', async () => {
   })
 
   it('should use default handler config with global tools', async () => {
-    const baseUrl = url('/')
-    const baseUrlObj = new URL(baseUrl)
-    const origin = `${baseUrlObj.protocol}//${baseUrlObj.host}`
-    const mcpUrl = new URL('/mcp', origin)
-
-    const client = new Client({
-      name: 'test-default-handler-client',
-      version: '1.0.0',
-    })
+    const client: Client = await createMcpClient('/mcp', 'test-default-handler-client')
 
     try {
-      const transport = new StreamableHTTPClientTransport(mcpUrl)
-      await client.connect(transport)
-
       // List tools - should include global tools even though default handler doesn't specify them
       const tools = await client.listTools()
       expect(tools.tools.length).toBeGreaterThan(0)

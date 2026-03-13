@@ -1,8 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { sendRedirect, getHeader, defineEventHandler } from 'h3'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition, McpMiddleware } from './definitions'
-import { registerToolFromDefinition, registerResourceFromDefinition, registerPromptFromDefinition } from './definitions'
+import type { McpMiddleware } from './definitions/handlers'
+import type { McpPromptDefinition } from './definitions/prompts'
+import { registerPromptFromDefinition } from './definitions/prompts'
+import type { McpResourceDefinition } from './definitions/resources'
+import { registerResourceFromDefinition } from './definitions/resources'
+import type { McpToolDefinition } from './definitions/tools'
+import { registerToolFromDefinition } from './definitions/tools'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
@@ -25,6 +30,26 @@ function resolveConfig(config: CreateMcpHandlerConfig, event: H3Event): Resolved
   return typeof config === 'function' ? config(event) : config
 }
 
+function registerEmptyDefinitionFallbacks(server: McpServer, config: ResolvedMcpConfig) {
+  const internalServer = server as McpServer & {
+    setToolRequestHandlers: () => void
+    setResourceRequestHandlers: () => void
+    setPromptRequestHandlers: () => void
+  }
+
+  if ((config.tools?.length ?? 0) === 0) {
+    internalServer.setToolRequestHandlers()
+  }
+
+  if ((config.resources?.length ?? 0) === 0) {
+    internalServer.setResourceRequestHandlers()
+  }
+
+  if ((config.prompts?.length ?? 0) === 0) {
+    internalServer.setPromptRequestHandlers()
+  }
+}
+
 export function createMcpServer(config: ResolvedMcpConfig): McpServer {
   const server = new McpServer({
     name: config.name,
@@ -42,6 +67,8 @@ export function createMcpServer(config: ResolvedMcpConfig): McpServer {
   for (const prompt of (config.prompts || []) as McpPromptDefinition[]) {
     registerPromptFromDefinition(server, prompt)
   }
+
+  registerEmptyDefinitionFallbacks(server, config)
 
   return server
 }
