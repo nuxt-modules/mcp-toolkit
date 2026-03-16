@@ -1,7 +1,13 @@
 export default defineNuxtConfig({
   extends: ['docus'],
 
-  modules: ['@nuxtjs/mcp-toolkit', 'motion-v/nuxt', 'nuxt-studio'],
+  modules: [
+    '@nuxtjs/mcp-toolkit',
+    'motion-v/nuxt',
+    'nuxt-studio',
+    '@vercel/analytics',
+    '@vercel/speed-insights',
+  ],
 
   css: ['~/assets/css/main.css'],
 

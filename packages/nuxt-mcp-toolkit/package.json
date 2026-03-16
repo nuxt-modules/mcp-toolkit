@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "@nuxt/kit": "^4.3.1",
+    "@nuxt/kit": "^4.4.2",
     "defu": "^6.1.4",
     "ms": "^2.1.3",
     "pathe": "^2.0.3",
@@ -60,10 +60,14 @@
     "tinyglobby": "^0.2.15"
   },
   "peerDependencies": {
+    "h3": "^1.15.6",
     "zod": "^4.1.13",
-    "agents": ">=0.7.5"
+    "agents": ">=0.7.6"
   },
   "peerDependenciesMeta": {
+    "h3": {
+      "optional": false
+    },
     "zod": {
       "optional": false
     },
@@ -75,14 +79,14 @@
     "@nuxt/devtools": "^3.2.3",
     "@nuxt/eslint-config": "^1.15.2",
     "@nuxt/module-builder": "^1.0.2",
-    "@nuxt/schema": "^4.3.1",
+    "@nuxt/schema": "^4.4.2",
     "@nuxt/test-utils": "^4.0.0",
     "@types/node": "latest",
     "changelogen": "^0.6.2",
     "eslint": "^9.39.4",
-    "nuxt": "^4.3.1",
+    "nuxt": "^4.4.2",
     "typescript": "~5.9.3",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.0",
     "vue-tsc": "^3.2.5"
   },
   "publishConfig": {
