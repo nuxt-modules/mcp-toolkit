@@ -20,7 +20,7 @@
   "dependencies": {
     "@ai-sdk/mcp": "^1.0.25",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "@vercel/analytics": "^2.0.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "better-sqlite3": "^12.8.0",
     "docus": "^5.8.1",
