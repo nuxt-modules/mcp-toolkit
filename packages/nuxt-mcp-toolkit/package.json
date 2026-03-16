@@ -61,7 +61,7 @@
   },
   "peerDependencies": {
     "zod": "^4.1.13",
-    "agents": ">=0.7.5"
+    "agents": ">=0.7.6"
   },
   "peerDependenciesMeta": {
     "zod": {
@@ -82,7 +82,7 @@
     "eslint": "^9.39.4",
     "nuxt": "^4.4.2",
     "typescript": "~5.9.3",
-    "vitest": "^4.0.18",
+    "vitest": "^4.1.0",
     "vue-tsc": "^3.2.5"
   },
   "publishConfig": {
