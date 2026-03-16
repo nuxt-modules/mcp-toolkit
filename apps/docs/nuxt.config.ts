@@ -21,12 +21,12 @@ export default defineNuxtConfig({
     },
   },
 
-  experimental: {
-    asyncContext: true,
-  },
-
   routeRules: {
     '/core-concepts/configuration': { redirect: '/getting-started/configuration' },
+  },
+
+  experimental: {
+    asyncContext: true,
   },
 
   nitro: {
