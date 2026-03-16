@@ -31,22 +31,16 @@ function resolveConfig(config: CreateMcpHandlerConfig, event: H3Event): Resolved
 }
 
 function registerEmptyDefinitionFallbacks(server: McpServer, config: ResolvedMcpConfig) {
-  const internalServer = server as McpServer & {
-    setToolRequestHandlers: () => void
-    setResourceRequestHandlers: () => void
-    setPromptRequestHandlers: () => void
+  if (!config.tools?.length) {
+    server.registerTool('__init__', {}, async () => ({ content: [] })).remove()
   }
 
-  if ((config.tools?.length ?? 0) === 0) {
-    internalServer.setToolRequestHandlers()
+  if (!config.resources?.length) {
+    server.registerResource('__init__', 'noop://init', {}, async () => ({ contents: [] })).remove()
   }
 
-  if ((config.resources?.length ?? 0) === 0) {
-    internalServer.setResourceRequestHandlers()
-  }
-
-  if ((config.prompts?.length ?? 0) === 0) {
-    internalServer.setPromptRequestHandlers()
+  if (!config.prompts?.length) {
+    server.registerPrompt('__init__', {}, async () => ({ messages: [] })).remove()
   }
 }
 
