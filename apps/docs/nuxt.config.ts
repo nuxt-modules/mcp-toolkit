@@ -25,6 +25,10 @@ export default defineNuxtConfig({
     asyncContext: true,
   },
 
+  routeRules: {
+    '/core-concepts/configuration': { redirect: '/getting-started/configuration' },
+  },
+
   nitro: {
     externals: {
       inline: ['minimark'],
