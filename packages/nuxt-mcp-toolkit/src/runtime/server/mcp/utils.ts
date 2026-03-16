@@ -76,8 +76,7 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
     }
 
     const handler = async () => {
-      const server = createMcpServer(resolvedConfig)
-      return handleMcpRequest(server, event)
+      return handleMcpRequest(() => createMcpServer(resolvedConfig), event)
     }
 
     // If middleware is defined, wrap the handler with it

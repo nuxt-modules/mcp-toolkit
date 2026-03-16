@@ -44,6 +44,23 @@ export interface ModuleOptions {
    * @default 'mcp'
    */
   dir?: string
+  /**
+   * Enable MCP session management (stateful transport).
+   * When enabled, the server assigns session IDs and maintains state across requests,
+   * enabling SSE streaming, server-to-client notifications, and resumability.
+   *
+   * Pass `true` for defaults or an object to configure session behavior.
+   * @default false
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
+   */
+  sessions?: boolean | {
+    enabled?: boolean
+    /**
+     * Maximum session duration in milliseconds. Sessions inactive longer than this are cleaned up.
+     * @default 1800000 (30 minutes)
+     */
+    maxDuration?: number
+  }
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -67,7 +84,11 @@ export default defineNuxtModule<ModuleOptions>({
 
     const resolver = createResolver(import.meta.url)
 
-    const mcpConfig = getMcpConfig(options)
+    if (typeof options.sessions === 'boolean') {
+      options.sessions = { enabled: options.sessions }
+    }
+
+    const mcpConfig = getMcpConfig(options as Partial<import('./runtime/server/mcp/config').McpConfig>)
 
     if (!options.enabled) {
       return
