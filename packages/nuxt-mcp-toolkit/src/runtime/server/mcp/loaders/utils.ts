@@ -1,5 +1,5 @@
+import { resolve as resolvePath } from 'node:path'
 import { getLayerDirectories } from '@nuxt/kit'
-import { resolve as resolvePath } from 'pathe'
 import { glob } from 'tinyglobby'
 
 export interface LoadResult {

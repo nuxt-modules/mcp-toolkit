@@ -2,7 +2,6 @@ import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, 
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
-import { addDevToolsCustomTabs } from './runtime/server/mcp/devtools'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
 import { name, version } from '../package.json'
 
@@ -233,6 +232,10 @@ export default defineNuxtModule<ModuleOptions>({
       handler: resolver.resolve('runtime/server/mcp/badge-image'),
     })
 
-    addDevToolsCustomTabs(nuxt, options)
+    if (nuxt.options.dev) {
+      import('./runtime/server/mcp/devtools').then(({ addDevToolsCustomTabs }) => {
+        addDevToolsCustomTabs(nuxt, options)
+      })
+    }
   },
 })

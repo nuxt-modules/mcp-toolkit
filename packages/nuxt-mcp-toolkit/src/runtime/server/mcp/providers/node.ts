@@ -1,14 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { randomUUID } from 'uncrypto'
-import { readBody, getHeader, getMethod } from 'h3'
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import { toWebRequest, getHeader } from 'h3'
 // @ts-expect-error - Generated template
 import config from '#nuxt-mcp-toolkit/config.mjs'
 import { createMcpTransportHandler } from './types'
 
 interface Session {
   server: McpServer
-  transport: StreamableHTTPServerTransport
+  transport: WebStandardStreamableHTTPServerTransport
   lastAccessed: number
 }
 
@@ -37,47 +36,44 @@ function ensureCleanup(maxDuration: number) {
 export default createMcpTransportHandler(async (createServer, event) => {
   const sessionsConfig = config.sessions
   const sessionsEnabled = sessionsConfig?.enabled ?? false
+  const request = toWebRequest(event)
 
   if (!sessionsEnabled) {
     const server = createServer()
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+    const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
     event.node.res.on('close', () => {
       transport.close()
       server.close()
     })
     await server.connect(transport)
-    const body = await readBody(event)
-    await transport.handleRequest(event.node.req, event.node.res, body)
-    return
+    return transport.handleRequest(request)
   }
 
   const maxDuration: number = sessionsConfig?.maxDuration ?? 30 * 60 * 1000
-  const method = getMethod(event)
   const sessionId = getHeader(event, 'mcp-session-id')
 
   if (sessionId) {
     const session = sessions.get(sessionId)
     if (!session) {
-      event.node.res.writeHead(404, { 'Content-Type': 'application/json' })
-      event.node.res.end(JSON.stringify({
+      return new Response(JSON.stringify({
         jsonrpc: '2.0',
         error: { code: -32_001, message: 'Session not found' },
         id: null,
-      }))
-      return
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
     session.lastAccessed = Date.now()
-    const body = method === 'POST' ? await readBody(event) : undefined
-    await session.transport.handleRequest(event.node.req, event.node.res, body)
-    return
+    return session.transport.handleRequest(request)
   }
 
   const server = createServer()
   let sessionStored = false
 
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: () => globalThis.crypto.randomUUID(),
     onsessioninitialized: (id: string) => {
       sessionStored = true
       sessions.set(id, { server, transport, lastAccessed: Date.now() })
@@ -94,11 +90,14 @@ export default createMcpTransportHandler(async (createServer, event) => {
   }
 
   await server.connect(transport)
-  const body = await readBody(event)
-  await transport.handleRequest(event.node.req, event.node.res, body)
+  const response = await transport.handleRequest(request)
 
   if (!sessionStored) {
-    transport.close()
-    server.close()
+    event.node.res.on('close', () => {
+      transport.close()
+      server.close()
+    })
   }
+
+  return response
 })

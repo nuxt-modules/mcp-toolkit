@@ -1,5 +1,3 @@
-import { defu } from 'defu'
-
 export interface McpSessionsConfig {
   enabled: boolean
   maxDuration: number
@@ -29,5 +27,17 @@ export const defaultMcpConfig: McpConfig = {
 }
 
 export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
-  return defu(partial, defaultMcpConfig)
+  if (!partial) return { ...defaultMcpConfig }
+  const sessions = partial.sessions
+    ? { ...defaultMcpConfig.sessions, ...partial.sessions }
+    : defaultMcpConfig.sessions
+  return {
+    enabled: partial.enabled ?? defaultMcpConfig.enabled,
+    route: partial.route ?? defaultMcpConfig.route,
+    browserRedirect: partial.browserRedirect ?? defaultMcpConfig.browserRedirect,
+    name: partial.name ?? defaultMcpConfig.name,
+    version: partial.version ?? defaultMcpConfig.version,
+    dir: partial.dir ?? defaultMcpConfig.dir,
+    sessions,
+  }
 }

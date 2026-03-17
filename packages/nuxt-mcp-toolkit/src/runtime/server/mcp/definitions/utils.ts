@@ -1,5 +1,3 @@
-import { kebabCase, titleCase } from 'scule'
-
 export interface EnrichNameTitleOptions {
   name?: string
   title?: string
@@ -10,6 +8,20 @@ export interface EnrichNameTitleOptions {
 export interface EnrichNameTitleResult {
   name: string
   title?: string
+}
+
+function kebabCase(str: string): string {
+  return str
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/[_\s]+/g, '-')
+    .toLowerCase()
+}
+
+function titleCase(str: string): string {
+  return str
+    .replace(/[-_]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, c => c.toUpperCase())
 }
 
 /**

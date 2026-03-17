@@ -1,8 +1,41 @@
 import { defineCachedFunction } from 'nitropack/runtime'
-import ms from 'ms'
+
+const DURATION_UNITS: Record<string, number> = {
+  ms: 1,
+  millisecond: 1,
+  milliseconds: 1,
+  s: 1000,
+  sec: 1000,
+  second: 1000,
+  seconds: 1000,
+  m: 60_000,
+  min: 60_000,
+  minute: 60_000,
+  minutes: 60_000,
+  h: 3_600_000,
+  hr: 3_600_000,
+  hour: 3_600_000,
+  hours: 3_600_000,
+  d: 86_400_000,
+  day: 86_400_000,
+  days: 86_400_000,
+  w: 604_800_000,
+  week: 604_800_000,
+  weeks: 604_800_000,
+}
+
+function parseDurationToMs(str: string): number | undefined {
+  const match = str.trim().match(/^(\d+)\s*([a-z]+)$/i)
+  if (!match) return undefined
+  const value = Number(match[1])
+  const unit = match[2]!.toLowerCase()
+  const multiplier = DURATION_UNITS[unit]
+  if (multiplier === undefined) return undefined
+  return value * multiplier
+}
 
 /**
- * Cache duration strings supported by the `ms` package
+ * Cache duration strings (e.g. '1h', '30m', '2 days')
  */
 export type MsCacheDuration
   = '1s' | '5s' | '10s' | '15s' | '30s' | '45s' // seconds
@@ -50,11 +83,10 @@ export function parseCacheDuration(duration: MsCacheDuration | number): number {
   if (typeof duration === 'number') {
     return duration
   }
-  const parsed = ms(duration as Parameters<typeof ms>[0])
+  const parsed = parseDurationToMs(duration)
   if (parsed === undefined) {
     throw new Error(`Invalid cache duration: ${duration}`)
   }
-  // Convert milliseconds to seconds for Nitro
   return Math.ceil(parsed / 1000)
 }
 
