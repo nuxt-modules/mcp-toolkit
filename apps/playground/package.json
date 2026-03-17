@@ -23,7 +23,7 @@
     "@better-auth/api-key": "^1.5.5",
     "@electric-sql/pglite": "^0.3.16",
     "@nuxt/ui": "^4.5.1",
-    "@nuxthub/core": "npm:@nuxthub/core-nightly@0.10.0-20251210-113644-c25eff9",
+    "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "better-auth": "^1.5.5",
     "drizzle-orm": "^0.45.1",

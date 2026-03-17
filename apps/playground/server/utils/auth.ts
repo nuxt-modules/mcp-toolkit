@@ -78,20 +78,25 @@ export async function getApiKeyUser(event: H3Event) {
     return null
   }
 
-  const key = authHeader.slice(7)
-  const result = await auth.api.verifyApiKey({ body: { key } })
+  try {
+    const key = authHeader.slice(7)
+    const result = await auth.api.verifyApiKey({ body: { key } })
 
-  if (!result.valid || !result.key) {
+    if (!result.valid || !result.key) {
+      return null
+    }
+
+    const user = await db.query.user.findFirst({
+      where: (users, { eq }) => eq(users.id, result.key!.referenceId),
+    })
+
+    if (!user) {
+      return null
+    }
+
+    return { user, apiKey: result.key }
+  }
+  catch {
     return null
   }
-
-  const user = await db.query.user.findFirst({
-    where: (users, { eq }) => eq(users.id, result.key!.referenceId),
-  })
-
-  if (!user) {
-    return null
-  }
-
-  return { user, apiKey: result.key }
 }

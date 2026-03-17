@@ -54,13 +54,15 @@ const providers = [
     label: 'GitHub',
     icon: 'i-simple-icons-github',
     onClick: () => {
+      if (loading.value) return
+      loading.value = true
       auth.signIn.social({ provider: 'github', callbackURL: '/app' })
     },
   },
 ]
 
 const signInSchema = z.object({
-  email: z.string().email('Invalid email'),
+  email: z.email('Invalid email'),
   password: z.string().min(8, 'Must be at least 8 characters'),
 })
 
