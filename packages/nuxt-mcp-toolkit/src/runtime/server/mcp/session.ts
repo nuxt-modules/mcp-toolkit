@@ -2,7 +2,7 @@ import { useStorage, useEvent } from 'nitropack/runtime'
 import { getHeader } from 'h3'
 import type { Storage } from 'unstorage'
 
-export interface McpSessionStore<T extends Record<string, unknown> = Record<string, unknown>> {
+export interface McpSessionStore<T = Record<string, unknown>> {
   get<K extends keyof T & string>(key: K): Promise<T[K] | null>
   set<K extends keyof T & string>(key: K, value: T[K]): Promise<void>
   remove<K extends keyof T & string>(key: K): Promise<void>
@@ -13,9 +13,7 @@ export interface McpSessionStore<T extends Record<string, unknown> = Record<stri
   storage: Storage
 }
 
-export function useMcpSession<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(): McpSessionStore<T> {
+export function useMcpSession<T = Record<string, unknown>>(): McpSessionStore<T> {
   const event = useEvent()
   const sessionId = getHeader(event, 'mcp-session-id')
   if (!sessionId) {
