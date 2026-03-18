@@ -18,6 +18,7 @@ const fallbackCtx: ExecutionContext = {
 
 export default createMcpTransportHandler(async (createServer, event) => {
   const server = createServer()
+  event.context._mcpServer = server
   const { createMcpHandler } = await import('agents/mcp')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handler = createMcpHandler(server as any, {

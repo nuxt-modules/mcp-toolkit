@@ -1,5 +1,5 @@
 {
-  "id": "4299006f-49cf-419c-bb59-b390a087322d",
+  "id": "553a6162-b752-4426-bd33-d938ad51ba0b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -316,21 +316,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "apikey_reference_id_user_id_fk": {
-          "name": "apikey_reference_id_user_id_fk",
-          "tableFrom": "apikey",
-          "tableTo": "user",
-          "columnsFrom": [
-            "reference_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
