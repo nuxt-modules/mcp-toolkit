@@ -1,6 +1,10 @@
 import { defineMcpTool } from '../../../../../../src/runtime/server/types'
+import { useMcpSession } from '../../../../../../src/runtime/server/mcp/session'
 import { z } from 'zod'
-import { sessionStore } from '../../utils/session-store'
+
+interface TestSession {
+  [key: string]: string
+}
 
 export default defineMcpTool({
   name: 'store_value',
@@ -10,7 +14,8 @@ export default defineMcpTool({
     value: z.string(),
   },
   handler: async ({ key, value }) => {
-    sessionStore.set(key, value)
+    const session = useMcpSession<TestSession>()
+    await session.set(key, value)
     return {
       content: [{ type: 'text', text: `Stored: ${key}=${value}` }],
     }

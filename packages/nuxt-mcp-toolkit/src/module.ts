@@ -93,6 +93,11 @@ export default defineNuxtModule<ModuleOptions>({
       return
     }
 
+    if (mcpConfig.sessions.enabled && nitroOptions) {
+      nitroOptions.storage ??= {}
+      nitroOptions.storage['mcp:sessions'] ??= { driver: 'memory' }
+    }
+
     addComponent({
       name: 'InstallButton',
       filePath: resolver.resolve('runtime/components/InstallButton.vue'),
@@ -205,6 +210,7 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
+    const mcpSessionPath = resolver.resolve('runtime/server/mcp/session')
 
     addServerImports([
       'defineMcpTool',
@@ -216,6 +222,10 @@ export default defineNuxtModule<ModuleOptions>({
       'errorResult',
       'imageResult',
     ].map(name => ({ name, from: mcpDefinitionsPath })))
+
+    addServerImports([
+      { name: 'useMcpSession', from: mcpSessionPath },
+    ])
 
     addServerHandler({
       route: options.route,

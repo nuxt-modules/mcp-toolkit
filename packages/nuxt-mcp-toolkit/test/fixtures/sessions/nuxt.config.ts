@@ -4,6 +4,11 @@ export default defineNuxtConfig({
   modules: [
     MyModule,
   ],
+  nitro: {
+    experimental: {
+      asyncContext: true,
+    },
+  },
   mcp: {
     sessions: true,
   },
