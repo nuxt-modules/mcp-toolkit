@@ -41,7 +41,6 @@ describe('Fallback registration', () => {
     await withClient({
       name: 'tools-only-server',
       version: '1.0.0',
-      browserRedirect: '/',
       tools: [{
         name: 'echo_tool',
         description: 'Echo a message',
@@ -84,7 +83,6 @@ describe('Fallback registration', () => {
     await withClient({
       name: 'prompts-only-server',
       version: '1.0.0',
-      browserRedirect: '/',
       tools: [],
       resources: [],
       prompts: [{
@@ -127,7 +125,6 @@ describe('Fallback registration', () => {
     await withClient({
       name: 'resources-only-server',
       version: '1.0.0',
-      browserRedirect: '/',
       tools: [],
       resources: [{
         name: 'test_resource',
@@ -169,7 +166,6 @@ describe('Fallback registration', () => {
     await withClient({
       name: 'fallback-test-server',
       version: '1.0.0',
-      browserRedirect: '/',
       tools: [],
       resources: [],
       prompts: [],

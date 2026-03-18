@@ -112,15 +112,21 @@ function copyToClipboard(text: string) {
   })
 }
 
+const adminMode = ref(false)
+
 const mcpConfigWithKey = computed(() => {
   const key = newKeyValue.value || 'YOUR_API_KEY'
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${key}`,
+  }
+  if (adminMode.value) {
+    headers['x-mcp-role'] = 'admin'
+  }
   return JSON.stringify({
     mcpServers: {
       'playground-todos': {
         url: `${url.origin}/mcp`,
-        headers: {
-          Authorization: `Bearer ${key}`,
-        },
+        headers,
       },
     },
   }, null, 2)
@@ -254,13 +260,26 @@ onMounted(() => {
                 <p class="text-sm font-medium">
                   MCP Config
                 </p>
-                <UButton
-                  variant="ghost"
-                  icon="i-lucide-copy"
-                  size="xs"
-                  @click="copyToClipboard(mcpConfigWithKey)"
-                />
+                <div class="flex items-center gap-2">
+                  <USwitch
+                    v-model="adminMode"
+                    size="xs"
+                  />
+                  <span class="text-xs text-muted">Admin role</span>
+                  <UButton
+                    variant="ghost"
+                    icon="i-lucide-copy"
+                    size="xs"
+                    @click="copyToClipboard(mcpConfigWithKey)"
+                  />
+                </div>
               </div>
+              <p
+                v-if="adminMode"
+                class="text-xs text-muted mb-2"
+              >
+                Admin mode adds <code class="text-xs">x-mcp-role: admin</code> header, which unlocks admin-only tools and prompts.
+              </p>
               <pre class="text-xs bg-elevated p-3 rounded-lg overflow-x-auto"><code>{{ mcpConfigWithKey }}</code></pre>
             </div>
           </div>

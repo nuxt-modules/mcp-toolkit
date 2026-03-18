@@ -1,3 +1,4 @@
+import type { H3Event } from 'h3'
 import type { ZodRawShape } from 'zod'
 import type { GetPromptResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
@@ -23,6 +24,12 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
   inputSchema?: Args
   _meta?: Record<string, unknown>
   handler: McpPromptCallback<Args>
+  /**
+   * Guard that controls whether this prompt is registered for a given request.
+   * Receives the H3 event (with `event.context` populated by middleware) and
+   * returns `true` to include the prompt or `false` to hide it.
+   */
+  enabled?: (event: H3Event) => boolean | Promise<boolean>
 }
 
 /**

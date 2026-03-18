@@ -1,3 +1,4 @@
+import type { H3Event } from 'h3'
 import type { ZodRawShape } from 'zod'
 import type { CallToolResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
@@ -62,6 +63,14 @@ export interface McpToolDefinition<
    * @see https://nitro.build/guide/cache#options
    */
   cache?: McpToolCache<InputSchema extends ZodRawShape ? ShapeOutput<InputSchema> : undefined>
+  /**
+   * Guard that controls whether this tool is registered for a given request.
+   * Receives the H3 event (with `event.context` populated by middleware) and
+   * returns `true` to include the tool or `false` to hide it.
+   *
+   * Evaluated after middleware runs, so authentication context is available.
+   */
+  enabled?: (event: H3Event) => boolean | Promise<boolean>
 }
 
 /**

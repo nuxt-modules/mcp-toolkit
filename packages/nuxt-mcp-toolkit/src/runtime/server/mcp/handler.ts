@@ -43,14 +43,19 @@ export default createMcpHandler((event: H3Event) => {
   // Default handler override via server/mcp/index.ts
   const defaultHandlerDef = defaultHandler as McpHandlerOptions | null
   if (defaultHandlerDef) {
+    // Definitions can be static arrays or dynamic functions — pass them through
+    // for resolution after middleware runs (see resolveDynamicDefinitions in utils.ts)
+    const globalTools = tools as McpToolDefinition[]
+    const globalResources = resources as McpResourceDefinition[]
+    const globalPrompts = prompts as McpPromptDefinition[]
+
     return {
       name: defaultHandlerDef.name ?? config.name ?? 'MCP Server',
       version: defaultHandlerDef.version ?? config.version,
       browserRedirect: defaultHandlerDef.browserRedirect ?? config.browserRedirect,
-      // Use handler's definitions if specified, otherwise use global definitions
-      tools: defaultHandlerDef.tools ?? (tools as McpToolDefinition[]),
-      resources: defaultHandlerDef.resources ?? (resources as McpResourceDefinition[]),
-      prompts: defaultHandlerDef.prompts ?? (prompts as McpPromptDefinition[]),
+      tools: defaultHandlerDef.tools ?? globalTools,
+      resources: defaultHandlerDef.resources ?? globalResources,
+      prompts: defaultHandlerDef.prompts ?? globalPrompts,
       middleware: defaultHandlerDef.middleware,
     }
   }

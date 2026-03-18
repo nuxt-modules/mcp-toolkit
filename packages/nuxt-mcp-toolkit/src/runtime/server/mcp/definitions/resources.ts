@@ -1,3 +1,4 @@
+import type { H3Event } from 'h3'
 import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTemplateCallback, ResourceMetadata } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname } from 'node:path'
@@ -40,6 +41,12 @@ export interface StandardMcpResourceDefinition {
    * @see https://nitro.build/guide/cache#options
    */
   cache?: McpResourceCache
+  /**
+   * Guard that controls whether this resource is registered for a given request.
+   * Receives the H3 event (with `event.context` populated by middleware) and
+   * returns `true` to include the resource or `false` to hide it.
+   */
+  enabled?: (event: H3Event) => boolean | Promise<boolean>
 }
 
 /**
@@ -66,6 +73,12 @@ export interface FileMcpResourceDefinition {
    * @see https://nitro.build/guide/cache#options
    */
   cache?: McpResourceCache
+  /**
+   * Guard that controls whether this resource is registered for a given request.
+   * Receives the H3 event (with `event.context` populated by middleware) and
+   * returns `true` to include the resource or `false` to hide it.
+   */
+  enabled?: (event: H3Event) => boolean | Promise<boolean>
 }
 
 /**

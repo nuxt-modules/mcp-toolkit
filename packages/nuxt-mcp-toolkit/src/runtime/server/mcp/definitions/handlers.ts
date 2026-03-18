@@ -76,9 +76,9 @@ export interface McpHandlerOptions {
    */
   middleware?: McpMiddleware
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools?: Array<McpToolDefinition<any, any>>
-  resources?: McpResourceDefinition[]
-  prompts?: McpPromptDefinition[]
+  tools?: Array<McpToolDefinition<any, any>> | ((event: H3Event) => Array<McpToolDefinition<any, any>> | Promise<Array<McpToolDefinition<any, any>>>)
+  resources?: McpResourceDefinition[] | ((event: H3Event) => McpResourceDefinition[] | Promise<McpResourceDefinition[]>)
+  prompts?: McpPromptDefinition[] | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
 }
 
 export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware'>> {
