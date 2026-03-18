@@ -112,14 +112,14 @@ describe('Session Management', async () => {
     expect(content[0]?.text).toBe('blue')
   })
 
-  it('should share server-side state between sessions using the same server process', async () => {
+  it('should isolate session state between different sessions', async () => {
     const { client: client1 } = await createSessionClient()
     const { client: client2 } = await createSessionClient()
 
-    await client1.callTool({ name: 'store_value', arguments: { key: 'shared', value: 'hello' } })
-    const result = await client2.callTool({ name: 'get_value', arguments: { key: 'shared' } })
+    await client1.callTool({ name: 'store_value', arguments: { key: 'secret', value: 'session1-only' } })
+    const result = await client2.callTool({ name: 'get_value', arguments: { key: 'secret' } })
 
     const content = result.content as Array<{ type: string, text?: string }>
-    expect(content[0]?.text).toBe('hello')
+    expect(content[0]?.text).toBe('NOT_FOUND')
   })
 })

@@ -1,5 +1,13 @@
 import { z } from 'zod'
-import { sessionNotes } from '../../utils/session-notes'
+
+interface Note {
+  text: string
+  createdAt: string
+}
+
+interface NotesSession {
+  notes: Note[]
+}
 
 export default defineMcpTool({
   name: 'add_note',
@@ -13,14 +21,10 @@ export default defineMcpTool({
     note: z.string().describe('The note content to add'),
   },
   handler: async ({ note }) => {
-    const sessionId = getHeader(useEvent(), 'mcp-session-id')
-    if (!sessionId) {
-      return errorResult('No active session. Enable sessions in your MCP config.')
-    }
-
-    const notes = sessionNotes.get(sessionId) ?? []
+    const session = useMcpSession<NotesSession>()
+    const notes = await session.get('notes') ?? []
     notes.push({ text: note, createdAt: new Date().toISOString() })
-    sessionNotes.set(sessionId, notes)
+    await session.set('notes', notes)
 
     return textResult(`Note added (${notes.length} total in this session).`)
   },

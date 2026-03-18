@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { toWebRequest, getHeader } from 'h3'
+import { useStorage } from 'nitropack/runtime'
 // @ts-expect-error - Generated template
 import config from '#nuxt-mcp-toolkit/config.mjs'
 import { createMcpTransportHandler } from './types'
@@ -24,6 +25,7 @@ function ensureCleanup(maxDuration: number) {
         session.transport.close()
         session.server.close()
         sessions.delete(id)
+        useStorage(`mcp:sessions:${id}`).clear()
       }
     }
     if (sessions.size === 0 && cleanupInterval) {
@@ -85,6 +87,7 @@ export default createMcpTransportHandler(async (createServer, event) => {
     const sid = transport.sessionId
     if (sid && sessions.has(sid)) {
       sessions.delete(sid)
+      useStorage(`mcp:sessions:${sid}`).clear()
     }
     server.close()
   }
