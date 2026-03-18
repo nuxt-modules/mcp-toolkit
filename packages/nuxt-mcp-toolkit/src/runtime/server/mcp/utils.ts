@@ -134,11 +134,11 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
     // If middleware is defined, wrap the handler with it
     if (resolvedConfig.middleware) {
       let nextCalled = false
-      let handlerResult: Response | undefined
+      let handlerResult: Response
 
       const next = async (): Promise<Response> => {
         nextCalled = true
-        handlerResult = await handler()
+        handlerResult = await handler() as Response
         return handlerResult
       }
 
