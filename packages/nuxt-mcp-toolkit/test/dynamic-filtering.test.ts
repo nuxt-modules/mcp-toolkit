@@ -42,7 +42,7 @@ describe('Dynamic definition filtering (unit)', () => {
         name: 'always_on',
         description: 'No guard',
         inputSchema: { msg: z.string() },
-        handler: async ({ msg }) => ({ content: [{ type: 'text', text: msg }] }),
+        handler: async ({ msg }) => ({ content: [{ type: 'text' as const, text: String(msg) }] }),
       }],
       resources: [],
       prompts: [],
@@ -57,12 +57,12 @@ describe('Dynamic definition filtering (unit)', () => {
       {
         name: 'keep_me',
         description: 'This stays',
-        handler: async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+        handler: async () => ({ content: [{ type: 'text' as const, text: 'ok' }] }),
       },
       {
         name: 'remove_me',
         description: 'This goes',
-        handler: async () => ({ content: [{ type: 'text', text: 'no' }] }),
+        handler: async () => ({ content: [{ type: 'text' as const, text: 'no' }] }),
       },
     ]
 
