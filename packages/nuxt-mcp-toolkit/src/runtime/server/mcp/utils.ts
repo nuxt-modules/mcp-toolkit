@@ -14,14 +14,27 @@ import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 export type { McpTransportHandler } from './providers/types'
 export { createMcpTransportHandler } from './providers/types'
 
+type MaybeDynamic<T> = T | ((event: H3Event) => T | Promise<T>)
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MaybeDynamicTools = MaybeDynamic<Array<McpToolDefinition<any, any>>>
+
 export interface ResolvedMcpConfig {
   name: string
   version: string
   browserRedirect: string
-  tools?: McpToolDefinition[]
-  resources?: McpResourceDefinition[]
-  prompts?: McpPromptDefinition[]
+  tools?: MaybeDynamicTools
+  resources?: MaybeDynamic<McpResourceDefinition[]>
+  prompts?: MaybeDynamic<McpPromptDefinition[]>
   middleware?: McpMiddleware
+}
+
+interface StaticMcpConfig {
+  name: string
+  version: string
+  tools: McpToolDefinition[]
+  resources: McpResourceDefinition[]
+  prompts: McpPromptDefinition[]
 }
 
 export type CreateMcpHandlerConfig = ResolvedMcpConfig | ((event: H3Event) => ResolvedMcpConfig)
@@ -30,35 +43,71 @@ function resolveConfig(config: CreateMcpHandlerConfig, event: H3Event): Resolved
   return typeof config === 'function' ? config(event) : config
 }
 
-function registerEmptyDefinitionFallbacks(server: McpServer, config: ResolvedMcpConfig) {
-  if (!config.tools?.length) {
+async function filterByEnabled<T extends { enabled?: (event: H3Event) => boolean | Promise<boolean> }>(
+  definitions: T[],
+  event: H3Event,
+): Promise<T[]> {
+  const results = await Promise.all(
+    definitions.map(async (def) => {
+      if (!def.enabled) return true
+      return def.enabled(event)
+    }),
+  )
+  return definitions.filter((_, i) => results[i])
+}
+
+async function resolveDynamicDefinitions(
+  config: ResolvedMcpConfig,
+  event: H3Event,
+): Promise<StaticMcpConfig> {
+  const tools = typeof config.tools === 'function'
+    ? await config.tools(event)
+    : (config.tools || [])
+  const resources = typeof config.resources === 'function'
+    ? await config.resources(event)
+    : (config.resources || [])
+  const prompts = typeof config.prompts === 'function'
+    ? await config.prompts(event)
+    : (config.prompts || [])
+
+  return {
+    name: config.name,
+    version: config.version,
+    tools: await filterByEnabled(tools, event),
+    resources: await filterByEnabled(resources, event),
+    prompts: await filterByEnabled(prompts, event),
+  }
+}
+
+function registerEmptyDefinitionFallbacks(server: McpServer, config: StaticMcpConfig) {
+  if (!config.tools.length) {
     server.registerTool('__init__', {}, async () => ({ content: [] })).remove()
   }
 
-  if (!config.resources?.length) {
+  if (!config.resources.length) {
     server.registerResource('__init__', 'noop://init', {}, async () => ({ contents: [] })).remove()
   }
 
-  if (!config.prompts?.length) {
+  if (!config.prompts.length) {
     server.registerPrompt('__init__', {}, async () => ({ messages: [] })).remove()
   }
 }
 
-export function createMcpServer(config: ResolvedMcpConfig): McpServer {
+export function createMcpServer(config: StaticMcpConfig): McpServer {
   const server = new McpServer({
     name: config.name,
     version: config.version,
   })
 
-  for (const tool of (config.tools || []) as McpToolDefinition[]) {
+  for (const tool of config.tools as McpToolDefinition[]) {
     registerToolFromDefinition(server, tool)
   }
 
-  for (const resource of (config.resources || []) as McpResourceDefinition[]) {
+  for (const resource of config.resources) {
     registerResourceFromDefinition(server, resource)
   }
 
-  for (const prompt of (config.prompts || []) as McpPromptDefinition[]) {
+  for (const prompt of config.prompts) {
     registerPromptFromDefinition(server, prompt)
   }
 
@@ -75,8 +124,11 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
       return sendRedirect(event, resolvedConfig.browserRedirect)
     }
 
+    // Dynamic definitions are resolved inside the handler closure so they
+    // run AFTER middleware has populated event.context (e.g. auth data).
     const handler = async () => {
-      return handleMcpRequest(() => createMcpServer(resolvedConfig), event)
+      const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
+      return handleMcpRequest(() => createMcpServer(staticConfig), event)
     }
 
     // If middleware is defined, wrap the handler with it
