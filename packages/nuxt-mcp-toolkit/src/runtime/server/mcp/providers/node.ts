@@ -42,6 +42,7 @@ export default createMcpTransportHandler(async (createServer, event) => {
 
   if (!sessionsEnabled) {
     const server = createServer()
+    event.context._mcpServer = server
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
     event.node.res.on('close', () => {
       transport.close()
@@ -68,10 +69,12 @@ export default createMcpTransportHandler(async (createServer, event) => {
     }
 
     session.lastAccessed = Date.now()
+    event.context._mcpServer = session.server
     return session.transport.handleRequest(request)
   }
 
   const server = createServer()
+  event.context._mcpServer = server
   let sessionStored = false
 
   const transport = new WebStandardStreamableHTTPServerTransport({

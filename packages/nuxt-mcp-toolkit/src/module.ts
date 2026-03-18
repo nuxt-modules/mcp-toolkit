@@ -211,6 +211,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
     const mcpSessionPath = resolver.resolve('runtime/server/mcp/session')
+    const mcpServerPath = resolver.resolve('runtime/server/mcp/server')
 
     addServerImports([
       'defineMcpTool',
@@ -225,6 +226,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     addServerImports([
       { name: 'useMcpSession', from: mcpSessionPath },
+      { name: 'useMcpServer', from: mcpServerPath },
     ])
 
     addServerHandler({
