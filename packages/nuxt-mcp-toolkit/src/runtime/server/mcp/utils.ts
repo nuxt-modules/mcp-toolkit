@@ -133,11 +133,10 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
 
     // If middleware is defined, wrap the handler with it
     if (resolvedConfig.middleware) {
-      // Track if next() was called by the middleware
       let nextCalled = false
       let handlerResult: Response | undefined
 
-      const next = async () => {
+      const next = async (): Promise<Response> => {
         nextCalled = true
         handlerResult = await handler()
         return handlerResult
@@ -145,17 +144,14 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
 
       const middlewareResult = await resolvedConfig.middleware(event, next)
 
-      // If middleware returned a result (from next()), use it
       if (middlewareResult !== undefined) {
         return middlewareResult
       }
 
-      // If next() was called but middleware didn't return the result, use the handler result
       if (nextCalled) {
-        return handlerResult
+        return handlerResult!
       }
 
-      // If next() was never called, call the handler automatically
       return handler()
     }
 
