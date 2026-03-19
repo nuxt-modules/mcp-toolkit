@@ -25,9 +25,14 @@
     "eval": "turbo run eval --filter=@nuxtjs/mcp-toolkit-docs",
     "eval:ui": "turbo run eval:ui --filter=@nuxtjs/mcp-toolkit-docs",
     "clean": "turbo run clean",
-    "automd": "npx automd --config .github/automd.json"
+    "automd": "npx automd --config .github/automd.json",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "turbo run build --filter=@nuxtjs/mcp-toolkit && changeset publish"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8",
     "@nuxt/eslint-config": "^1.15.2",
     "eslint": "^9.39.4",
     "turbo": "^2.8.17",
