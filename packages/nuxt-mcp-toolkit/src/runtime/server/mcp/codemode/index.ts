@@ -46,8 +46,10 @@ export function createCodemodeTools(
   options?: CodeModeOptions,
 ): McpToolDefinition[] {
   const { typeDefinitions, toolNameMap } = generateTypesFromTools(tools)
-
   const description = CODE_TOOL_DESCRIPTION_TEMPLATE.replace('{{types}}', typeDefinitions)
+
+  const fns = buildDispatchFunctions(tools, toolNameMap)
+  const toolNames = [...toolNameMap.keys()]
 
   const codeTool: McpToolDefinition<{ code: z.ZodString }> = {
     name: 'code',
@@ -62,7 +64,6 @@ export function createCodemodeTools(
       code: z.string().describe('JavaScript code to execute. Write the body of an async function.'),
     },
     handler: async ({ code }) => {
-      const fns = buildDispatchFunctions(tools, toolNameMap)
       const result = await execute(code, fns, options)
 
       if (result.error) {
@@ -71,7 +72,7 @@ export function createCodemodeTools(
           : ''
         return {
           isError: true,
-          content: [{ type: 'text' as const, text: `Execution error: ${result.error}${logOutput}` }],
+          content: [{ type: 'text' as const, text: formatError(result.error, code, toolNames, logOutput) }],
         }
       }
 
@@ -88,7 +89,7 @@ export function createCodemodeTools(
       }
       else {
         try {
-          resultText = JSON.stringify(result.result, null, 2)
+          resultText = JSON.stringify(result.result)
         }
         catch {
           resultText = String(result.result)
@@ -101,7 +102,20 @@ export function createCodemodeTools(
     },
   }
 
-  return [codeTool]
+  return [codeTool as McpToolDefinition]
+}
+
+function formatError(error: string, code: string, toolNames: string[], logOutput: string): string {
+  const codePreview = code.length > 500 ? `${code.slice(0, 500)}...` : code
+  return `Execution error: ${error}
+
+Code that failed:
+\`\`\`javascript
+${codePreview}
+\`\`\`
+
+Available tools: ${toolNames.join(', ')}
+Fix the code and try again in a single combined block.${logOutput}`
 }
 
 function buildDispatchFunctions(

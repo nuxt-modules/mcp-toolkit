@@ -3,6 +3,7 @@ import { createServer, type Server } from 'node:http'
 export interface CodeModeOptions {
   memoryLimit?: number
   cpuTimeLimitMs?: number
+  maxResultSize?: number
 }
 
 export interface ExecuteResult {
@@ -15,6 +16,7 @@ type DispatchFn = (args: unknown) => Promise<unknown>
 
 const RESULT_PREFIX = '__RESULT__'
 const ERROR_PREFIX = '__ERROR__'
+const DEFAULT_MAX_RESULT_SIZE = 8192
 
 async function loadSecureExec() {
   try {
@@ -67,17 +69,27 @@ function createLocalhostOnlyAdapter() {
   }
 }
 
-function startRpcServer(
-  fns: Record<string, DispatchFn>,
-): Promise<{ server: Server, port: number }> {
+interface RpcState {
+  server: Server
+  port: number
+  fns: Record<string, DispatchFn>
+}
+
+let rpcState: RpcState | null = null
+
+function ensureRpcServer(): Promise<RpcState> {
+  if (rpcState) return Promise.resolve(rpcState)
+
   return new Promise((resolve) => {
+    const state: RpcState = { server: null!, port: 0, fns: {} }
+
     const server = createServer(async (req, res) => {
       let body = ''
       for await (const chunk of req) body += chunk
 
       try {
         const { tool: name, args } = JSON.parse(body) as { tool: string, args: unknown }
-        const fn = fns[name]
+        const fn = state.fns[name]
         if (!fn) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: `Unknown tool: ${name}` }))
@@ -97,9 +109,51 @@ function startRpcServer(
 
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address() as { port: number }
-      resolve({ server, port: addr.port })
+      state.server = server
+      state.port = addr.port
+      rpcState = state
+      resolve(state)
     })
   })
+}
+
+export function normalizeCode(userCode: string): string {
+  let code = userCode.trim()
+
+  // Strip markdown fences
+  code = code
+    .replace(/^```(?:js|javascript|typescript|ts|tsx|jsx)?\s*\n/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim()
+
+  // Strip `export default` prefix
+  code = code.replace(/^export\s+default\s+/, '')
+
+  // Unwrap arrow function: `async () => { ... }` or `async () => ...`
+  const arrowMatch = code.match(/^async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*;?\s*$/)
+  if (arrowMatch?.[1]) {
+    code = arrowMatch[1].trim()
+  }
+  else {
+    const arrowExprMatch = code.match(/^async\s*\(\s*\)\s*=>\s*([\s\S]+)$/)
+    if (arrowExprMatch?.[1]) {
+      code = `return ${arrowExprMatch[1].trim().replace(/;\s*$/, '')};`
+    }
+  }
+
+  // Unwrap IIFE: `(async () => { ... })()`
+  const iifeMatch = code.match(/^\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)\s*;?\s*$/)
+  if (iifeMatch?.[1]) {
+    code = iifeMatch[1].trim()
+  }
+
+  // Unwrap `async function main() { ... }; main()` pattern
+  const namedFnMatch = code.match(/^async\s+function\s+\w+\s*\(\s*\)\s*\{([\s\S]*)\}\s*;?\s*\w+\s*\(\s*\)\s*;?\s*$/)
+  if (namedFnMatch?.[1]) {
+    code = namedFnMatch[1].trim()
+  }
+
+  return code
 }
 
 function buildSandboxCode(
@@ -111,11 +165,7 @@ function buildSandboxCode(
     .map(name => `  ${name}: (input) => rpc('${name}', input)`)
     .join(',\n')
 
-  const cleaned = userCode
-    .trim()
-    .replace(/^```(?:js|javascript|typescript|ts|tsx|jsx)?\s*\n/, '')
-    .replace(/\n?```\s*$/, '')
-    .trim()
+  const cleaned = normalizeCode(userCode)
 
   return `
 async function rpc(toolName, args) {
@@ -167,50 +217,70 @@ export async function execute(
     })
   }
 
-  const { server, port } = await startRpcServer(fns)
+  const rpc = await ensureRpcServer()
+  rpc.fns = fns
 
-  try {
-    const sandboxCode = buildSandboxCode(code, Object.keys(fns), port)
+  const sandboxCode = buildSandboxCode(code, Object.keys(fns), rpc.port)
 
-    let resultJson: string | undefined
-    let errorMsg: string | undefined
-    const logs: string[] = []
+  let resultJson: string | undefined
+  let errorMsg: string | undefined
+  const logs: string[] = []
 
-    const execResult = await runtimeInstance.exec(sandboxCode, {
-      onStdio: ({ channel, message }: { channel: string, message: string }) => {
-        if (channel === 'stdout' && message.startsWith(RESULT_PREFIX)) {
-          resultJson = message.slice(RESULT_PREFIX.length)
-        }
-        else if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
-          errorMsg = message.slice(ERROR_PREFIX.length)
-        }
-        else {
-          logs.push(`[${channel}] ${message}`)
-        }
-      },
-    })
-
-    if (execResult.code !== 0 || errorMsg) {
-      return {
-        result: undefined,
-        error: errorMsg ?? execResult.errorMessage ?? `Exit code ${execResult.code}`,
-        logs,
+  const execResult = await runtimeInstance.exec(sandboxCode, {
+    onStdio: ({ channel, message }: { channel: string, message: string }) => {
+      if (channel === 'stdout' && message.startsWith(RESULT_PREFIX)) {
+        resultJson = message.slice(RESULT_PREFIX.length)
       }
-    }
+      else if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
+        errorMsg = message.slice(ERROR_PREFIX.length)
+      }
+      else {
+        logs.push(`[${channel}] ${message}`)
+      }
+    },
+  })
 
+  if (execResult.code !== 0 || errorMsg) {
     return {
-      result: resultJson ? JSON.parse(resultJson) : undefined,
+      result: undefined,
+      error: errorMsg ?? execResult.errorMessage ?? `Exit code ${execResult.code}`,
       logs,
     }
   }
-  finally {
-    server.close()
+
+  let result: unknown
+  if (resultJson) {
+    result = JSON.parse(resultJson)
+
+    const maxSize = options?.maxResultSize ?? DEFAULT_MAX_RESULT_SIZE
+    if (resultJson.length > maxSize) {
+      const totalSize = resultJson.length
+      const truncated = resultJson.slice(0, maxSize)
+      try {
+        result = JSON.parse(truncated)
+      }
+      catch {
+        result = truncated
+      }
+      result = {
+        _truncated: true,
+        _totalBytes: totalSize,
+        _message: `Result truncated from ${totalSize} to ${maxSize} bytes. Use console.log() for specific fields to avoid truncation.`,
+        data: result,
+      }
+    }
   }
+
+  return { result, logs }
 }
 
 export function dispose(): void {
   if (runtimeInstance) {
     runtimeInstance.dispose()
     runtimeInstance = null
+  }
+  if (rpcState) {
+    rpcState.server.close()
+    rpcState = null
   }
 }

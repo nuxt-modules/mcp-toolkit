@@ -57,6 +57,15 @@ function jsonSchemaPrimitiveToTs(type: string): string {
   }
 }
 
+const PRIMITIVE_TYPES = new Set(['string', 'number', 'integer', 'boolean'])
+const INLINE_THRESHOLD = 3
+
+function isPrimitiveProp(prop: Record<string, unknown>): boolean {
+  if (prop.enum) return true
+  const type = prop.type as string | undefined
+  return !!type && PRIMITIVE_TYPES.has(type)
+}
+
 interface ToolTypeInfo {
   originalName: string
   sanitizedName: string
@@ -86,14 +95,25 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
       const required = (jsonSchema.required as string[]) || []
 
       if (properties && Object.keys(properties).length > 0) {
-        const fields = Object.entries(properties).map(([key, prop]) => {
-          const opt = required.includes(key) ? '' : '?'
-          const tsType = jsonSchemaPropertyToTs(prop)
-          return `  ${key}${opt}: ${tsType};`
-        })
+        const entries = Object.entries(properties)
+        const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
 
-        interfaceDecl = `interface ${typeName} {\n${fields.join('\n')}\n}`
-        paramSignature = `input: ${typeName}`
+        if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
+          const inlineFields = entries.map(([key, prop]) => {
+            const opt = required.includes(key) ? '' : '?'
+            return `${key}${opt}: ${jsonSchemaPropertyToTs(prop)}`
+          })
+          paramSignature = `input: { ${inlineFields.join('; ')} }`
+        }
+        else {
+          const fields = entries.map(([key, prop]) => {
+            const opt = required.includes(key) ? '' : '?'
+            const tsType = jsonSchemaPropertyToTs(prop)
+            return `  ${key}${opt}: ${tsType};`
+          })
+          interfaceDecl = `interface ${typeName} {\n${fields.join('\n')}\n}`
+          paramSignature = `input: ${typeName}`
+        }
       }
     }
     catch {
