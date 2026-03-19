@@ -7,11 +7,18 @@ import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js
 import { enrichNameTitle } from './utils'
 
 /**
- * Callback type for MCP prompts, matching the SDK's PromptCallback type
+ * Return type for MCP prompt handlers.
+ * Accepts a full `GetPromptResult` or a plain string (auto-wrapped into a single user message).
+ */
+export type McpPromptCallbackResult = GetPromptResult | string
+
+/**
+ * Callback type for MCP prompts, matching the SDK's PromptCallback type.
+ * Handlers may return a full `GetPromptResult` or a simple string.
  */
 export type McpPromptCallback<Args extends ZodRawShape | undefined = undefined> = Args extends ZodRawShape
-  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
-  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => GetPromptResult | Promise<GetPromptResult>
+  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpPromptCallbackResult | Promise<McpPromptCallbackResult>
+  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpPromptCallbackResult | Promise<McpPromptCallbackResult>
 
 /**
  * Definition of an MCP prompt
@@ -33,6 +40,20 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
 }
 
 /**
+ * Normalize a prompt handler result: pass through `GetPromptResult` objects
+ * unchanged, wrap plain strings into a single user message.
+ * @internal
+ */
+export function normalizePromptResult(result: McpPromptCallbackResult): GetPromptResult {
+  if (typeof result === 'string') {
+    return {
+      messages: [{ role: 'user', content: { type: 'text', text: result } }],
+    }
+  }
+  return result
+}
+
+/**
  * Register a prompt from a McpPromptDefinition
  * @internal
  */
@@ -47,6 +68,11 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
     type: 'prompt',
   })
 
+  const wrappedHandler: PromptCallback<ZodRawShape> = async (...args: unknown[]) => {
+    const result = await (prompt.handler as (...a: unknown[]) => unknown)(...args)
+    return normalizePromptResult(result as McpPromptCallbackResult)
+  }
+
   if (prompt.inputSchema) {
     return server.registerPrompt(
       name,
@@ -55,7 +81,7 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
         description: prompt.description,
         argsSchema: prompt.inputSchema as ZodRawShape,
       },
-      prompt.handler as unknown as PromptCallback<ZodRawShape>,
+      wrappedHandler,
     )
   }
   else {
@@ -65,7 +91,7 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
         title,
         description: prompt.description,
       },
-      prompt.handler as unknown as PromptCallback<ZodRawShape>,
+      wrappedHandler,
     )
   }
 }
@@ -75,10 +101,20 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
  *
  * `name` and `title` are auto-generated from filename if not provided.
  *
+ * Handlers can return a full `GetPromptResult` or a simple string
+ * which is automatically wrapped into a single user message.
+ *
  * @see https://mcp-toolkit.nuxt.dev/core-concepts/prompts
  *
  * @example
  * ```ts
+ * // Simple string return
+ * export default defineMcpPrompt({
+ *   description: 'Code review assistant',
+ *   handler: async () => 'You are a helpful assistant that helps with code review.',
+ * })
+ *
+ * // Full GetPromptResult return
  * export default defineMcpPrompt({
  *   description: 'Generate a greeting message',
  *   handler: async () => ({
