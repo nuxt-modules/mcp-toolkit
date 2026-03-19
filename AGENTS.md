@@ -110,10 +110,13 @@ A full-featured example app demonstrating module usage with authentication, todo
 
 ### MCP Definitions
 
-Use the auto-imported helper functions:
+Use the helper functions:
 
 ```typescript
 // Tools - server/mcp/tools/*.ts
+import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
 export default defineMcpTool({
   name: 'tool-name',           // Optional - auto-generated from filename
   description: 'What it does',
@@ -121,13 +124,13 @@ export default defineMcpTool({
     param: z.string().describe('Parameter description'),
   },
   handler: async ({ param }) => {
-    return {
-      content: [{ type: 'text', text: 'Result' }],
-    }
+    return 'Result' // string, number, boolean, object, or full CallToolResult
   },
 })
 
 // Resources - server/mcp/resources/*.ts
+import { defineMcpResource } from '@nuxtjs/mcp-toolkit/server'
+
 export default defineMcpResource({
   name: 'resource-name',
   uri: 'file:///path/or/pattern',
@@ -139,6 +142,9 @@ export default defineMcpResource({
 })
 
 // Prompts - server/mcp/prompts/*.ts
+import { z } from 'zod'
+import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
+
 export default defineMcpPrompt({
   name: 'prompt-name',
   inputSchema: {
@@ -162,7 +168,7 @@ If `name` and `title` are omitted, they are auto-generated from the filename:
 
 ### Return Types
 
-- **Tools**: Return `{ content: [{ type: 'text', text: string }] }` or structured content
+- **Tools**: Return `string`, `number`, `boolean`, object, array (auto-wrapped), or full `CallToolResult`. Thrown errors become `isError` results.
 - **Resources**: Return `{ contents: [{ uri: string, text: string }] }`
 - **Prompts**: Return `{ messages: [{ role: 'user' | 'assistant', content: { type: 'text', text: string } }] }`
 

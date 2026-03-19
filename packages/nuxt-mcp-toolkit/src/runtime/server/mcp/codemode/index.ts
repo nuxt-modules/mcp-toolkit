@@ -257,8 +257,8 @@ function buildDispatchFunctions(
 
       if (result.content) {
         const textContent = result.content
-          .filter((c: { type: string }) => c.type === 'text')
-          .map((c: { text: string }) => c.text)
+          .filter((c): c is { type: 'text', text: string } => c.type === 'text')
+          .map(c => c.text)
           .join('\n')
 
         try {

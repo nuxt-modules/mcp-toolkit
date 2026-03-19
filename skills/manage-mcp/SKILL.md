@@ -104,10 +104,7 @@ tags: z.array(z.string()).describe('Tags')
 
 ```typescript
 if (!param) {
-  return {
-    content: [{ type: 'text', text: 'Error: param required' }],
-    isError: true,
-  }
+  throw createError({ statusCode: 400, message: 'Error: param required' })
 }
 ```
 

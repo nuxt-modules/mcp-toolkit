@@ -211,7 +211,7 @@ export default defineMcpTool({
 
     console.log(`[${requestId}] User ${user.id} called tool`)
 
-    return { content: [{ type: 'text', text: 'Done' }] }
+    return 'Done'
   },
 })
 ```
