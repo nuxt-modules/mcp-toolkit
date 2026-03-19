@@ -19,7 +19,7 @@
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "lint:docs": "turbo run lint --filter=@nuxtjs/mcp-toolkit-docs",
-    "test": "turbo run test",
+    "test": "turbo run test --filter=@nuxtjs/mcp-toolkit",
     "typecheck": "turbo run typecheck",
     "typecheck:docs": "turbo run typecheck --filter=@nuxtjs/mcp-toolkit-docs",
     "eval": "turbo run eval --filter=@nuxtjs/mcp-toolkit-docs",

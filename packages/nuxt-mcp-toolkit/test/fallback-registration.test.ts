@@ -12,8 +12,8 @@ vi.mock('nitropack/runtime', () => ({
   defineCachedFunction: vi.fn((fn: (...args: unknown[]) => unknown) => fn),
 }))
 
-async function withClient(config: Parameters<typeof createMcpServer>[0], run: (client: Client, server: ReturnType<typeof createMcpServer>) => Promise<void>) {
-  const server = createMcpServer(config)
+async function withClient(config: Parameters<typeof createMcpServer>[0], run: (client: Client, server: Awaited<ReturnType<typeof createMcpServer>>) => Promise<void>) {
+  const server = await createMcpServer(config)
   const client = new Client({
     name: 'fallback-test-client',
     version: '1.0.0',

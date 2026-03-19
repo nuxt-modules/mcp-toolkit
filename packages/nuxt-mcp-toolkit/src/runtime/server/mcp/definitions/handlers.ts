@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type { McpToolDefinition } from './tools'
 import type { McpResourceDefinition } from './resources'
 import type { McpPromptDefinition } from './prompts'
+import type { CodeModeOptions } from '../codemode'
 
 /**
  * MCP middleware function that runs before/after MCP request processing.
@@ -75,18 +76,36 @@ export interface McpHandlerOptions {
    * ```
    */
   middleware?: McpMiddleware
+  /**
+   * @experimental
+   * Enable Code Mode: wraps all tools into a single `code` tool.
+   * The LLM writes JavaScript that calls tools via `codemode.*` methods,
+   * executed in a secure V8 isolate via `secure-exec`.
+   *
+   * This feature is experimental and may change in future releases.
+   * Requires `secure-exec` to be installed: `npm install secure-exec`
+   *
+   * @example
+   * ```ts
+   * export default defineMcpHandler({
+   *   experimental_codeMode: true,
+   * })
+   * ```
+   */
+  experimental_codeMode?: boolean | CodeModeOptions
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools?: Array<McpToolDefinition<any, any>> | ((event: H3Event) => Array<McpToolDefinition<any, any>> | Promise<Array<McpToolDefinition<any, any>>>)
   resources?: McpResourceDefinition[] | ((event: H3Event) => McpResourceDefinition[] | Promise<McpResourceDefinition[]>)
   prompts?: McpPromptDefinition[] | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
 }
 
-export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware'>> {
+export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'experimental_codeMode'>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Array<McpToolDefinition<any, any>>
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
   middleware?: McpMiddleware
+  experimental_codeMode?: boolean | CodeModeOptions
 }
 
 /**
