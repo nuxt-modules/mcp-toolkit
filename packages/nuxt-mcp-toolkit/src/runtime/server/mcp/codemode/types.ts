@@ -2,11 +2,19 @@ import { z } from 'zod'
 import type { McpToolDefinition } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
 
+const RESERVED_WORDS = new Set([
+  'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete', 'do',
+  'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof', 'new',
+  'return', 'switch', 'this', 'throw', 'try', 'typeof', 'var', 'void', 'while',
+  'with', 'class', 'const', 'enum', 'export', 'extends', 'import', 'super',
+  'implements', 'interface', 'let', 'package', 'private', 'protected', 'public',
+  'static', 'yield', 'await', 'async',
+])
+
 function sanitizeToolName(name: string): string {
   let sanitized = name.replace(/[^\w$]/g, '_')
   if (/^\d/.test(sanitized)) sanitized = `_${sanitized}`
-  const reserved = ['break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete', 'do', 'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof', 'new', 'return', 'switch', 'this', 'throw', 'try', 'typeof', 'var', 'void', 'while', 'with', 'class', 'const', 'enum', 'export', 'extends', 'import', 'super', 'implements', 'interface', 'let', 'package', 'private', 'protected', 'public', 'static', 'yield', 'await', 'async']
-  if (reserved.includes(sanitized)) sanitized = `${sanitized}_`
+  if (RESERVED_WORDS.has(sanitized)) sanitized = `${sanitized}_`
   return sanitized
 }
 
@@ -133,6 +141,14 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
   }
 }
 
+function buildToolNameMap(infos: ToolTypeInfo[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const info of infos) {
+    map.set(info.sanitizedName, info.originalName)
+  }
+  return map
+}
+
 export interface GeneratedTypes {
   typeDefinitions: string
   toolNameMap: Map<string, string>
@@ -154,12 +170,83 @@ export function generateTypesFromTools(tools: McpToolDefinition[]): GeneratedTyp
 
   const typeDefinitions = interfaces ? `${interfaces}\n\n${codemodeDecl}` : codemodeDecl
 
-  const toolNameMap = new Map<string, string>()
-  for (const info of toolInfos) {
-    toolNameMap.set(info.sanitizedName, info.originalName)
+  return { typeDefinitions, toolNameMap: buildToolNameMap(toolInfos) }
+}
+
+export interface ToolCatalogEntry {
+  name: string
+  originalName: string
+  description: string
+  signature: string
+  interfaceDecl?: string
+}
+
+export function generateToolCatalog(tools: McpToolDefinition[]): {
+  entries: ToolCatalogEntry[]
+  toolNameMap: Map<string, string>
+} {
+  const toolInfos = tools.map((tool) => {
+    const info = generateToolTypeInfo(tool)
+    return { ...info, description: tool.description || '' }
+  })
+
+  const entries: ToolCatalogEntry[] = toolInfos.map(info => ({
+    name: info.sanitizedName,
+    originalName: info.originalName,
+    description: info.description,
+    signature: info.methodSignature,
+    interfaceDecl: info.interfaceDecl || undefined,
+  }))
+
+  return { entries, toolNameMap: buildToolNameMap(toolInfos) }
+}
+
+export function searchToolCatalog(entries: ToolCatalogEntry[], query: string): ToolCatalogEntry[] {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (terms.length === 0) return entries
+
+  const scored: { entry: ToolCatalogEntry, score: number }[] = []
+
+  for (const entry of entries) {
+    const nameLower = entry.name.toLowerCase()
+    const originalLower = entry.originalName.toLowerCase()
+    const descLower = entry.description.toLowerCase()
+    const allText = `${nameLower} ${originalLower} ${descLower}`
+
+    if (!terms.every(t => allText.includes(t))) continue
+
+    let score = 0
+    for (const term of terms) {
+      if (nameLower === term || originalLower === term) score += 10
+      else if (nameLower.startsWith(term) || originalLower.startsWith(term)) score += 5
+      else if (nameLower.includes(term) || originalLower.includes(term)) score += 3
+      else if (descLower.includes(term)) score += 1
+    }
+
+    scored.push({ entry, score })
   }
 
-  return { typeDefinitions, toolNameMap }
+  scored.sort((a, b) => b.score - a.score)
+  return scored.map(s => s.entry)
+}
+
+export function formatSearchResults(matches: ToolCatalogEntry[], query: string, total: number): string {
+  if (matches.length === 0) {
+    return `No tools found matching "${query}". ${total} tools available — try a broader query.`
+  }
+
+  const lines = matches.map((m) => {
+    const sig = m.interfaceDecl
+      ? `${m.interfaceDecl}\n\ncodemode.${m.signature}`
+      : `codemode.${m.signature}`
+    return sig
+  })
+
+  const header = matches.length === total
+    ? `All ${total} tools:`
+    : `Found ${matches.length}/${total} tools matching "${query}":`
+
+  return `${header}\n\n${lines.join('\n\n')}`
 }
 
 export { sanitizeToolName }

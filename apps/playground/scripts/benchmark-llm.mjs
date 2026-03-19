@@ -1,7 +1,7 @@
 /**
- * LLM Benchmark: Regular MCP vs Code Mode
+ * LLM Benchmark: Regular MCP vs Code Mode vs Progressive Code Mode
  *
- * Sends the same natural language tasks to a real LLM using both modes
+ * Sends the same natural language tasks to a real LLM using all three modes
  * and compares actual token usage, round trips, and execution time.
  * Uses evlog for AI observability.
  *
@@ -11,7 +11,7 @@
  *
  * Environment variables:
  *   AI_GATEWAY_API_KEY - Vercel AI Gateway key (required)
- *   BENCHMARK_MODEL    - Model to use (default: openai/gpt-4o-mini)
+ *   BENCHMARK_MODEL    - Model to use (default: anthropic/claude-sonnet-4.6)
  *   MCP_BASE_URL       - Base URL (default: http://localhost:3000)
  *   API_KEY            - MCP API key (default: test-api-key-123)
  *
@@ -95,11 +95,12 @@ async function createMCP(path) {
 
 const CODEMODE_SYSTEM = `You have a "code" tool that executes JavaScript in a sandbox. ALWAYS combine ALL operations into a SINGLE code tool call. Use Promise.all for parallel work, sequential awaits for dependent calls, loops for iteration, and conditionals for branching. Never make multiple separate code calls when one can do it all.`
 
-async function runTask(prompt, mcpClient, stepLimit, label) {
-  const tools = await mcpClient.tools()
-  const isCodeMode = label.includes('code')
+const PROGRESSIVE_SYSTEM = `You have two tools: "search" to discover available tools, and "code" to execute JavaScript in a sandbox. First call search to find the tools you need, then combine ALL operations into a SINGLE code tool call. Use Promise.all for parallel work, sequential awaits for dependent calls, loops for iteration, and conditionals for branching.`
 
-  const log = createLogger({ task: label, mode: isCodeMode ? 'codemode' : 'regular' })
+async function runTask(prompt, mcpClient, stepLimit, label, systemPrompt) {
+  const tools = await mcpClient.tools()
+
+  const log = createLogger({ task: label })
   const ai = createAILogger(log)
   const model = ai.wrap(MODEL_ID)
 
@@ -107,7 +108,7 @@ async function runTask(prompt, mcpClient, stepLimit, label) {
 
   const result = await generateText({
     model,
-    ...(isCodeMode ? { system: CODEMODE_SYSTEM } : {}),
+    ...(systemPrompt ? { system: systemPrompt } : {}),
     prompt,
     tools,
     stopWhen: stepCountIs(stepLimit),
@@ -121,21 +122,21 @@ async function runTask(prompt, mcpClient, stepLimit, label) {
   return {
     text: result.text,
     steps: result.steps.length,
-    toolCalls: result.toolCalls?.length ?? 0,
     allToolCalls: result.steps.reduce((acc, s) => acc + (s.toolCalls?.length ?? 0), 0),
     usage: result.totalUsage,
     durationMs,
-    stepsDetail: result.steps.map(s => ({
-      toolCalls: s.toolCalls?.length ?? 0,
-      inputTokens: s.usage?.inputTokens,
-      outputTokens: s.usage?.outputTokens,
-    })),
   }
 }
 
 function formatNumber(n) {
   if (n === undefined || n === null) return '-'
   return n.toLocaleString()
+}
+
+function pctDiff(base, value) {
+  if (!base || !value) return '-'
+  const pct = Math.round((1 - value / base) * 100)
+  return `${pct > 0 ? '-' : '+'}${Math.abs(pct)}%`
 }
 
 async function run() {
@@ -145,24 +146,27 @@ async function run() {
 
   const regularMcp = await createMCP('/mcp')
   const codemodeMcp = await createMCP('/mcp/codemode')
+  const progressiveMcp = await createMCP('/mcp/codemode-progressive')
 
   const regularTools = await regularMcp.tools()
   const codemodeTools = await codemodeMcp.tools()
+  const progressiveTools = await progressiveMcp.tools()
 
-  console.log('═══════════════════════════════════════════════════════════════════════════')
+  console.log('═══════════════════════════════════════════════════════════════════════════════════')
   console.log('  TOOL DESCRIPTIONS SENT TO LLM')
-  console.log('═══════════════════════════════════════════════════════════════════════════\n')
+  console.log('═══════════════════════════════════════════════════════════════════════════════════\n')
 
   const regularToolsJson = JSON.stringify(Object.values(regularTools).map(t => t.description))
   const codemodeToolsJson = JSON.stringify(Object.values(codemodeTools).map(t => t.description))
+  const progressiveToolsJson = JSON.stringify(Object.values(progressiveTools).map(t => t.description))
 
-  console.log(`  Regular mode:   ${Object.keys(regularTools).length} tools, ~${Math.ceil(regularToolsJson.length / 4)} tokens`)
-  console.log(`  Code mode:      ${Object.keys(codemodeTools).length} tool,  ~${Math.ceil(codemodeToolsJson.length / 4)} tokens`)
-  console.log(`  Reduction:      ~${Math.round((1 - codemodeToolsJson.length / regularToolsJson.length) * 100)}%\n`)
+  console.log(`  Regular mode:     ${Object.keys(regularTools).length} tools, ~${Math.ceil(regularToolsJson.length / 4)} tokens`)
+  console.log(`  Code mode:        ${Object.keys(codemodeTools).length} tool,  ~${Math.ceil(codemodeToolsJson.length / 4)} tokens (${pctDiff(regularToolsJson.length, codemodeToolsJson.length)})`)
+  console.log(`  Progressive mode: ${Object.keys(progressiveTools).length} tools, ~${Math.ceil(progressiveToolsJson.length / 4)} tokens (${pctDiff(regularToolsJson.length, progressiveToolsJson.length)})\n`)
 
-  console.log('═══════════════════════════════════════════════════════════════════════════')
-  console.log('  LLM BENCHMARK RESULTS (with evlog observability)')
-  console.log('═══════════════════════════════════════════════════════════════════════════')
+  console.log('═══════════════════════════════════════════════════════════════════════════════════')
+  console.log('  LLM BENCHMARK RESULTS')
+  console.log('═══════════════════════════════════════════════════════════════════════════════════')
 
   const results = []
 
@@ -170,7 +174,8 @@ async function run() {
     console.log(`\n─── ${task.name} ───`)
     console.log(`  "${task.prompt}"`)
 
-    let regular, codemode
+    let regular, codemode, progressive
+
     try {
       console.log('\n  [regular mode]')
       regular = await runTask(task.prompt, regularMcp, 10, `${task.name} (regular)`)
@@ -182,116 +187,110 @@ async function run() {
 
     try {
       console.log('\n  [code mode]')
-      codemode = await runTask(task.prompt, codemodeMcp, 5, `${task.name} (code mode)`)
+      codemode = await runTask(task.prompt, codemodeMcp, 5, `${task.name} (code)`, CODEMODE_SYSTEM)
     }
     catch (err) {
       console.error(`  Code mode failed: ${err.message}`)
       codemode = null
     }
 
-    if (!regular || !codemode) {
-      console.log('  Skipping comparison (one mode failed)')
+    try {
+      console.log('\n  [progressive mode]')
+      progressive = await runTask(task.prompt, progressiveMcp, 6, `${task.name} (progressive)`, PROGRESSIVE_SYSTEM)
+    }
+    catch (err) {
+      console.error(`  Progressive mode failed: ${err.message}`)
+      progressive = null
+    }
+
+    if (!regular) {
+      console.log('  Skipping comparison (regular mode failed)')
       continue
     }
 
-    const result = { task: task.name, regular, codemode }
+    const result = { task: task.name, regular, codemode, progressive }
     results.push(result)
 
-    const inputSavings = regular.usage.inputTokens && codemode.usage.inputTokens
-      ? Math.round((1 - codemode.usage.inputTokens / regular.usage.inputTokens) * 100)
-      : null
-    const outputSavings = regular.usage.outputTokens && codemode.usage.outputTokens
-      ? Math.round((1 - codemode.usage.outputTokens / regular.usage.outputTokens) * 100)
-      : null
-    const totalSavings = regular.usage.totalTokens && codemode.usage.totalTokens
-      ? Math.round((1 - codemode.usage.totalTokens / regular.usage.totalTokens) * 100)
-      : null
-
     console.log('\n  Comparison:')
-    console.table({
-      'LLM round trips (steps)': {
-        'Regular': regular.steps,
-        'Code Mode': codemode.steps,
-        'Diff': `${codemode.steps - regular.steps >= 0 ? '+' : ''}${codemode.steps - regular.steps}`,
+    const table = {
+      'Steps (LLM rounds)': {
+        Regular: regular.steps,
+        ...(codemode ? { Code: codemode.steps } : {}),
+        ...(progressive ? { Progressive: progressive.steps } : {}),
       },
       'Tool calls': {
-        'Regular': regular.allToolCalls,
-        'Code Mode': codemode.allToolCalls,
-        'Diff': `${codemode.allToolCalls - regular.allToolCalls >= 0 ? '+' : ''}${codemode.allToolCalls - regular.allToolCalls}`,
+        Regular: regular.allToolCalls,
+        ...(codemode ? { Code: codemode.allToolCalls } : {}),
+        ...(progressive ? { Progressive: progressive.allToolCalls } : {}),
       },
       'Input tokens': {
-        'Regular': formatNumber(regular.usage.inputTokens),
-        'Code Mode': formatNumber(codemode.usage.inputTokens),
-        'Diff': inputSavings !== null ? `${inputSavings > 0 ? '-' : '+'}${Math.abs(inputSavings)}%` : '-',
+        Regular: formatNumber(regular.usage.inputTokens),
+        ...(codemode ? { Code: `${formatNumber(codemode.usage.inputTokens)} (${pctDiff(regular.usage.inputTokens, codemode.usage.inputTokens)})` } : {}),
+        ...(progressive ? { Progressive: `${formatNumber(progressive.usage.inputTokens)} (${pctDiff(regular.usage.inputTokens, progressive.usage.inputTokens)})` } : {}),
       },
       'Output tokens': {
-        'Regular': formatNumber(regular.usage.outputTokens),
-        'Code Mode': formatNumber(codemode.usage.outputTokens),
-        'Diff': outputSavings !== null ? `${outputSavings > 0 ? '-' : '+'}${Math.abs(outputSavings)}%` : '-',
+        Regular: formatNumber(regular.usage.outputTokens),
+        ...(codemode ? { Code: `${formatNumber(codemode.usage.outputTokens)} (${pctDiff(regular.usage.outputTokens, codemode.usage.outputTokens)})` } : {}),
+        ...(progressive ? { Progressive: `${formatNumber(progressive.usage.outputTokens)} (${pctDiff(regular.usage.outputTokens, progressive.usage.outputTokens)})` } : {}),
       },
       'Total tokens': {
-        'Regular': formatNumber(regular.usage.totalTokens),
-        'Code Mode': formatNumber(codemode.usage.totalTokens),
-        'Diff': totalSavings !== null ? `${totalSavings > 0 ? '-' : '+'}${Math.abs(totalSavings)}%` : '-',
+        Regular: formatNumber(regular.usage.totalTokens),
+        ...(codemode ? { Code: `${formatNumber(codemode.usage.totalTokens)} (${pctDiff(regular.usage.totalTokens, codemode.usage.totalTokens)})` } : {}),
+        ...(progressive ? { Progressive: `${formatNumber(progressive.usage.totalTokens)} (${pctDiff(regular.usage.totalTokens, progressive.usage.totalTokens)})` } : {}),
       },
       'Wall time (ms)': {
-        'Regular': regular.durationMs,
-        'Code Mode': codemode.durationMs,
-        'Diff': `${codemode.durationMs - regular.durationMs >= 0 ? '+' : ''}${codemode.durationMs - regular.durationMs}ms`,
+        Regular: regular.durationMs,
+        ...(codemode ? { Code: codemode.durationMs } : {}),
+        ...(progressive ? { Progressive: progressive.durationMs } : {}),
       },
-    })
-
-    if (regular.stepsDetail.length > 1) {
-      console.log('\n  Regular mode steps:')
-      regular.stepsDetail.forEach((s, i) => {
-        console.log(`    Step ${i + 1}: ${s.toolCalls} tool call(s), ${formatNumber(s.inputTokens)} in / ${formatNumber(s.outputTokens)} out`)
-      })
     }
-
-    if (codemode.stepsDetail.length > 1) {
-      console.log('\n  Code mode steps:')
-      codemode.stepsDetail.forEach((s, i) => {
-        console.log(`    Step ${i + 1}: ${s.toolCalls} tool call(s), ${formatNumber(s.inputTokens)} in / ${formatNumber(s.outputTokens)} out`)
-      })
-    }
+    console.table(table)
   }
 
   // ── Summary ─────────────────────────────────────────────────────
   if (results.length > 0) {
-    console.log('\n═══════════════════════════════════════════════════════════════════════════')
+    console.log('\n═══════════════════════════════════════════════════════════════════════════════════')
     console.log('  SUMMARY')
-    console.log('═══════════════════════════════════════════════════════════════════════════\n')
+    console.log('═══════════════════════════════════════════════════════════════════════════════════\n')
 
     const summaryRows = results.map((r) => {
-      const tokenSavings = r.regular.usage.totalTokens && r.codemode.usage.totalTokens
-        ? `${Math.round((1 - r.codemode.usage.totalTokens / r.regular.usage.totalTokens) * 100)}%`
-        : '-'
-      return {
+      const row = {
         'Task': r.task,
-        'Regular steps': r.regular.steps,
-        'Code steps': r.codemode.steps,
-        'Regular tokens': formatNumber(r.regular.usage.totalTokens),
-        'Code tokens': formatNumber(r.codemode.usage.totalTokens),
-        'Token savings': tokenSavings,
+        'Reg steps': r.regular.steps,
+        'Reg tokens': formatNumber(r.regular.usage.totalTokens),
       }
+
+      if (r.codemode) {
+        row['Code steps'] = r.codemode.steps
+        row['Code tokens'] = formatNumber(r.codemode.usage.totalTokens)
+        row['Code savings'] = pctDiff(r.regular.usage.totalTokens, r.codemode.usage.totalTokens)
+      }
+
+      if (r.progressive) {
+        row['Prog steps'] = r.progressive.steps
+        row['Prog tokens'] = formatNumber(r.progressive.usage.totalTokens)
+        row['Prog savings'] = pctDiff(r.regular.usage.totalTokens, r.progressive.usage.totalTokens)
+      }
+
+      return row
     })
 
     console.table(summaryRows)
 
-    const totalRegularTokens = results.reduce((acc, r) => acc + (r.regular.usage.totalTokens ?? 0), 0)
-    const totalCodemodeTokens = results.reduce((acc, r) => acc + (r.codemode.usage.totalTokens ?? 0), 0)
-    const totalSavings = totalRegularTokens > 0
-      ? Math.round((1 - totalCodemodeTokens / totalRegularTokens) * 100)
-      : 0
+    const totalRegular = results.reduce((a, r) => a + (r.regular.usage.totalTokens ?? 0), 0)
+    const totalCode = results.reduce((a, r) => a + (r.codemode?.usage.totalTokens ?? 0), 0)
+    const totalProg = results.reduce((a, r) => a + (r.progressive?.usage.totalTokens ?? 0), 0)
 
     console.log(`\n  Total tokens across all tasks:`)
-    console.log(`    Regular:   ${formatNumber(totalRegularTokens)}`)
-    console.log(`    Code Mode: ${formatNumber(totalCodemodeTokens)}`)
-    console.log(`    Savings:   ${totalSavings}%\n`)
+    console.log(`    Regular:     ${formatNumber(totalRegular)}`)
+    if (totalCode) console.log(`    Code Mode:   ${formatNumber(totalCode)} (${pctDiff(totalRegular, totalCode)})`)
+    if (totalProg) console.log(`    Progressive: ${formatNumber(totalProg)} (${pctDiff(totalRegular, totalProg)})`)
+    console.log()
   }
 
   await regularMcp.close()
   await codemodeMcp.close()
+  await progressiveMcp.close()
 }
 
 run().catch((err) => {

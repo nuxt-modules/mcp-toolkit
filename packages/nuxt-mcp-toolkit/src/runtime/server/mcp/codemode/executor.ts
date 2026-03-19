@@ -1,9 +1,24 @@
 import { createServer, type Server } from 'node:http'
+import { randomBytes } from 'node:crypto'
 
 export interface CodeModeOptions {
+  /** V8 isolate memory limit in MB. Default: 64 */
   memoryLimit?: number
+  /** CPU time limit per execution in ms. Default: 10000 */
   cpuTimeLimitMs?: number
+  /** Max result size in bytes before truncation. Default: 8192 */
   maxResultSize?: number
+  /**
+   * Enable progressive disclosure: exposes a `search` tool for discovering
+   * available tools, keeping the `code` tool description lightweight.
+   * Recommended when the server exposes many tools (50+).
+   */
+  progressive?: boolean
+  /**
+   * Custom description template for the `code` tool.
+   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count).
+   */
+  description?: string
 }
 
 export interface ExecuteResult {
@@ -17,10 +32,16 @@ type DispatchFn = (args: unknown) => Promise<unknown>
 const RESULT_PREFIX = '__RESULT__'
 const ERROR_PREFIX = '__ERROR__'
 const DEFAULT_MAX_RESULT_SIZE = 8192
+const MAX_LOG_ENTRIES = 200
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let secureExecModule: any = null
 
 async function loadSecureExec() {
+  if (secureExecModule) return secureExecModule
   try {
-    return await import('secure-exec')
+    secureExecModule = await import('secure-exec')
+    return secureExecModule
   }
   catch {
     throw new Error(
@@ -29,18 +50,22 @@ async function loadSecureExec() {
   }
 }
 
-function createLocalhostOnlyAdapter() {
+function createRpcOnlyAdapter(allowedPort: number) {
   return {
     async fetch(url: string, options: { method?: string, headers?: Record<string, string>, body?: string | null }) {
       const parsed = new URL(url)
       if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') {
-        throw new Error(`Network access restricted to localhost (blocked: ${parsed.hostname})`)
+        throw new Error(`Network access restricted to RPC server (blocked host: ${parsed.hostname})`)
+      }
+      if (Number(parsed.port) !== allowedPort) {
+        throw new Error(`Network access restricted to RPC server (blocked port: ${parsed.port})`)
       }
 
       const resp = await globalThis.fetch(url, {
         method: options?.method || 'GET',
         headers: options?.headers,
         body: options?.body,
+        redirect: 'error',
       })
       const body = await resp.text()
       const headers: Record<string, string> = {}
@@ -72,6 +97,7 @@ function createLocalhostOnlyAdapter() {
 interface RpcState {
   server: Server
   port: number
+  token: string
   fns: Record<string, DispatchFn>
 }
 
@@ -81,9 +107,16 @@ function ensureRpcServer(): Promise<RpcState> {
   if (rpcState) return Promise.resolve(rpcState)
 
   return new Promise((resolve) => {
-    const state: RpcState = { server: null!, port: 0, fns: {} }
+    const token = randomBytes(32).toString('hex')
+    const state: RpcState = { server: null!, port: 0, token, fns: {} }
 
     const server = createServer(async (req, res) => {
+      if (req.headers['x-rpc-token'] !== state.token) {
+        res.writeHead(403, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Forbidden' }))
+        return
+      }
+
       let body = ''
       for await (const chunk of req) body += chunk
 
@@ -122,56 +155,72 @@ export function normalizeCode(userCode: string): string {
 
   // Strip markdown fences
   code = code
-    .replace(/^```(?:js|javascript|typescript|ts|tsx|jsx)?\s*\n/, '')
-    .replace(/\n?```\s*$/, '')
+    .replace(/^```(?:js|javascript|typescript|ts|tsx|jsx)?[ \t]*\n/, '')
+    .replace(/\n?```[ \t]*$/, '')
     .trim()
 
   // Strip `export default` prefix
   code = code.replace(/^export\s+default\s+/, '')
 
-  // Unwrap arrow function: `async () => { ... }` or `async () => ...`
-  const arrowMatch = code.match(/^async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*;?\s*$/)
+  // Unwrap arrow function: `async () => { ... }`
+  const arrowMatch = code.match(/^async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}[;\t ]*$/)
   if (arrowMatch?.[1]) {
     code = arrowMatch[1].trim()
   }
   else {
-    const arrowExprMatch = code.match(/^async\s*\(\s*\)\s*=>\s*([\s\S]+)$/)
-    if (arrowExprMatch?.[1]) {
-      code = `return ${arrowExprMatch[1].trim().replace(/;\s*$/, '')};`
+    // Unwrap arrow expression: `async () => expr`
+    // Use indexOf to avoid regex backtracking between \s* and [\s\S]+
+    const arrowIdx = code.search(/^async\s*\(\s*\)\s*=>/)
+    if (arrowIdx === 0) {
+      const arrowEnd = code.indexOf('=>')
+      if (arrowEnd !== -1) {
+        const expr = code.slice(arrowEnd + 2).trim()
+        if (expr && !expr.startsWith('{')) {
+          code = `return ${expr.replace(/;[ \t]*$/, '')};`
+        }
+      }
     }
   }
 
   // Unwrap IIFE: `(async () => { ... })()`
-  const iifeMatch = code.match(/^\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)\s*;?\s*$/)
+  const iifeMatch = code.match(/^\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)[;\t ]*$/)
   if (iifeMatch?.[1]) {
     code = iifeMatch[1].trim()
   }
 
   // Unwrap `async function main() { ... }; main()` pattern
-  const namedFnMatch = code.match(/^async\s+function\s+\w+\s*\(\s*\)\s*\{([\s\S]*)\}\s*;?\s*\w+\s*\(\s*\)\s*;?\s*$/)
-  if (namedFnMatch?.[1]) {
-    code = namedFnMatch[1].trim()
+  const namedFnMatch = code.match(/^async\s+function\s+(\w+)\s*\(\s*\)\s*\{([\s\S]*)\}[;\s]*\1\s*\(\s*\)[;\s]*$/)
+  if (namedFnMatch?.[2]) {
+    code = namedFnMatch[2].trim()
   }
 
   return code
 }
 
-function buildSandboxCode(
-  userCode: string,
-  toolNames: string[],
-  port: number,
-): string {
+let cachedProxyKey = ''
+let cachedProxyCode = ''
+
+const SAFE_IDENTIFIER = /^[\w$]+$/
+
+function getProxyBoilerplate(toolNames: string[], port: number, token: string): string {
+  const key = `${port}:${token}:${toolNames.join(',')}`
+  if (key === cachedProxyKey) return cachedProxyCode
+
+  for (const name of toolNames) {
+    if (!SAFE_IDENTIFIER.test(name)) {
+      throw new Error(`[nuxt-mcp-toolkit] Unsafe tool name rejected: "${name}"`)
+    }
+  }
+
   const proxyMethods = toolNames
     .map(name => `  ${name}: (input) => rpc('${name}', input)`)
     .join(',\n')
 
-  const cleaned = normalizeCode(userCode)
-
-  return `
+  cachedProxyCode = `
 async function rpc(toolName, args) {
   const res = await fetch('http://127.0.0.1:${port}', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-rpc-token': '${token}' },
     body: JSON.stringify({ tool: toolName, args }),
   });
   const data = JSON.parse(typeof res.text === 'function' ? await res.text() : res.body);
@@ -181,7 +230,21 @@ async function rpc(toolName, args) {
 
 const codemode = {
 ${proxyMethods}
-};
+};`
+  cachedProxyKey = key
+  return cachedProxyCode
+}
+
+function buildSandboxCode(
+  userCode: string,
+  toolNames: string[],
+  port: number,
+  token: string,
+): string {
+  const boilerplate = getProxyBoilerplate(toolNames, port, token)
+  const cleaned = normalizeCode(userCode)
+
+  return `${boilerplate}
 
 const __fn = async () => {
 ${cleaned}
@@ -203,10 +266,15 @@ export async function execute(
 ): Promise<ExecuteResult> {
   const secureExec = await loadSecureExec()
 
+  const rpc = await ensureRpcServer()
+  rpc.fns = fns
+
+  // Runtime is a singleton — memoryLimit and cpuTimeLimitMs are locked
+  // from the first call. Call dispose() and re-execute to change them.
   if (!runtimeInstance) {
     runtimeInstance = new secureExec.NodeRuntime({
       systemDriver: secureExec.createNodeDriver({
-        networkAdapter: createLocalhostOnlyAdapter(),
+        networkAdapter: createRpcOnlyAdapter(rpc.port),
         permissions: {
           network: () => ({ allow: true }),
         },
@@ -217,10 +285,7 @@ export async function execute(
     })
   }
 
-  const rpc = await ensureRpcServer()
-  rpc.fns = fns
-
-  const sandboxCode = buildSandboxCode(code, Object.keys(fns), rpc.port)
+  const sandboxCode = buildSandboxCode(code, Object.keys(fns), rpc.port, rpc.token)
 
   let resultJson: string | undefined
   let errorMsg: string | undefined
@@ -234,8 +299,11 @@ export async function execute(
       else if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
         errorMsg = message.slice(ERROR_PREFIX.length)
       }
-      else {
+      else if (logs.length < MAX_LOG_ENTRIES) {
         logs.push(`[${channel}] ${message}`)
+      }
+      else if (logs.length === MAX_LOG_ENTRIES) {
+        logs.push(`... log output truncated at ${MAX_LOG_ENTRIES} entries`)
       }
     },
   })
@@ -250,23 +318,56 @@ export async function execute(
 
   let result: unknown
   if (resultJson) {
-    result = JSON.parse(resultJson)
-
     const maxSize = options?.maxResultSize ?? DEFAULT_MAX_RESULT_SIZE
-    if (resultJson.length > maxSize) {
+
+    if (resultJson.length <= maxSize) {
+      result = JSON.parse(resultJson)
+    }
+    else {
       const totalSize = resultJson.length
-      const truncated = resultJson.slice(0, maxSize)
       try {
-        result = JSON.parse(truncated)
+        const full = JSON.parse(resultJson)
+        if (Array.isArray(full)) {
+          const keepCount = Math.max(1, Math.floor(full.length * maxSize / totalSize))
+          result = {
+            _truncated: true,
+            _totalItems: full.length,
+            _shownItems: keepCount,
+            _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit. Showing ${keepCount}/${full.length} items.`,
+            data: full.slice(0, keepCount),
+          }
+        }
+        else if (typeof full === 'object' && full !== null) {
+          const keys = Object.keys(full)
+          const keepCount = Math.max(1, Math.floor(keys.length * maxSize / totalSize))
+          const partial: Record<string, unknown> = {}
+          for (const key of keys.slice(0, keepCount)) {
+            partial[key] = full[key]
+          }
+          result = {
+            _truncated: true,
+            _totalKeys: keys.length,
+            _shownKeys: keepCount,
+            _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit. Showing ${keepCount}/${keys.length} keys.`,
+            data: partial,
+          }
+        }
+        else {
+          result = {
+            _truncated: true,
+            _totalBytes: totalSize,
+            _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit.`,
+            data: String(full).slice(0, maxSize),
+          }
+        }
       }
       catch {
-        result = truncated
-      }
-      result = {
-        _truncated: true,
-        _totalBytes: totalSize,
-        _message: `Result truncated from ${totalSize} to ${maxSize} bytes. Use console.log() for specific fields to avoid truncation.`,
-        data: result,
+        result = {
+          _truncated: true,
+          _totalBytes: totalSize,
+          _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit.`,
+          data: resultJson.slice(0, maxSize),
+        }
       }
     }
   }
@@ -283,4 +384,7 @@ export function dispose(): void {
     rpcState.server.close()
     rpcState = null
   }
+  secureExecModule = null
+  cachedProxyKey = ''
+  cachedProxyCode = ''
 }

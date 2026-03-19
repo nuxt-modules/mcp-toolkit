@@ -1,8 +1,15 @@
 import { z } from 'zod'
 import type { McpToolDefinition } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
-import { generateTypesFromTools, sanitizeToolName } from './types'
-import { execute, type CodeModeOptions } from './executor'
+import {
+  generateTypesFromTools,
+  generateToolCatalog,
+  searchToolCatalog,
+  formatSearchResults,
+  sanitizeToolName,
+  type ToolCatalogEntry,
+} from './types'
+import { execute, dispose, type CodeModeOptions } from './executor'
 
 export type { CodeModeOptions }
 
@@ -36,22 +43,125 @@ for (const item of items) {
 return result;
 \`\`\``
 
+const PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in a SINGLE invocation. ALWAYS combine ALL related operations into one code block.
+
+Write the body of an async function. Use \`return\` to return the final result.
+
+{{count}} tools available via the \`codemode\` object. Use the \`search\` tool first to discover tool names and type signatures, then write code using \`codemode.toolName(input)\`.
+
+IMPORTANT: Combine sequential, parallel, and conditional logic in ONE code block:
+\`\`\`javascript
+// Sequential
+const data = await codemode.get_data({ id: "123" });
+const result = await codemode.process({ input: data.value });
+
+// Parallel
+const [a, b] = await Promise.all([
+  codemode.task_a(),
+  codemode.task_b(),
+]);
+
+return result;
+\`\`\``
+
+const SEARCH_TOOL_DESCRIPTION = `Search available tools by keyword. Returns tool names, descriptions, and type signatures you can use with the \`code\` tool.
+
+Use this to discover which \`codemode.*\` methods are available before writing code.`
+
+function applyDescriptionTemplate(
+  template: string,
+  vars: { types?: string, count?: number },
+): string {
+  let result = template
+  if (vars.types !== undefined) result = result.replace('{{types}}', vars.types)
+  if (vars.count !== undefined) result = result.replaceAll('{{count}}', String(vars.count))
+  return result
+}
+
 /**
- * Wraps an array of tool definitions into a single "code" tool.
- * The LLM writes JavaScript that calls `codemode.*` methods,
- * which are executed in a secure V8 isolate via secure-exec.
+ * Wraps an array of tool definitions into code mode tools.
+ *
+ * Standard mode: single `code` tool with all type definitions embedded.
+ * Progressive mode (`progressive: true`): `search` + `code` tools — the LLM
+ * discovers tool signatures via search, keeping the code tool lightweight.
  */
 export function createCodemodeTools(
   tools: McpToolDefinition[],
   options?: CodeModeOptions,
 ): McpToolDefinition[] {
+  if (options?.progressive) {
+    return createProgressiveTools(tools, options)
+  }
+  return createStandardTools(tools, options)
+}
+
+function createStandardTools(
+  tools: McpToolDefinition[],
+  options?: CodeModeOptions,
+): McpToolDefinition[] {
   const { typeDefinitions, toolNameMap } = generateTypesFromTools(tools)
-  const description = CODE_TOOL_DESCRIPTION_TEMPLATE.replace('{{types}}', typeDefinitions)
+
+  const template = options?.description || CODE_TOOL_DESCRIPTION_TEMPLATE
+  const description = applyDescriptionTemplate(template, {
+    types: typeDefinitions,
+    count: tools.length,
+  })
 
   const fns = buildDispatchFunctions(tools, toolNameMap)
   const toolNames = [...toolNameMap.keys()]
 
-  const codeTool: McpToolDefinition<{ code: z.ZodString }> = {
+  const codeTool = buildCodeTool(description, fns, toolNames, options)
+  return [codeTool as McpToolDefinition]
+}
+
+function createProgressiveTools(
+  tools: McpToolDefinition[],
+  options?: CodeModeOptions,
+): McpToolDefinition[] {
+  const { entries, toolNameMap } = generateToolCatalog(tools)
+
+  const template = options?.description || PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE
+  const description = applyDescriptionTemplate(template, { count: tools.length })
+
+  const fns = buildDispatchFunctions(tools, toolNameMap)
+  const toolNames = [...toolNameMap.keys()]
+
+  const searchTool = buildSearchTool(entries)
+  const codeTool = buildCodeTool(description, fns, toolNames, options)
+
+  return [searchTool as McpToolDefinition, codeTool as McpToolDefinition]
+}
+
+function buildSearchTool(
+  entries: ToolCatalogEntry[],
+): McpToolDefinition<{ query: z.ZodString }> {
+  return {
+    name: 'search',
+    title: 'Search Tools',
+    description: SEARCH_TOOL_DESCRIPTION,
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+    inputSchema: {
+      query: z.string().describe('Keywords to search for (e.g. "user", "list", "create todo")'),
+    },
+    handler: async ({ query }) => {
+      const matches = searchToolCatalog(entries, query)
+      const text = formatSearchResults(matches, query, entries.length)
+      return { content: [{ type: 'text' as const, text }] }
+    },
+  }
+}
+
+function buildCodeTool(
+  description: string,
+  fns: Record<string, (args: unknown) => Promise<unknown>>,
+  toolNames: string[],
+  options?: CodeModeOptions,
+): McpToolDefinition<{ code: z.ZodString }> {
+  return {
     name: 'code',
     title: 'Code Mode',
     description,
@@ -65,20 +175,14 @@ export function createCodemodeTools(
     },
     handler: async ({ code }) => {
       const result = await execute(code, fns, options)
+      const logSuffix = formatLogs(result.logs)
 
       if (result.error) {
-        const logOutput = result.logs.length > 0
-          ? `\n\nConsole output:\n${result.logs.join('\n')}`
-          : ''
         return {
           isError: true,
-          content: [{ type: 'text' as const, text: formatError(result.error, code, toolNames, logOutput) }],
+          content: [{ type: 'text' as const, text: formatError(result.error, code, toolNames, logSuffix) }],
         }
       }
-
-      const logOutput = result.logs.length > 0
-        ? `\n\nConsole output:\n${result.logs.join('\n')}`
-        : ''
 
       let resultText: string
       if (result.result === undefined || result.result === null) {
@@ -97,12 +201,14 @@ export function createCodemodeTools(
       }
 
       return {
-        content: [{ type: 'text' as const, text: `${resultText}${logOutput}` }],
+        content: [{ type: 'text' as const, text: `${resultText}${logSuffix}` }],
       }
     },
   }
+}
 
-  return [codeTool as McpToolDefinition]
+function formatLogs(logs: string[]): string {
+  return logs.length > 0 ? `\n\nConsole output:\n${logs.join('\n')}` : ''
 }
 
 function formatError(error: string, code: string, toolNames: string[], logOutput: string): string {
@@ -172,3 +278,9 @@ function buildDispatchFunctions(
  * Check if a tool name needs sanitization for JavaScript
  */
 export { sanitizeToolName }
+
+/**
+ * Dispose the code mode runtime and RPC server.
+ * Call this during shutdown to release resources.
+ */
+export { dispose as disposeCodeMode }
