@@ -6,7 +6,7 @@ export interface CodeModeOptions {
   memoryLimit?: number
   /** CPU time limit per execution in ms. Default: 10000 */
   cpuTimeLimitMs?: number
-  /** Max result size in bytes before truncation. Default: 8192 */
+  /** Max result size in bytes before truncation. Default: 102400 (100KB) */
   maxResultSize?: number
   /**
    * Enable progressive disclosure: exposes a `search` tool for discovering
@@ -29,10 +29,10 @@ export interface ExecuteResult {
 
 type DispatchFn = (args: unknown) => Promise<unknown>
 
-const RESULT_PREFIX = '__RESULT__'
 const ERROR_PREFIX = '__ERROR__'
-const DEFAULT_MAX_RESULT_SIZE = 8192
+const DEFAULT_MAX_RESULT_SIZE = 102_400 // 100KB
 const MAX_LOG_ENTRIES = 200
+const RETURN_TOOL = '__return__'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let secureExecModule: any = null
@@ -99,6 +99,7 @@ interface RpcState {
   port: number
   token: string
   fns: Record<string, DispatchFn>
+  onReturn?: (value: unknown) => void
 }
 
 let rpcState: RpcState | null = null
@@ -122,6 +123,14 @@ function ensureRpcServer(): Promise<RpcState> {
 
       try {
         const { tool: name, args } = JSON.parse(body) as { tool: string, args: unknown }
+
+        if (name === RETURN_TOOL && state.onReturn) {
+          state.onReturn(args)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ result: { ok: true } }))
+          return
+        }
+
         const fn = state.fns[name]
         if (!fn) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -250,14 +259,50 @@ const __fn = async () => {
 ${cleaned}
 };
 __fn().then(
-  (r) => console.log('${RESULT_PREFIX}' + JSON.stringify(r === undefined ? null : r)),
+  (r) => rpc('${RETURN_TOOL}', r === undefined ? null : r),
   (e) => console.error('${ERROR_PREFIX}' + (e && e.message ? e.message : String(e)))
+).catch(
+  (e) => console.error('${ERROR_PREFIX}' + 'Result delivery failed: ' + (e && e.message ? e.message : String(e)))
 );
 `
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let runtimeInstance: any = null
+
+function truncateResult(value: unknown, totalSize: number, maxSize: number): Record<string, unknown> {
+  if (Array.isArray(value)) {
+    const keepCount = Math.max(1, Math.floor(value.length * maxSize / totalSize))
+    return {
+      _truncated: true,
+      _totalItems: value.length,
+      _shownItems: keepCount,
+      _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit. Showing ${keepCount}/${value.length} items.`,
+      data: value.slice(0, keepCount),
+    }
+  }
+  if (typeof value === 'object' && value !== null) {
+    const keys = Object.keys(value)
+    const keepCount = Math.max(1, Math.floor(keys.length * maxSize / totalSize))
+    const partial: Record<string, unknown> = {}
+    for (const key of keys.slice(0, keepCount)) {
+      partial[key] = (value as Record<string, unknown>)[key]
+    }
+    return {
+      _truncated: true,
+      _totalKeys: keys.length,
+      _shownKeys: keepCount,
+      _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit. Showing ${keepCount}/${keys.length} keys.`,
+      data: partial,
+    }
+  }
+  return {
+    _truncated: true,
+    _totalBytes: totalSize,
+    _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit.`,
+    data: String(value).slice(0, maxSize),
+  }
+}
 
 export async function execute(
   code: string,
@@ -268,6 +313,15 @@ export async function execute(
 
   const rpc = await ensureRpcServer()
   rpc.fns = fns
+
+  const toolNames = Object.keys(fns)
+  const sandboxCode = buildSandboxCode(code, toolNames, rpc.port, rpc.token)
+
+  // Result delivered via RPC — avoids console.log buffer limits (~4KB)
+  let returnedResult: { value: unknown, received: boolean } = { value: undefined, received: false }
+  rpc.onReturn = (value: unknown) => {
+    returnedResult = { value, received: true }
+  }
 
   // Runtime is a singleton — memoryLimit and cpuTimeLimitMs are locked
   // from the first call. Call dispose() and re-execute to change them.
@@ -285,18 +339,12 @@ export async function execute(
     })
   }
 
-  const sandboxCode = buildSandboxCode(code, Object.keys(fns), rpc.port, rpc.token)
-
-  let resultJson: string | undefined
   let errorMsg: string | undefined
   const logs: string[] = []
 
   const execResult = await runtimeInstance.exec(sandboxCode, {
     onStdio: ({ channel, message }: { channel: string, message: string }) => {
-      if (channel === 'stdout' && message.startsWith(RESULT_PREFIX)) {
-        resultJson = message.slice(RESULT_PREFIX.length)
-      }
-      else if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
+      if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
         errorMsg = message.slice(ERROR_PREFIX.length)
       }
       else if (logs.length < MAX_LOG_ENTRIES) {
@@ -308,6 +356,8 @@ export async function execute(
     },
   })
 
+  rpc.onReturn = undefined
+
   if (execResult.code !== 0 || errorMsg) {
     return {
       result: undefined,
@@ -317,58 +367,15 @@ export async function execute(
   }
 
   let result: unknown
-  if (resultJson) {
+  if (returnedResult.received) {
     const maxSize = options?.maxResultSize ?? DEFAULT_MAX_RESULT_SIZE
+    const serialized = JSON.stringify(returnedResult.value)
 
-    if (resultJson.length <= maxSize) {
-      result = JSON.parse(resultJson)
+    if (serialized.length <= maxSize) {
+      result = returnedResult.value
     }
     else {
-      const totalSize = resultJson.length
-      try {
-        const full = JSON.parse(resultJson)
-        if (Array.isArray(full)) {
-          const keepCount = Math.max(1, Math.floor(full.length * maxSize / totalSize))
-          result = {
-            _truncated: true,
-            _totalItems: full.length,
-            _shownItems: keepCount,
-            _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit. Showing ${keepCount}/${full.length} items.`,
-            data: full.slice(0, keepCount),
-          }
-        }
-        else if (typeof full === 'object' && full !== null) {
-          const keys = Object.keys(full)
-          const keepCount = Math.max(1, Math.floor(keys.length * maxSize / totalSize))
-          const partial: Record<string, unknown> = {}
-          for (const key of keys.slice(0, keepCount)) {
-            partial[key] = full[key]
-          }
-          result = {
-            _truncated: true,
-            _totalKeys: keys.length,
-            _shownKeys: keepCount,
-            _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit. Showing ${keepCount}/${keys.length} keys.`,
-            data: partial,
-          }
-        }
-        else {
-          result = {
-            _truncated: true,
-            _totalBytes: totalSize,
-            _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit.`,
-            data: String(full).slice(0, maxSize),
-          }
-        }
-      }
-      catch {
-        result = {
-          _truncated: true,
-          _totalBytes: totalSize,
-          _message: `Result truncated: ${totalSize} bytes exceeds ${maxSize} byte limit.`,
-          data: resultJson.slice(0, maxSize),
-        }
-      }
+      result = truncateResult(returnedResult.value, serialized.length, maxSize)
     }
   }
 
