@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { McpToolDefinition } from '../definitions/tools'
+import { normalizeToolResult } from '../definitions/results'
 import { enrichNameTitle } from '../definitions/utils'
 import {
   generateTypesFromTools,
@@ -247,13 +248,14 @@ function buildDispatchFunctions(
 
     fns[sanitized] = async (input: unknown) => {
       const args = input ?? {}
-      const callToolResult = tool.inputSchema && Object.keys(tool.inputSchema).length > 0
+      const rawResult = tool.inputSchema && Object.keys(tool.inputSchema).length > 0
         ? await (tool.handler as (args: unknown, extra: unknown) => Promise<unknown>)(args, {})
         : await (tool.handler as (extra: unknown) => Promise<unknown>)({})
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = callToolResult as any
-      if (result?.content) {
+      // Normalize string/number returns before code mode consumes them
+      const result = normalizeToolResult(rawResult as Parameters<typeof normalizeToolResult>[0])
+
+      if (result.content) {
         const textContent = result.content
           .filter((c: { type: string }) => c.type === 'text')
           .map((c: { text: string }) => c.text)

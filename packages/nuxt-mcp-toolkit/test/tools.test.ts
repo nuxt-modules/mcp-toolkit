@@ -71,4 +71,111 @@ describe('Tools', async () => {
     expect(textContent, 'Result should contain text content').toBeDefined()
     expect(textContent?.text, `Expected text to contain 'Test result: Hello from test', but got '${textContent?.text}'`).toContain('Test result: Hello from test')
   })
+
+  it('should auto-wrap a string return into CallToolResult', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.callTool({
+      name: 'string_tool',
+      arguments: { name: 'World' },
+    })
+
+    expect(result).toBeDefined()
+    const content = result.content as Array<{ type: string, text?: string }>
+    expect(content).toBeInstanceOf(Array)
+    expect(content.length).toBe(1)
+    expect(content[0]).toEqual({ type: 'text', text: 'Hello World' })
+  })
+
+  it('should auto-wrap a number return into CallToolResult', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.callTool({
+      name: 'number_tool',
+      arguments: { a: 3, b: 7 },
+    })
+
+    expect(result).toBeDefined()
+    const content = result.content as Array<{ type: string, text?: string }>
+    expect(content).toBeInstanceOf(Array)
+    expect(content.length).toBe(1)
+    expect(content[0]).toEqual({ type: 'text', text: '10' })
+  })
+
+  it('should auto-wrap a plain object return into JSON CallToolResult', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.callTool({
+      name: 'object_tool',
+      arguments: { id: 'nuxt-1' },
+    })
+
+    expect(result).toBeDefined()
+    const content = result.content as Array<{ type: string, text?: string }>
+    expect(content).toBeInstanceOf(Array)
+    expect(content.length).toBe(1)
+    expect(content[0]?.type).toBe('text')
+
+    const parsed = JSON.parse(content[0]?.text ?? '')
+    expect(parsed).toEqual({ id: 'nuxt-1', name: 'Nuxt', stars: 55000 })
+  })
+
+  it('should convert a thrown H3 error into an isError result', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.callTool({
+      name: 'error_tool',
+      arguments: { mode: 'h3' },
+    })
+
+    expect(result.isError).toBe(true)
+    const content = result.content as Array<{ type: string, text?: string }>
+    expect(content[0]?.text).toBe('[404] User not found')
+  })
+
+  it('should include H3 error data in the isError result', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.callTool({
+      name: 'error_tool',
+      arguments: { mode: 'h3-data' },
+    })
+
+    expect(result.isError).toBe(true)
+    const content = result.content as Array<{ type: string, text?: string }>
+    const text = content[0]?.text ?? ''
+    expect(text).toContain('[400] Validation failed')
+    expect(text).toContain('"fields"')
+  })
+
+  it('should convert a thrown plain Error into an isError result', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.callTool({
+      name: 'error_tool',
+      arguments: { mode: 'plain' },
+    })
+
+    expect(result.isError).toBe(true)
+    const content = result.content as Array<{ type: string, text?: string }>
+    expect(content[0]?.text).toBe('Something went wrong')
+  })
 })

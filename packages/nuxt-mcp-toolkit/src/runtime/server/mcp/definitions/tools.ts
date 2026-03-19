@@ -1,4 +1,4 @@
-import type { H3Event } from 'h3'
+import { type H3Event, isError as isH3Error } from 'h3'
 import type { ZodRawShape } from 'zod'
 import type { CallToolResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
@@ -6,6 +6,9 @@ import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/m
 import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import { enrichNameTitle } from './utils'
 import { type MsCacheDuration, type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+import { type McpToolCallbackResult, normalizeToolResult } from './results'
+
+export type { McpToolCallbackResult }
 
 /**
  * Hints that describe tool behavior to MCP clients.
@@ -35,8 +38,8 @@ export type McpToolCache<Args = unknown> = McpCache<Args>
  * Handler callback type for MCP tools
  */
 export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = Args extends ZodRawShape
-  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
-  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => CallToolResult | Promise<CallToolResult>
+  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpToolCallbackResult | Promise<McpToolCallbackResult>
+  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpToolCallbackResult | Promise<McpToolCallbackResult>
 
 /**
  * MCP tool definition structure
@@ -74,6 +77,28 @@ export interface McpToolDefinition<
 }
 
 /**
+ * Convert a thrown error into an MCP-compliant `isError` result.
+ *
+ * Supports H3 errors (`createError()`) natively — the status code and
+ * any attached `data` are included in the error text.
+ *
+ * @internal
+ */
+export function normalizeErrorToResult(error: unknown): CallToolResult {
+  if (isH3Error(error)) {
+    let text = `[${error.statusCode}] ${error.message}`
+    if (error.data != null) {
+      text += `\n${JSON.stringify(error.data, null, 2)}`
+    }
+    return { content: [{ type: 'text', text }], isError: true }
+  }
+  if (error instanceof Error) {
+    return { content: [{ type: 'text', text: error.message }], isError: true }
+  }
+  return { content: [{ type: 'text', text: String(error) }], isError: true }
+}
+
+/**
  * Register a tool from a McpToolDefinition
  * @internal
  */
@@ -89,7 +114,7 @@ export function registerToolFromDefinition(
   })
 
   // Wrap handler with cache if cache is defined
-  let handler: ToolCallback<ZodRawShape> = tool.handler as ToolCallback<ZodRawShape>
+  let handler = tool.handler as (...args: unknown[]) => unknown
 
   if (tool.cache !== undefined) {
     const defaultGetKey = tool.inputSchema
@@ -101,10 +126,18 @@ export function registerToolFromDefinition(
 
     const cacheOptions = createCacheOptions(tool.cache, `mcp-tool:${name}`, defaultGetKey)
 
-    handler = wrapWithCache(
-      tool.handler as (...args: unknown[]) => unknown,
-      cacheOptions,
-    ) as ToolCallback<ZodRawShape>
+    handler = wrapWithCache(handler, cacheOptions)
+  }
+
+  // Normalize returns and catch thrown errors into isError results
+  const normalizedHandler: ToolCallback<ZodRawShape> = async (...args: unknown[]) => {
+    try {
+      const result = await (handler as (...a: unknown[]) => unknown)(...args)
+      return normalizeToolResult(result as McpToolCallbackResult)
+    }
+    catch (error) {
+      return normalizeErrorToResult(error)
+    }
   }
 
   const options = {
@@ -119,7 +152,7 @@ export function registerToolFromDefinition(
     },
   }
 
-  return server.registerTool(name, options, handler)
+  return server.registerTool(name, options, normalizedHandler)
 }
 
 /**
@@ -127,17 +160,25 @@ export function registerToolFromDefinition(
  *
  * `name` and `title` are auto-generated from filename if not provided.
  *
+ * Handlers can return a full `CallToolResult`, or a simplified value
+ * (`string`, `number`, `boolean`, object, array) which is automatically
+ * wrapped into `{ content: [{ type: 'text', text: '...' }] }`.
+ *
+ * Thrown errors are caught and converted to MCP `isError` results.
+ * H3 errors (`createError()`) include the status code in the response.
+ *
  * @see https://mcp-toolkit.nuxt.dev/core-concepts/tools
  *
  * @example
  * ```ts
  * export default defineMcpTool({
- *   description: 'Echo back a message',
- *   inputSchema: { message: z.string() },
- *   cache: '1h', // optional caching
- *   handler: async ({ message }) => ({
- *     content: [{ type: 'text', text: message }]
- *   })
+ *   description: 'Get a user by ID',
+ *   inputSchema: { id: z.string() },
+ *   handler: async ({ id }) => {
+ *     const user = await getUser(id)
+ *     if (!user) throw createError({ statusCode: 404, message: 'User not found' })
+ *     return user
+ *   },
  * })
  * ```
  */
