@@ -222,6 +222,7 @@ export default defineNuxtModule<ModuleOptions>({
       'jsonResult',
       'errorResult',
       'imageResult',
+      'completable',
     ].map(name => ({ name, from: mcpDefinitionsPath })))
 
     addServerImports([
