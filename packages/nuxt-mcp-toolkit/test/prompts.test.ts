@@ -71,4 +71,26 @@ describe('Prompts', async () => {
       expect(firstMessage.content.text).toContain('test prompt message')
     }
   })
+
+  it('should auto-wrap a string return into a GetPromptResult', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.getPrompt({
+      name: 'string_prompt',
+    })
+
+    expect(result).toBeDefined()
+    expect(result.messages).toBeInstanceOf(Array)
+    expect(result.messages).toHaveLength(1)
+
+    const message = result.messages[0]!
+    expect(message.role).toBe('user')
+    expect(message.content.type).toBe('text')
+    if ('text' in message.content) {
+      expect(message.content.text).toBe('You are a helpful assistant that helps with code review.')
+    }
+  })
 })
