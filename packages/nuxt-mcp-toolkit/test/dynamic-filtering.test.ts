@@ -13,7 +13,7 @@ vi.mock('nitropack/runtime', () => ({
 }))
 
 async function withClient(config: Parameters<typeof createMcpServer>[0], run: (client: Client) => Promise<void>) {
-  const server = createMcpServer(config)
+  const server = await createMcpServer(config)
   const client = new Client({ name: 'dynamic-test-client', version: '1.0.0' })
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
 

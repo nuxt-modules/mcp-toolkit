@@ -8,6 +8,7 @@ import type { McpResourceDefinition } from './definitions/resources'
 import { registerResourceFromDefinition } from './definitions/resources'
 import type { McpToolDefinition } from './definitions/tools'
 import { registerToolFromDefinition } from './definitions/tools'
+import type { CodeModeOptions } from './codemode'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
@@ -27,6 +28,7 @@ export interface ResolvedMcpConfig {
   resources?: MaybeDynamic<McpResourceDefinition[]>
   prompts?: MaybeDynamic<McpPromptDefinition[]>
   middleware?: McpMiddleware
+  experimental_codeMode?: boolean | CodeModeOptions
 }
 
 interface StaticMcpConfig {
@@ -35,6 +37,7 @@ interface StaticMcpConfig {
   tools: McpToolDefinition[]
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
+  experimental_codeMode?: boolean | CodeModeOptions
 }
 
 export type CreateMcpHandlerConfig = ResolvedMcpConfig | ((event: H3Event) => ResolvedMcpConfig)
@@ -76,6 +79,7 @@ async function resolveDynamicDefinitions(
     tools: await filterByEnabled(tools, event),
     resources: await filterByEnabled(resources, event),
     prompts: await filterByEnabled(prompts, event),
+    experimental_codeMode: config.experimental_codeMode,
   }
 }
 
@@ -93,13 +97,21 @@ function registerEmptyDefinitionFallbacks(server: McpServer, config: StaticMcpCo
   }
 }
 
-export function createMcpServer(config: StaticMcpConfig): McpServer {
+export async function createMcpServer(config: StaticMcpConfig): Promise<McpServer> {
   const server = new McpServer({
     name: config.name,
     version: config.version,
   })
 
-  for (const tool of config.tools as McpToolDefinition[]) {
+  let toolsToRegister: McpToolDefinition[] = config.tools as McpToolDefinition[]
+
+  if (config.experimental_codeMode && toolsToRegister.length > 0) {
+    const { createCodemodeTools } = await import('./codemode')
+    const codeModeOptions = typeof config.experimental_codeMode === 'object' ? config.experimental_codeMode : undefined
+    toolsToRegister = createCodemodeTools(toolsToRegister, codeModeOptions)
+  }
+
+  for (const tool of toolsToRegister) {
     registerToolFromDefinition(server, tool)
   }
 
@@ -111,7 +123,7 @@ export function createMcpServer(config: StaticMcpConfig): McpServer {
     registerPromptFromDefinition(server, prompt)
   }
 
-  registerEmptyDefinitionFallbacks(server, config)
+  registerEmptyDefinitionFallbacks(server, { ...config, tools: toolsToRegister })
 
   return server
 }
@@ -128,7 +140,8 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
     // run AFTER middleware has populated event.context (e.g. auth data).
     const handler = async () => {
       const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
-      return handleMcpRequest(() => createMcpServer(staticConfig), event)
+      const server = await createMcpServer(staticConfig)
+      return handleMcpRequest(() => server, event)
     }
 
     // If middleware is defined, wrap the handler with it

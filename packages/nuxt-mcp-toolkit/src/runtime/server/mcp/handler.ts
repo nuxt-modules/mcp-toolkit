@@ -29,14 +29,19 @@ export default createMcpHandler((event: H3Event) => {
       throw new Error(`Handler "${handlerName}" not found`)
     }
 
+    const globalTools = tools as McpToolDefinition[]
+    const globalResources = resources as McpResourceDefinition[]
+    const globalPrompts = prompts as McpPromptDefinition[]
+
     return {
       name: handlerDef.name ?? handlerName,
       version: handlerDef.version ?? config.version,
       browserRedirect: handlerDef.browserRedirect ?? config.browserRedirect,
-      tools: handlerDef.tools,
-      resources: handlerDef.resources,
-      prompts: handlerDef.prompts,
+      tools: handlerDef.tools ?? globalTools,
+      resources: handlerDef.resources ?? globalResources,
+      prompts: handlerDef.prompts ?? globalPrompts,
       middleware: handlerDef.middleware,
+      experimental_codeMode: handlerDef.experimental_codeMode,
     }
   }
 
@@ -57,6 +62,7 @@ export default createMcpHandler((event: H3Event) => {
       resources: defaultHandlerDef.resources ?? globalResources,
       prompts: defaultHandlerDef.prompts ?? globalPrompts,
       middleware: defaultHandlerDef.middleware,
+      experimental_codeMode: defaultHandlerDef.experimental_codeMode,
     }
   }
 
