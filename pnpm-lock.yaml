@@ -148,6 +148,9 @@ importers:
       h3:
         specifier: ^1.15.6
         version: 1.15.6
+      secure-exec:
+        specifier: '>=0.1.0'
+        version: 0.1.0
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
