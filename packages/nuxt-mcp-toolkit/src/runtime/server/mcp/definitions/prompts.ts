@@ -90,6 +90,18 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
     type: 'prompt',
   })
 
+  // Resolve group/tags for internal consistency. The MCP SDK does not
+  // currently expose _meta on prompts, but the resolved values are kept
+  // on the definition object for internal consumers (e.g. search-tools).
+  const group = prompt.group ?? (prompt._meta?.group as string | undefined)
+  if (group != null || prompt.tags?.length) {
+    prompt._meta = {
+      ...prompt._meta,
+      ...(group != null && { group }),
+      ...(prompt.tags?.length && { tags: prompt.tags }),
+    }
+  }
+
   const role = prompt.role ?? 'user'
   const wrappedHandler: PromptCallback<ZodRawShape> = async (...args: unknown[]) => {
     const result = await (prompt.handler as (...a: unknown[]) => unknown)(...args)

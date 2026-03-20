@@ -1,4 +1,4 @@
-import { resolve as resolvePath } from 'node:path'
+import { resolve as resolvePath, relative as relativePath, sep } from 'node:path'
 import { getLayerDirectories } from '@nuxt/kit'
 import { glob } from 'tinyglobby'
 
@@ -184,6 +184,15 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
 }
 
 /**
+ * Normalize a path to always use forward slashes (for cross-platform consistency).
+ * `tinyglobby` returns forward-slash paths, but `path.resolve()` uses the platform
+ * separator, so we normalize everything to `/`.
+ */
+function normalizePath(p: string): string {
+  return sep === '/' ? p : p.split(sep).join('/')
+}
+
+/**
  * Compute the relative path of a file within its base directory,
  * and extract the group (subdirectory) if present.
  */
@@ -194,17 +203,18 @@ function computeRelativeInfo(
 ): { relativePath: string, group?: string } {
   for (const pathPattern of paths) {
     const baseDir = resolvePath(layerServer, pathPattern)
-    if (filePath.startsWith(baseDir + '/')) {
-      const relative = filePath.slice(baseDir.length + 1)
-      const parts = relative.split('/')
+    const rel = normalizePath(relativePath(baseDir, filePath))
+
+    if (!rel.startsWith('..')) {
+      const parts = rel.split('/')
       if (parts.length > 1) {
         const group = parts.slice(0, -1).join('/')
-        return { relativePath: relative, group }
+        return { relativePath: rel, group }
       }
-      return { relativePath: relative }
+      return { relativePath: rel }
     }
   }
-  const filename = filePath.split('/').pop()!
+  const filename = normalizePath(filePath).split('/').pop()!
   return { relativePath: filename }
 }
 

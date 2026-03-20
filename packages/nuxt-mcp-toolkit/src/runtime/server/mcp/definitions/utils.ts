@@ -25,7 +25,7 @@ function titleCase(str: string): string {
 }
 
 /**
- * Enrich name and title from filename if missing
+ * Enrich name and title from filename if missing.
  */
 export function enrichNameTitle(options: EnrichNameTitleOptions): EnrichNameTitleResult {
   const { name, title, _meta, type } = options

@@ -157,6 +157,18 @@ export function registerResourceFromDefinition(
     type: 'resource',
   })
 
+  // Resolve group/tags for internal consistency. The MCP SDK does not
+  // currently expose _meta on resources, but the resolved values are kept
+  // on the definition object for internal consumers (e.g. search-tools).
+  const group = resource.group ?? (resource._meta?.group as string | undefined)
+  if (group != null || resource.tags?.length) {
+    resource._meta = {
+      ...resource._meta,
+      ...(group != null && { group }),
+      ...(resource.tags?.length && { tags: resource.tags }),
+    }
+  }
+
   let uri = resource.uri
   let handler = resource.handler
   const metadata = {
