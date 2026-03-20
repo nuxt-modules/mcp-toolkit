@@ -35,6 +35,17 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
   title?: string
   description?: string
   /**
+   * Functional group this prompt belongs to (e.g. `'onboarding'`, `'debugging'`).
+   * Auto-inferred from directory structure when omitted.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
+  /**
    * Default role used when the handler returns a plain string.
    * @default 'user'
    */
@@ -78,6 +89,18 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
     _meta: prompt._meta,
     type: 'prompt',
   })
+
+  // Resolve group/tags for internal consistency. The MCP SDK does not
+  // currently expose _meta on prompts, but the resolved values are kept
+  // on the definition object for internal consumers (e.g. search-tools).
+  const group = prompt.group ?? (prompt._meta?.group as string | undefined)
+  if (group != null || prompt.tags?.length) {
+    prompt._meta = {
+      ...prompt._meta,
+      ...(group != null && { group }),
+      ...(prompt.tags?.length && { tags: prompt.tags }),
+    }
+  }
 
   const role = prompt.role ?? 'user'
   const wrappedHandler: PromptCallback<ZodRawShape> = async (...args: unknown[]) => {

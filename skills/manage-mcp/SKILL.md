@@ -46,9 +46,11 @@ export default defineNuxtConfig({
 
 ```
 server/mcp/
-├── tools/       # Actions AI can perform
-├── resources/   # Data AI can read
-└── prompts/     # Message templates
+├── tools/           # Actions AI can perform
+│   ├── admin/       # Subdirectory → group: 'admin'
+│   └── content/     # Subdirectory → group: 'content'
+├── resources/       # Data AI can read
+└── prompts/         # Message templates
 ```
 
 ### Verification
@@ -143,6 +145,21 @@ export default defineMcpTool({
   // ...
 })
 ```
+
+### Groups and Tags
+
+Organize tools with `group` and `tags` for filtering and progressive discovery:
+
+```typescript
+export default defineMcpTool({
+  group: 'admin',
+  tags: ['destructive', 'user-management'],
+  description: 'Delete a user account',
+  // ...
+})
+```
+
+Groups are auto-inferred from subdirectories: `server/mcp/tools/admin/delete-user.ts` → `group: 'admin'`. Explicit `group` takes precedence.
 
 ### Caching
 

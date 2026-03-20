@@ -36,6 +36,17 @@ export interface StandardMcpResourceDefinition {
   name?: string
   title?: string
   description?: string
+  /**
+   * Functional group this resource belongs to (e.g. `'config'`, `'content'`).
+   * Auto-inferred from directory structure when omitted.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
   uri: string | ResourceTemplate
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
@@ -64,6 +75,17 @@ export interface FileMcpResourceDefinition {
   name?: string
   title?: string
   description?: string
+  /**
+   * Functional group this resource belongs to (e.g. `'config'`, `'content'`).
+   * Auto-inferred from directory structure when omitted.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
   uri?: string
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
@@ -134,6 +156,18 @@ export function registerResourceFromDefinition(
     _meta: resource._meta,
     type: 'resource',
   })
+
+  // Resolve group/tags for internal consistency. The MCP SDK does not
+  // currently expose _meta on resources, but the resolved values are kept
+  // on the definition object for internal consumers (e.g. search-tools).
+  const group = resource.group ?? (resource._meta?.group as string | undefined)
+  if (group != null || resource.tags?.length) {
+    resource._meta = {
+      ...resource._meta,
+      ...(group != null && { group }),
+      ...(resource.tags?.length && { tags: resource.tags }),
+    }
+  }
 
   let uri = resource.uri
   let handler = resource.handler

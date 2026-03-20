@@ -6,6 +6,8 @@ import {
   loadDefinitionFiles,
   toIdentifier,
   type LoadResult,
+  type LoadedFile,
+  type TemplateEntry,
 } from './utils'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
@@ -30,13 +32,54 @@ interface LoadResults {
   hasDefaultHandler: boolean
 }
 
+function fileToTemplateEntry(file: LoadedFile): TemplateEntry {
+  const parts = file.path.replace(/\\/g, '/').split('/')
+  const filename = parts.pop()!
+  const relativePath = file.group ? `${file.group}/${filename}` : filename
+  return {
+    identifier: toIdentifier(relativePath),
+    path: file.path,
+    group: file.group,
+  }
+}
+
+/**
+ * Warn when two definition files in different subdirectories share the same
+ * basename, which would produce the same auto-generated name and cause one
+ * to silently overwrite the other at registration time.
+ */
+function warnOnNameCollisions(type: string, files: LoadedFile[]) {
+  const byBasename = new Map<string, LoadedFile[]>()
+  for (const file of files) {
+    const basename = file.path.replace(/\\/g, '/').split('/').pop()!
+    const existing = byBasename.get(basename)
+    if (existing) {
+      existing.push(file)
+    }
+    else {
+      byBasename.set(basename, [file])
+    }
+  }
+  for (const [basename, entries] of byBasename) {
+    if (entries.length > 1) {
+      const paths = entries.map(e => e.group ? `${e.group}/${basename}` : basename)
+      log.warn(
+        `Multiple ${type} files share the basename "${basename}" (${paths.join(', ')}). `
+        + `Set an explicit \`name\` on each definition to avoid collisions.`,
+      )
+    }
+  }
+}
+
 async function loadMcpDefinitions(
   type: 'tools' | 'resources' | 'prompts',
   templateFilename: string,
   paths: string[],
 ): Promise<LoadResult> {
   try {
-    const result = await loadDefinitionFiles(paths)
+    const result = await loadDefinitionFiles(paths, { recursive: true })
+
+    warnOnNameCollisions(type, result.files)
 
     // Always generate the template file, even if empty (for imports)
     addServerTemplate({
@@ -45,11 +88,7 @@ async function loadMcpDefinitions(
         if (result.count === 0) {
           return `export const ${type} = []\n`
         }
-        const entries = result.files.map((file) => {
-          const filename = file.split('/').pop()!
-          const identifier = toIdentifier(filename)
-          return [identifier, file] as [string, string]
-        })
+        const entries = result.files.map(fileToTemplateEntry)
         return createTemplateContent(type, entries)
       },
     })
@@ -81,7 +120,6 @@ async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
       filter: (filePath) => {
         const relativePath = filePath.replace(/.*\/server\//, '')
         const filename = filePath.split('/').pop()!
-        // Exclude index files (they are used as default handler override)
         const isIndexFile = /^index\.(?:ts|js|mts|mjs)$/.test(filename)
         return !relativePath.includes('/tools/')
           && !relativePath.includes('/resources/')
@@ -97,11 +135,7 @@ async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
         if (result.count === 0) {
           return `export const handlers = []\n`
         }
-        const entries = result.files.map((file) => {
-          const filename = file.split('/').pop()!
-          const identifier = toIdentifier(filename)
-          return [identifier, file] as [string, string]
-        })
+        const entries = result.files.map(fileToTemplateEntry)
         return createTemplateContent('handlers', entries)
       },
     })

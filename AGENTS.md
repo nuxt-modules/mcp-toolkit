@@ -113,12 +113,14 @@ A full-featured example app demonstrating module usage with authentication, todo
 Use the helper functions:
 
 ```typescript
-// Tools - server/mcp/tools/*.ts
+// Tools - server/mcp/tools/*.ts (or subdirectories like tools/admin/*.ts)
 import { z } from 'zod'
 import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpTool({
   name: 'tool-name',           // Optional - auto-generated from filename
+  group: 'admin',              // Optional - auto-inferred from subdirectory
+  tags: ['destructive'],       // Optional - free-form tags for filtering
   description: 'What it does',
   inputSchema: {
     param: z.string().describe('Parameter description'),

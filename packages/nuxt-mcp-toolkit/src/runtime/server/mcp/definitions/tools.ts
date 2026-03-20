@@ -58,6 +58,19 @@ export interface McpToolDefinition<
   name?: string
   title?: string
   description?: string
+  /**
+   * Functional group this tool belongs to (e.g. `'admin'`, `'content'`).
+   * Auto-inferred from directory structure when omitted
+   * (e.g. `server/mcp/tools/admin/delete-user.ts` → `'admin'`).
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization
+   * (e.g. `['destructive', 'user-management']`).
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
   inputSchema?: InputSchema
   outputSchema?: OutputSchema
   annotations?: McpToolAnnotations
@@ -146,6 +159,8 @@ export function registerToolFromDefinition(
     }
   }
 
+  const group = tool.group ?? (tool._meta?.group as string | undefined)
+
   const options = {
     title,
     description: tool.description,
@@ -155,6 +170,8 @@ export function registerToolFromDefinition(
     _meta: {
       ...tool._meta,
       ...(tool.inputExamples && { inputExamples: tool.inputExamples }),
+      ...(group != null && { group }),
+      ...(tool.tags?.length && { tags: tool.tags }),
     },
   }
 

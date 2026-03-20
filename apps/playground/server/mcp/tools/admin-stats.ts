@@ -1,6 +1,8 @@
 export default defineMcpTool({
   name: 'admin_stats',
   title: 'Admin Stats',
+  group: 'admin',
+  tags: ['readonly', 'statistics'],
   description: 'View playground statistics including user count and todo count. Admin only.',
   annotations: {
     readOnlyHint: true,
