@@ -4,13 +4,13 @@ import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
 import { name, version } from '../package.json'
+import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
 export const { resolve } = createResolver(import.meta.url)
 
 export type * from './runtime/server/types'
-import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
 
 export interface ModuleOptions {
   /**
