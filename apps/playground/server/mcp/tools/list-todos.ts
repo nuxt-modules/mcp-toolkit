@@ -1,5 +1,7 @@
 export default defineMcpTool({
   name: 'list_todos',
+  group: 'todos',
+  tags: ['readonly'],
   description: 'List all todos for the authenticated user',
   annotations: {
     readOnlyHint: true,

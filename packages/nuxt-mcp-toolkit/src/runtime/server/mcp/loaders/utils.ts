@@ -2,9 +2,14 @@ import { resolve as resolvePath } from 'node:path'
 import { getLayerDirectories } from '@nuxt/kit'
 import { glob } from 'tinyglobby'
 
+export interface LoadedFile {
+  path: string
+  group?: string
+}
+
 export interface LoadResult {
   count: number
-  files: string[]
+  files: LoadedFile[]
   overriddenCount: number
 }
 
@@ -69,11 +74,12 @@ const RESERVED_KEYWORDS = new Set([
   'volatile',
 ])
 
-export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs']): string[] {
+export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs'], recursive = false): string[] {
   const layerDirectories = getLayerDirectories()
+  const pattern = recursive ? '**/*' : '*'
   return layerDirectories.flatMap(layer =>
     paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/*.${ext}`)),
+      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/${pattern}.${ext}`)),
     ),
   )
 }
@@ -85,9 +91,11 @@ export function createLayerFilePatterns(
   layerServer: string,
   paths: string[],
   extensions = ['ts', 'js', 'mts', 'mjs'],
+  recursive = false,
 ): string[] {
+  const pattern = recursive ? '**/*' : '*'
   return paths.flatMap(pathPattern =>
-    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/*.${ext}`)),
+    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/${pattern}.${ext}`)),
   )
 }
 
@@ -108,26 +116,33 @@ export function toIdentifier(filename: string): string {
   return id
 }
 
+export interface TemplateEntry {
+  identifier: string
+  path: string
+  group?: string
+}
+
 export function createTemplateContent(
   type: string,
-  entries: Array<[string, string]>,
+  entries: TemplateEntry[],
 ): string {
-  const imports = entries.map(([name, path]) =>
-    `import ${name.replace(/-/g, '_')} from '${path}'`,
+  const imports = entries.map(({ identifier, path }) =>
+    `import ${identifier.replace(/-/g, '_')} from '${path}'`,
   ).join('\n')
 
-  // Store filename in _meta for enrichment in register functions
-  const enrichedExports = entries.map(([name, path]) => {
-    const identifier = name.replace(/-/g, '_')
+  // Store filename and group in _meta for enrichment in register functions
+  const enrichedExports = entries.map(({ identifier, path, group }) => {
+    const safeId = identifier.replace(/-/g, '_')
     const filename = path.split('/').pop()!
+    const groupMeta = group ? `,\n      group: ${JSON.stringify(group)}` : ''
 
     return `(function() {
-  const def = ${identifier}
+  const def = ${safeId}
   return {
     ...def,
     _meta: {
       ...def._meta,
-      filename: ${JSON.stringify(filename)}
+      filename: ${JSON.stringify(filename)}${groupMeta}
     }
   }
 })()`
@@ -168,11 +183,37 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
   return null
 }
 
+/**
+ * Compute the relative path of a file within its base directory,
+ * and extract the group (subdirectory) if present.
+ */
+function computeRelativeInfo(
+  filePath: string,
+  layerServer: string,
+  paths: string[],
+): { relativePath: string, group?: string } {
+  for (const pathPattern of paths) {
+    const baseDir = resolvePath(layerServer, pathPattern)
+    if (filePath.startsWith(baseDir + '/')) {
+      const relative = filePath.slice(baseDir.length + 1)
+      const parts = relative.split('/')
+      if (parts.length > 1) {
+        const group = parts.slice(0, -1).join('/')
+        return { relativePath: relative, group }
+      }
+      return { relativePath: relative }
+    }
+  }
+  const filename = filePath.split('/').pop()!
+  return { relativePath: filename }
+}
+
 export async function loadDefinitionFiles(
   paths: string[],
   options: {
     excludePatterns?: string[]
     filter?: (filePath: string) => boolean
+    recursive?: boolean
   } = {},
 ): Promise<LoadResult> {
   if (paths.length === 0) {
@@ -186,12 +227,12 @@ export async function loadDefinitionFiles(
   const layerDirectories = getLayerDirectories()
   const reversedLayers = [...layerDirectories].reverse()
 
-  const definitionsMap = new Map<string, string>()
+  const definitionsMap = new Map<string, LoadedFile>()
   let overriddenCount = 0
 
   // Process each layer separately to ensure correct override order
   for (const layer of reversedLayers) {
-    const layerPatterns = createLayerFilePatterns(layer.server, paths)
+    const layerPatterns = createLayerFilePatterns(layer.server, paths, undefined, options.recursive)
     const layerFiles = await glob(layerPatterns, {
       absolute: true,
       onlyFiles: true,
@@ -201,12 +242,12 @@ export async function loadDefinitionFiles(
     const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
 
     for (const filePath of filteredFiles) {
-      const filename = filePath.split('/').pop()!
-      const identifier = toIdentifier(filename)
+      const { relativePath, group } = computeRelativeInfo(filePath, layer.server, paths)
+      const identifier = toIdentifier(relativePath)
       if (definitionsMap.has(identifier)) {
         overriddenCount++
       }
-      definitionsMap.set(identifier, filePath)
+      definitionsMap.set(identifier, { path: filePath, group })
     }
   }
 

@@ -36,6 +36,17 @@ export interface StandardMcpResourceDefinition {
   name?: string
   title?: string
   description?: string
+  /**
+   * Functional group this resource belongs to (e.g. `'config'`, `'content'`).
+   * Auto-inferred from directory structure when omitted.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
   uri: string | ResourceTemplate
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>
@@ -64,6 +75,17 @@ export interface FileMcpResourceDefinition {
   name?: string
   title?: string
   description?: string
+  /**
+   * Functional group this resource belongs to (e.g. `'config'`, `'content'`).
+   * Auto-inferred from directory structure when omitted.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
   uri?: string
   metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
   _meta?: Record<string, unknown>

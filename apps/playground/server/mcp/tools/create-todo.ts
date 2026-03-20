@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 export default defineMcpTool({
   name: 'create_todo',
+  group: 'todos',
+  tags: ['write'],
   description: 'Create a new todo for the authenticated user',
   annotations: {
     readOnlyHint: false,

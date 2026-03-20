@@ -3,6 +3,8 @@ import { eq, and } from 'drizzle-orm'
 
 export default defineMcpTool({
   name: 'delete_todo',
+  group: 'todos',
+  tags: ['destructive'],
   description: 'Delete a todo',
   annotations: {
     readOnlyHint: false,

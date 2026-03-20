@@ -35,6 +35,17 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
   title?: string
   description?: string
   /**
+   * Functional group this prompt belongs to (e.g. `'onboarding'`, `'debugging'`).
+   * Auto-inferred from directory structure when omitted.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  group?: string
+  /**
+   * Free-form tags for filtering and categorization.
+   * @see https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1300
+   */
+  tags?: string[]
+  /**
    * Default role used when the handler returns a plain string.
    * @default 'user'
    */
