@@ -71,6 +71,15 @@ export interface ModuleOptions {
    */
   dir?: string
   /**
+   * Auto-import MCP helpers (`defineMcpTool`, `defineMcpResource`, etc.),
+   * types (`McpToolExtra`, …), and the `InstallButton` component.
+   *
+   * Set to `false` to disable all auto-imports and require explicit imports
+   * from `@nuxtjs/mcp-toolkit/server`.
+   * @default true
+   */
+  autoImports?: boolean
+  /**
    * Enable MCP session management (stateful transport).
    * When enabled, the server assigns session IDs and maintains state across requests,
    * enabling SSE streaming, server-to-client notifications, and resumability.
@@ -125,10 +134,12 @@ export default defineNuxtModule<ModuleOptions>({
       nitroOptions.storage['mcp:sessions'] ??= { driver: 'memory' }
     }
 
-    addComponent({
-      name: 'InstallButton',
-      filePath: resolver.resolve('runtime/components/InstallButton.vue'),
-    })
+    if (options.autoImports !== false) {
+      addComponent({
+        name: 'InstallButton',
+        filePath: resolver.resolve('runtime/components/InstallButton.vue'),
+      })
+    }
 
     addServerTemplate({
       filename: '#nuxt-mcp-toolkit/config.mjs',
@@ -240,23 +251,31 @@ export default defineNuxtModule<ModuleOptions>({
     const mcpSessionPath = resolver.resolve('runtime/server/mcp/session')
     const mcpServerPath = resolver.resolve('runtime/server/mcp/server')
 
-    addServerImports([
-      'defineMcpTool',
-      'defineMcpResource',
-      'defineMcpPrompt',
-      'defineMcpHandler',
-      'textResult',
-      'jsonResult',
-      'errorResult',
-      'imageResult',
-      'completable',
-      'extractToolNames',
-    ].map(name => ({ name, from: mcpDefinitionsPath })))
+    if (options.autoImports !== false) {
+      addServerImports([
+        'defineMcpTool',
+        'defineMcpResource',
+        'defineMcpPrompt',
+        'defineMcpHandler',
+        'textResult',
+        'jsonResult',
+        'errorResult',
+        'imageResult',
+        'completable',
+        'extractToolNames',
+      ].map(name => ({ name, from: mcpDefinitionsPath })))
 
-    addServerImports([
-      { name: 'useMcpSession', from: mcpSessionPath },
-      { name: 'useMcpServer', from: mcpServerPath },
-    ])
+      addServerImports([
+        'McpToolExtra',
+        'McpPromptExtra',
+        'McpResourceExtra',
+      ].map(name => ({ name, from: mcpDefinitionsPath, type: true })))
+
+      addServerImports([
+        { name: 'useMcpSession', from: mcpSessionPath },
+        { name: 'useMcpServer', from: mcpServerPath },
+      ])
+    }
 
     addServerHandler({
       route: options.route,

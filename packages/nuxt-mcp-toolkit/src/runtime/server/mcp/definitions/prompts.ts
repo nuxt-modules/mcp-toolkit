@@ -13,12 +13,18 @@ import { enrichNameTitle } from './utils'
 export type McpPromptCallbackResult = GetPromptResult | string
 
 /**
+ * Extra arguments passed to MCP prompt handlers by the SDK.
+ * Provides access to the abort signal, auth info, session ID, and request metadata.
+ */
+export type McpPromptExtra = RequestHandlerExtra<ServerRequest, ServerNotification>
+
+/**
  * Callback type for MCP prompts, matching the SDK's PromptCallback type.
  * Handlers may return a full `GetPromptResult` or a simple string.
  */
 export type McpPromptCallback<Args extends ZodRawShape | undefined = undefined> = Args extends ZodRawShape
-  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpPromptCallbackResult | Promise<McpPromptCallbackResult>
-  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpPromptCallbackResult | Promise<McpPromptCallbackResult>
+  ? (args: ShapeOutput<Args>, extra: McpPromptExtra) => McpPromptCallbackResult | Promise<McpPromptCallbackResult>
+  : (extra: McpPromptExtra) => McpPromptCallbackResult | Promise<McpPromptCallbackResult>
 
 /**
  * Definition of an MCP prompt

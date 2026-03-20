@@ -1,10 +1,18 @@
 import type { H3Event } from 'h3'
+import type { ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTemplateCallback, ResourceMetadata } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { enrichNameTitle } from './utils'
 import { type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+
+/**
+ * Extra arguments passed to MCP resource handlers by the SDK.
+ * Provides access to the abort signal, auth info, session ID, and request metadata.
+ */
+export type McpResourceExtra = RequestHandlerExtra<ServerRequest, ServerNotification>
 
 // Re-export cache types for convenience
 export type McpResourceCacheOptions = McpCacheOptions<URL>

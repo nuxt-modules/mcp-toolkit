@@ -35,11 +35,17 @@ export type McpToolCacheOptions<Args = unknown> = McpCacheOptions<Args>
 export type McpToolCache<Args = unknown> = McpCache<Args>
 
 /**
+ * Extra arguments passed to MCP tool/prompt/resource handlers by the SDK.
+ * Provides access to the abort signal, auth info, session ID, and request metadata.
+ */
+export type McpToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>
+
+/**
  * Handler callback type for MCP tools
  */
 export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = Args extends ZodRawShape
-  ? (args: ShapeOutput<Args>, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpToolCallbackResult | Promise<McpToolCallbackResult>
-  : (extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => McpToolCallbackResult | Promise<McpToolCallbackResult>
+  ? (args: ShapeOutput<Args>, extra: McpToolExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
+  : (extra: McpToolExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
 
 /**
  * MCP tool definition structure
