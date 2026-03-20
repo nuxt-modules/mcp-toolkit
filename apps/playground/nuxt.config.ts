@@ -54,6 +54,7 @@ export default defineNuxtConfig({
 
   mcp: {
     name: 'Playground MCP',
+    instructions: 'This server provides tools for managing a playground application with authentication, todos, and user management.',
     sessions: true,
   },
 })

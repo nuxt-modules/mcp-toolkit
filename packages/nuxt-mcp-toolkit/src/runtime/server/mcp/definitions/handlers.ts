@@ -48,6 +48,13 @@ export interface McpHandlerOptions {
   name?: string
   version?: string
   /**
+   * Instructions describing what this MCP server does, when to use it,
+   * and how it should be invoked. Sent to clients during initialization
+   * to help AI agents understand the server's purpose.
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
+   */
+  instructions?: string
+  /**
    * Custom route for the handler.
    * Only used for custom handlers (not for default handler override in index.ts).
    * To change the default route, use `mcp.route` in nuxt.config.ts.
@@ -99,12 +106,13 @@ export interface McpHandlerOptions {
   prompts?: McpPromptDefinition[] | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
 }
 
-export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'experimental_codeMode'>> {
+export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'instructions' | 'experimental_codeMode'>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Array<McpToolDefinition<any, any>>
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
   middleware?: McpMiddleware
+  instructions?: string
   experimental_codeMode?: boolean | CodeModeOptions
 }
 

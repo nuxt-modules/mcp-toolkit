@@ -23,6 +23,7 @@ type MaybeDynamicTools = MaybeDynamic<Array<McpToolDefinition<any, any>>>
 export interface ResolvedMcpConfig {
   name: string
   version: string
+  instructions?: string
   browserRedirect: string
   tools?: MaybeDynamicTools
   resources?: MaybeDynamic<McpResourceDefinition[]>
@@ -34,6 +35,7 @@ export interface ResolvedMcpConfig {
 interface StaticMcpConfig {
   name: string
   version: string
+  instructions?: string
   tools: McpToolDefinition[]
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
@@ -76,6 +78,7 @@ async function resolveDynamicDefinitions(
   return {
     name: config.name,
     version: config.version,
+    instructions: config.instructions,
     tools: await filterByEnabled(tools, event),
     resources: await filterByEnabled(resources, event),
     prompts: await filterByEnabled(prompts, event),
@@ -101,6 +104,8 @@ export async function createMcpServer(config: StaticMcpConfig): Promise<McpServe
   const server = new McpServer({
     name: config.name,
     version: config.version,
+  }, {
+    instructions: config.instructions,
   })
 
   let toolsToRegister: McpToolDefinition[] = config.tools as McpToolDefinition[]

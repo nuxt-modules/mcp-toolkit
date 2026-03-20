@@ -38,6 +38,13 @@ export interface ModuleOptions {
    */
   version?: string
   /**
+   * Instructions describing what this MCP server does, when to use it,
+   * and how it should be invoked. Sent to clients during initialization
+   * to help AI agents understand the server's purpose.
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
+   */
+  instructions?: string
+  /**
    * Base directory for MCP definitions relative to server directory
    * The module will look for tools, resources, and prompts in subdirectories
    * @default 'mcp'

@@ -9,6 +9,7 @@ export interface McpConfig {
   browserRedirect: string
   name: string
   version: string
+  instructions?: string
   dir: string
   sessions: McpSessionsConfig
 }
@@ -37,6 +38,7 @@ export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
     browserRedirect: partial.browserRedirect ?? defaultMcpConfig.browserRedirect,
     name: partial.name ?? defaultMcpConfig.name,
     version: partial.version ?? defaultMcpConfig.version,
+    instructions: partial.instructions,
     dir: partial.dir ?? defaultMcpConfig.dir,
     sessions,
   }
