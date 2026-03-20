@@ -1,3 +1,5 @@
+import type { McpIcon } from './definitions/handlers'
+
 export interface McpSessionsConfig {
   enabled: boolean
   maxDuration: number
@@ -9,7 +11,9 @@ export interface McpConfig {
   browserRedirect: string
   name: string
   version: string
+  description?: string
   instructions?: string
+  icons?: McpIcon[]
   dir: string
   sessions: McpSessionsConfig
 }
@@ -38,7 +42,9 @@ export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
     browserRedirect: partial.browserRedirect ?? defaultMcpConfig.browserRedirect,
     name: partial.name ?? defaultMcpConfig.name,
     version: partial.version ?? defaultMcpConfig.version,
+    description: partial.description,
     instructions: partial.instructions,
+    icons: partial.icons,
     dir: partial.dir ?? defaultMcpConfig.dir,
     sessions,
   }

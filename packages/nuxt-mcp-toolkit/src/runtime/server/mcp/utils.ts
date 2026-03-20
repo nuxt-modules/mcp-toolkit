@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { sendRedirect, getHeader, defineEventHandler } from 'h3'
 import type { H3Event } from 'h3'
-import type { McpMiddleware } from './definitions/handlers'
+import type { McpMiddleware, McpIcon } from './definitions/handlers'
 import type { McpPromptDefinition } from './definitions/prompts'
 import { registerPromptFromDefinition } from './definitions/prompts'
 import type { McpResourceDefinition } from './definitions/resources'
@@ -23,7 +23,9 @@ type MaybeDynamicTools = MaybeDynamic<Array<McpToolDefinition<any, any>>>
 export interface ResolvedMcpConfig {
   name: string
   version: string
+  description?: string
   instructions?: string
+  icons?: McpIcon[]
   browserRedirect: string
   tools?: MaybeDynamicTools
   resources?: MaybeDynamic<McpResourceDefinition[]>
@@ -35,7 +37,9 @@ export interface ResolvedMcpConfig {
 interface StaticMcpConfig {
   name: string
   version: string
+  description?: string
   instructions?: string
+  icons?: McpIcon[]
   tools: McpToolDefinition[]
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
@@ -78,7 +82,9 @@ async function resolveDynamicDefinitions(
   return {
     name: config.name,
     version: config.version,
+    description: config.description,
     instructions: config.instructions,
+    icons: config.icons,
     tools: await filterByEnabled(tools, event),
     resources: await filterByEnabled(resources, event),
     prompts: await filterByEnabled(prompts, event),
@@ -104,6 +110,8 @@ export async function createMcpServer(config: StaticMcpConfig): Promise<McpServe
   const server = new McpServer({
     name: config.name,
     version: config.version,
+    description: config.description,
+    icons: config.icons,
   }, {
     instructions: config.instructions,
   })

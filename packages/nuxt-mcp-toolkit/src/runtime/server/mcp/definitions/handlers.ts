@@ -5,6 +5,20 @@ import type { McpPromptDefinition } from './prompts'
 import type { CodeModeOptions } from '../codemode'
 
 /**
+ * Icon metadata for an MCP server, displayed by clients in their UI.
+ */
+export interface McpIcon {
+  /** URL of the icon image */
+  src: string
+  /** MIME type of the icon (e.g. `image/png`, `image/svg+xml`) */
+  mimeType: string
+  /** Available sizes (e.g. `['64x64', '128x128']`) */
+  sizes?: string[]
+  /** Theme the icon is designed for */
+  theme?: 'light' | 'dark'
+}
+
+/**
  * MCP middleware function that runs before/after MCP request processing.
  *
  * If you don't call `next()`, it will be called automatically after your middleware.
@@ -48,12 +62,25 @@ export interface McpHandlerOptions {
   name?: string
   version?: string
   /**
-   * Instructions describing what this MCP server does, when to use it,
-   * and how it should be invoked. Sent to clients during initialization
-   * to help AI agents understand the server's purpose.
+   * A human-readable description of this MCP server.
+   * Part of `serverInfo` sent during initialization — used by clients
+   * to display what this server is in UI (e.g. server lists, tooltips).
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
+   */
+  description?: string
+  /**
+   * Operational instructions for AI agents on how to use this server.
+   * Unlike `description` (which identifies the server), `instructions`
+   * guide the LLM on workflows, constraints, and tool relationships.
+   * Typically injected into the model's system prompt by the client.
    * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
    */
   instructions?: string
+  /**
+   * Icons for this MCP server, displayed by clients in their UI.
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
+   */
+  icons?: McpIcon[]
   /**
    * Custom route for the handler.
    * Only used for custom handlers (not for default handler override in index.ts).
@@ -106,13 +133,15 @@ export interface McpHandlerOptions {
   prompts?: McpPromptDefinition[] | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
 }
 
-export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'instructions' | 'experimental_codeMode'>> {
+export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'description' | 'instructions' | 'icons' | 'experimental_codeMode'>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tools: Array<McpToolDefinition<any, any>>
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
   middleware?: McpMiddleware
+  description?: string
   instructions?: string
+  icons?: McpIcon[]
   experimental_codeMode?: boolean | CodeModeOptions
 }
 

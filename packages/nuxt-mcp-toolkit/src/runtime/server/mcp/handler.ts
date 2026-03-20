@@ -36,7 +36,9 @@ export default createMcpHandler((event: H3Event) => {
     return {
       name: handlerDef.name ?? handlerName,
       version: handlerDef.version ?? config.version,
+      description: handlerDef.description ?? config.description,
       instructions: handlerDef.instructions ?? config.instructions,
+      icons: handlerDef.icons ?? config.icons,
       browserRedirect: handlerDef.browserRedirect ?? config.browserRedirect,
       tools: handlerDef.tools ?? globalTools,
       resources: handlerDef.resources ?? globalResources,
@@ -58,7 +60,9 @@ export default createMcpHandler((event: H3Event) => {
     return {
       name: defaultHandlerDef.name ?? config.name ?? 'MCP Server',
       version: defaultHandlerDef.version ?? config.version,
+      description: defaultHandlerDef.description ?? config.description,
       instructions: defaultHandlerDef.instructions ?? config.instructions,
+      icons: defaultHandlerDef.icons ?? config.icons,
       browserRedirect: defaultHandlerDef.browserRedirect ?? config.browserRedirect,
       tools: defaultHandlerDef.tools ?? globalTools,
       resources: defaultHandlerDef.resources ?? globalResources,
@@ -72,7 +76,9 @@ export default createMcpHandler((event: H3Event) => {
   return {
     name: config.name || 'MCP Server',
     version: config.version,
+    description: config.description,
     instructions: config.instructions,
+    icons: config.icons,
     browserRedirect: config.browserRedirect,
     tools: tools as McpToolDefinition[],
     resources: resources as McpResourceDefinition[],
