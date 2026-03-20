@@ -10,6 +10,7 @@ const log = logger.withTag('@nuxtjs/mcp-toolkit')
 export const { resolve } = createResolver(import.meta.url)
 
 export type * from './runtime/server/types'
+import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
 
 export interface ModuleOptions {
   /**
@@ -38,12 +39,31 @@ export interface ModuleOptions {
    */
   version?: string
   /**
-   * Instructions describing what this MCP server does, when to use it,
-   * and how it should be invoked. Sent to clients during initialization
-   * to help AI agents understand the server's purpose.
+   * A human-readable description of this MCP server.
+   * Part of `serverInfo` sent during initialization — used by clients
+   * to display what this server is in UI (e.g. server lists, tooltips).
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
+   */
+  description?: string
+  /**
+   * Operational instructions for AI agents on how to use this server.
+   * Unlike `description` (which identifies the server), `instructions`
+   * guide the LLM on workflows, constraints, and tool relationships.
+   * Typically injected into the model's system prompt by the client.
    * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
    */
   instructions?: string
+  /**
+   * Icons for this MCP server, displayed by clients in their UI.
+   * Each icon specifies an image URL, MIME type, optional sizes, and optional theme.
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
+   *
+   * @example
+   * ```ts
+   * icons: [{ src: 'https://example.com/icon.png', mimeType: 'image/png', sizes: ['64x64'] }]
+   * ```
+   */
+  icons?: McpIcon[]
   /**
    * Base directory for MCP definitions relative to server directory
    * The module will look for tools, resources, and prompts in subdirectories

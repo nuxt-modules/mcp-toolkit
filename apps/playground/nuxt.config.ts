@@ -54,7 +54,8 @@ export default defineNuxtConfig({
 
   mcp: {
     name: 'Playground MCP',
-    instructions: 'This server provides tools for managing a playground application with authentication, todos, and user management.',
+    description: 'A demo MCP server showcasing authentication, todos, and user management.',
+    instructions: 'Authenticate with an API key before calling protected tools. Use list-todos before create-todo to avoid duplicates.',
     sessions: true,
   },
 })
