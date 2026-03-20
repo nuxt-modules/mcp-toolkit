@@ -10,5 +10,10 @@ export default defineMcpHandler({
     // Use "admin" to unlock admin-only tools and prompts.
     const role = getHeader(event, 'x-mcp-role') || 'user'
     event.context.role = role
+
+    const toolNames = await extractToolNames(event)
+    if (toolNames.length > 0) {
+      console.log(`[MCP] Tools called: ${toolNames.join(', ')}`)
+    }
   },
 })

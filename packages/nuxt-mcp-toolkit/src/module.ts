@@ -223,6 +223,7 @@ export default defineNuxtModule<ModuleOptions>({
       'errorResult',
       'imageResult',
       'completable',
+      'extractToolNames',
     ].map(name => ({ name, from: mcpDefinitionsPath })))
 
     addServerImports([
