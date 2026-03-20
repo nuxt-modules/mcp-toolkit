@@ -93,4 +93,26 @@ describe('Prompts', async () => {
       expect(message.content.text).toBe('You are a helpful assistant that helps with code review.')
     }
   })
+
+  it('should use the role field when wrapping a string return', async () => {
+    const client = getMcpClient()
+    if (!client) {
+      return
+    }
+
+    const result = await client.getPrompt({
+      name: 'assistant_prompt',
+    })
+
+    expect(result).toBeDefined()
+    expect(result.messages).toBeInstanceOf(Array)
+    expect(result.messages).toHaveLength(1)
+
+    const message = result.messages[0]!
+    expect(message.role).toBe('assistant')
+    expect(message.content.type).toBe('text')
+    if ('text' in message.content) {
+      expect(message.content.text).toBe('I am a code review assistant ready to help.')
+    }
+  })
 })

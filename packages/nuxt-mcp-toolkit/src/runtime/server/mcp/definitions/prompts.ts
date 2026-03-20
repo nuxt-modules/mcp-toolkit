@@ -34,6 +34,11 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
   name?: string
   title?: string
   description?: string
+  /**
+   * Default role used when the handler returns a plain string.
+   * @default 'user'
+   */
+  role?: 'user' | 'assistant'
   inputSchema?: Args
   _meta?: Record<string, unknown>
   handler: McpPromptCallback<Args>
@@ -47,13 +52,13 @@ export interface McpPromptDefinition<Args extends ZodRawShape | undefined = unde
 
 /**
  * Normalize a prompt handler result: pass through `GetPromptResult` objects
- * unchanged, wrap plain strings into a single user message.
+ * unchanged, wrap plain strings into a single message with the given role.
  * @internal
  */
-export function normalizePromptResult(result: McpPromptCallbackResult): GetPromptResult {
+export function normalizePromptResult(result: McpPromptCallbackResult, role: 'user' | 'assistant' = 'user'): GetPromptResult {
   if (typeof result === 'string') {
     return {
-      messages: [{ role: 'user', content: { type: 'text', text: result } }],
+      messages: [{ role, content: { type: 'text', text: result } }],
     }
   }
   return result
@@ -74,9 +79,10 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
     type: 'prompt',
   })
 
+  const role = prompt.role ?? 'user'
   const wrappedHandler: PromptCallback<ZodRawShape> = async (...args: unknown[]) => {
     const result = await (prompt.handler as (...a: unknown[]) => unknown)(...args)
-    return normalizePromptResult(result as McpPromptCallbackResult)
+    return normalizePromptResult(result as McpPromptCallbackResult, role)
   }
 
   if (prompt.inputSchema) {
@@ -114,10 +120,16 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
  *
  * @example
  * ```ts
- * // Simple string return
+ * // Simple string return (defaults to 'user' role)
  * export default defineMcpPrompt({
  *   description: 'Code review assistant',
  *   handler: async () => 'You are a helpful assistant that helps with code review.',
+ * })
+ *
+ * // String return with 'assistant' role
+ * export default defineMcpPrompt({
+ *   role: 'assistant',
+ *   handler: async () => 'I am a code review assistant...',
  * })
  *
  * // Full GetPromptResult return
