@@ -3,6 +3,7 @@ defineProps<{
   icon?: string
   title?: string
   description?: string
+  to?: string
 }>()
 </script>
 
@@ -17,6 +18,7 @@ defineProps<{
       :icon="icon"
       :title="title"
       :description="description"
+      :to="to"
       orientation="vertical"
     />
   </Motion>
