@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { sendRedirect, getHeader, defineEventHandler } from 'h3'
+import * as h3 from 'h3'
 import type { H3Event } from 'h3'
 import type { McpMiddleware, McpIcon } from './definitions/handlers'
 import type { McpPromptDefinition } from './definitions/prompts'
@@ -141,11 +141,11 @@ export async function createMcpServer(config: StaticMcpConfig): Promise<McpServe
 }
 
 export function createMcpHandler(config: CreateMcpHandlerConfig) {
-  return defineEventHandler(async (event: H3Event) => {
+  return h3.defineEventHandler(async (event: H3Event) => {
     const resolvedConfig = resolveConfig(config, event)
 
-    if (getHeader(event, 'accept')?.includes('text/html')) {
-      return sendRedirect(event, resolvedConfig.browserRedirect)
+    if (h3.getHeader(event, 'accept')?.includes('text/html')) {
+      return h3.sendRedirect(event, resolvedConfig.browserRedirect)
     }
 
     // Dynamic definitions are resolved inside the handler closure so they
@@ -182,4 +182,24 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
 
     return handler()
   })
+}
+
+/**
+ * Web `Request` for MCP.
+ * h3 v2: `event.req` is the `Request`.
+ * h3 v1: `toWebRequest` when present, else `event.web?.request`.
+ */
+export function eventToWebRequest(event: H3Event): Request {
+  const e = event as H3Event & { req?: unknown, web?: { request?: Request } }
+  if (e.req instanceof Request) return e.req
+  if (e.web?.request) return e.web.request
+  const toWebRequest = (h3 as Record<string, unknown>).toWebRequest as
+    | ((ev: H3Event) => Request)
+    | undefined
+  if (typeof toWebRequest === 'function') {
+    return toWebRequest(event)
+  }
+  throw new TypeError(
+    '[@nuxtjs/mcp-toolkit] eventToWebRequest: need h3 v2 `event.req` or h3 v1 `toWebRequest`.',
+  )
 }
