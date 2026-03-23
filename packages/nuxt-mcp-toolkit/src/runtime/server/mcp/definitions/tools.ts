@@ -1,9 +1,9 @@
 import { type H3Event, isError as isH3Error } from 'h3'
 import type { ZodRawShape } from 'zod'
-import type { CallToolResult, ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import type { McpServer, ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
+import type { McpRequestExtra } from './sdk-extra'
 import { enrichNameTitle } from './utils'
 import { type MsCacheDuration, type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
 import { type McpToolCallbackResult, normalizeToolResult } from './results'
@@ -11,41 +11,32 @@ import { type McpToolCallbackResult, normalizeToolResult } from './results'
 export type { McpToolCallbackResult }
 
 /**
- * Hints that describe tool behavior to MCP clients.
+ * Hints that describe tool behavior to MCP clients (from `@modelcontextprotocol/sdk` `ToolAnnotations`).
  *
  * Clients may use these to decide whether to prompt the user for confirmation (human-in-the-loop).
  * All properties are optional hints — they are not guaranteed to be respected by every client.
  *
  * @see https://modelcontextprotocol.io/docs/concepts/tools#tool-annotations
  */
-export interface McpToolAnnotations {
-  /** If `true`, the tool does not modify any state (e.g. a read/search/lookup). Defaults to `false`. */
-  readOnlyHint?: boolean
-  /** If `true`, the tool may perform destructive operations like deleting data. Only meaningful when `readOnlyHint` is `false`. Defaults to `true`. */
-  destructiveHint?: boolean
-  /** If `true`, calling the tool multiple times with the same arguments has no additional effect beyond the first call. Only meaningful when `readOnlyHint` is `false`. Defaults to `false`. */
-  idempotentHint?: boolean
-  /** If `true`, the tool may interact with the outside world (e.g. external APIs, the internet). If `false`, the tool only operates on local/internal data. Defaults to `true`. */
-  openWorldHint?: boolean
-}
+export type McpToolAnnotations = ToolAnnotations
 
 // Re-export cache types for convenience
 export type { MsCacheDuration }
 export type McpToolCacheOptions<Args = unknown> = McpCacheOptions<Args>
 export type McpToolCache<Args = unknown> = McpCache<Args>
 
-/**
- * Extra arguments passed to MCP tool/prompt/resource handlers by the SDK.
- * Provides access to the abort signal, auth info, session ID, and request metadata.
- */
-export type McpToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>
+/** Narrow `any` so conditional callbacks do not union both handler signatures (TS quirk). */
+type IsAny<T> = 0 extends (1 & T) ? true : false
 
 /**
  * Handler callback type for MCP tools
  */
-export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = Args extends ZodRawShape
-  ? (args: ShapeOutput<Args>, extra: McpToolExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
-  : (extra: McpToolExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
+export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> = IsAny<Args> extends true
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- heterogeneous `McpToolDefinition<any, any>` lists
+  ? (args: any, extra: McpRequestExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
+  : Args extends ZodRawShape
+    ? (args: ShapeOutput<Args>, extra: McpRequestExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
+    : (extra: McpRequestExtra) => McpToolCallbackResult | Promise<McpToolCallbackResult>
 
 /**
  * MCP tool definition structure
@@ -72,6 +63,11 @@ export interface McpToolDefinition<
    */
   tags?: string[]
   inputSchema?: InputSchema
+  /**
+   * JSON Schema for the tool output, forwarded to the MCP SDK for client metadata and validation.
+   * It does not currently narrow the TypeScript return type of `handler` — return a value compatible
+   * with your schema, or a full {@link CallToolResult} / structured content as needed.
+   */
   outputSchema?: OutputSchema
   annotations?: McpToolAnnotations
   inputExamples?: InputSchema extends ZodRawShape ? Partial<ShapeOutput<InputSchema>>[] : never
@@ -94,6 +90,14 @@ export interface McpToolDefinition<
    */
   enabled?: (event: H3Event) => boolean | Promise<boolean>
 }
+
+/**
+ * Tool slot in heterogeneous arrays (`defineMcpHandler({ tools: [...] })`, dynamic loaders).
+ * Uses `any` for schema generics because TypeScript cannot safely unify distinct `inputSchema` shapes
+ * in one array type; prefer `McpToolDefinition<YourShape>` on a single exported tool.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type McpToolDefinitionListItem = McpToolDefinition<any, any>
 
 /**
  * Convert a thrown error into an MCP-compliant `isError` result.

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { McpToolDefinition } from '../definitions/tools'
+import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
 import { normalizeToolResult } from '../definitions/results'
 import { enrichNameTitle } from '../definitions/utils'
 import {
@@ -87,9 +87,9 @@ function applyDescriptionTemplate(
  * discovers tool signatures via search, keeping the code tool lightweight.
  */
 export function createCodemodeTools(
-  tools: McpToolDefinition[],
+  tools: McpToolDefinitionListItem[],
   options?: CodeModeOptions,
-): McpToolDefinition[] {
+): McpToolDefinitionListItem[] {
   if (options?.progressive) {
     return createProgressiveTools(tools, options)
   }
@@ -97,9 +97,9 @@ export function createCodemodeTools(
 }
 
 function createStandardTools(
-  tools: McpToolDefinition[],
+  tools: McpToolDefinitionListItem[],
   options?: CodeModeOptions,
-): McpToolDefinition[] {
+): McpToolDefinitionListItem[] {
   const { typeDefinitions, toolNameMap } = generateTypesFromTools(tools)
 
   const template = options?.description || CODE_TOOL_DESCRIPTION_TEMPLATE
@@ -112,13 +112,13 @@ function createStandardTools(
   const toolNames = [...toolNameMap.keys()]
 
   const codeTool = buildCodeTool(description, fns, toolNames, options)
-  return [codeTool as McpToolDefinition]
+  return [codeTool as McpToolDefinitionListItem]
 }
 
 function createProgressiveTools(
-  tools: McpToolDefinition[],
+  tools: McpToolDefinitionListItem[],
   options?: CodeModeOptions,
-): McpToolDefinition[] {
+): McpToolDefinitionListItem[] {
   const { entries, toolNameMap } = generateToolCatalog(tools)
 
   const template = options?.description || PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE
@@ -130,7 +130,7 @@ function createProgressiveTools(
   const searchTool = buildSearchTool(entries)
   const codeTool = buildCodeTool(description, fns, toolNames, options)
 
-  return [searchTool as McpToolDefinition, codeTool as McpToolDefinition]
+  return [searchTool as McpToolDefinitionListItem, codeTool as McpToolDefinitionListItem]
 }
 
 function buildSearchTool(
@@ -226,12 +226,12 @@ Fix the code and try again in a single combined block.${logOutput}`
 }
 
 function buildDispatchFunctions(
-  tools: McpToolDefinition[],
+  tools: McpToolDefinitionListItem[],
   toolNameMap: Map<string, string>,
 ): Record<string, (args: unknown) => Promise<unknown>> {
   const fns: Record<string, (args: unknown) => Promise<unknown>> = {}
 
-  const toolsByName = new Map<string, McpToolDefinition>()
+  const toolsByName = new Map<string, McpToolDefinitionListItem>()
   for (const tool of tools) {
     const { name } = enrichNameTitle({
       name: tool.name,

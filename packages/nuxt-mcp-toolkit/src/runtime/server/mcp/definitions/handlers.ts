@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { McpToolDefinition } from './tools'
+import type { McpToolDefinitionListItem } from './tools'
 import type { McpResourceDefinition } from './resources'
 import type { McpPromptDefinition } from './prompts'
 import type { CodeModeOptions } from '../codemode'
@@ -127,15 +127,13 @@ export interface McpHandlerOptions {
    * ```
    */
   experimental_codeMode?: boolean | CodeModeOptions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools?: Array<McpToolDefinition<any, any>> | ((event: H3Event) => Array<McpToolDefinition<any, any>> | Promise<Array<McpToolDefinition<any, any>>>)
+  tools?: McpToolDefinitionListItem[] | ((event: H3Event) => McpToolDefinitionListItem[] | Promise<McpToolDefinitionListItem[]>)
   resources?: McpResourceDefinition[] | ((event: H3Event) => McpResourceDefinition[] | Promise<McpResourceDefinition[]>)
   prompts?: McpPromptDefinition[] | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
 }
 
 export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'description' | 'instructions' | 'icons' | 'experimental_codeMode'>> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools: Array<McpToolDefinition<any, any>>
+  tools: McpToolDefinitionListItem[]
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
   middleware?: McpMiddleware

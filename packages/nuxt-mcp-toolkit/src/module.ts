@@ -72,7 +72,7 @@ export interface ModuleOptions {
   dir?: string
   /**
    * Auto-import MCP helpers (`defineMcpTool`, `defineMcpResource`, etc.),
-   * types (`McpToolExtra`, …), and the `InstallButton` component.
+   * types (`McpRequestExtra`, `McpToolExtra`, …), and the `InstallButton` component.
    *
    * Set to `false` to disable all auto-imports and require explicit imports
    * from `@nuxtjs/mcp-toolkit/server`.
@@ -266,6 +266,7 @@ export default defineNuxtModule<ModuleOptions>({
       ].map(name => ({ name, from: mcpDefinitionsPath })))
 
       addServerImports([
+        'McpRequestExtra',
         'McpToolExtra',
         'McpPromptExtra',
         'McpResourceExtra',

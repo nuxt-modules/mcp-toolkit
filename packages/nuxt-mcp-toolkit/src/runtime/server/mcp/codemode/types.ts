@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { McpToolDefinition } from '../definitions/tools'
+import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
 
 const RESERVED_WORDS = new Set([
@@ -154,7 +154,7 @@ export interface GeneratedTypes {
   toolNameMap: Map<string, string>
 }
 
-export function generateTypesFromTools(tools: McpToolDefinition[]): GeneratedTypes {
+export function generateTypesFromTools(tools: McpToolDefinitionListItem[]): GeneratedTypes {
   const toolInfos = tools.map(generateToolTypeInfo)
 
   const interfaces = toolInfos
@@ -181,7 +181,7 @@ export interface ToolCatalogEntry {
   interfaceDecl?: string
 }
 
-export function generateToolCatalog(tools: McpToolDefinition[]): {
+export function generateToolCatalog(tools: McpToolDefinitionListItem[]): {
   entries: ToolCatalogEntry[]
   toolNameMap: Map<string, string>
 } {

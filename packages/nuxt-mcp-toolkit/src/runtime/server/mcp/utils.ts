@@ -6,7 +6,7 @@ import type { McpPromptDefinition } from './definitions/prompts'
 import { registerPromptFromDefinition } from './definitions/prompts'
 import type { McpResourceDefinition } from './definitions/resources'
 import { registerResourceFromDefinition } from './definitions/resources'
-import type { McpToolDefinition } from './definitions/tools'
+import type { McpToolDefinition, McpToolDefinitionListItem } from './definitions/tools'
 import { registerToolFromDefinition } from './definitions/tools'
 import type { CodeModeOptions } from './codemode'
 // @ts-expect-error - Generated template that re-exports from provider
@@ -17,8 +17,7 @@ export { createMcpTransportHandler } from './providers/types'
 
 type MaybeDynamic<T> = T | ((event: H3Event) => T | Promise<T>)
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MaybeDynamicTools = MaybeDynamic<Array<McpToolDefinition<any, any>>>
+type MaybeDynamicTools = MaybeDynamic<McpToolDefinitionListItem[]>
 
 export interface ResolvedMcpConfig {
   name: string
@@ -40,7 +39,7 @@ interface StaticMcpConfig {
   description?: string
   instructions?: string
   icons?: McpIcon[]
-  tools: McpToolDefinition[]
+  tools: McpToolDefinitionListItem[]
   resources: McpResourceDefinition[]
   prompts: McpPromptDefinition[]
   experimental_codeMode?: boolean | CodeModeOptions

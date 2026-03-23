@@ -1,6 +1,5 @@
 import type { H3Event } from 'h3'
-import type { ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
+import type { Annotations } from '@modelcontextprotocol/sdk/types.js'
 import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTemplateCallback, ResourceMetadata } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname } from 'node:path'
@@ -9,25 +8,14 @@ import { enrichNameTitle } from './utils'
 import { type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
 
 /**
- * Extra arguments passed to MCP resource handlers by the SDK.
- * Provides access to the abort signal, auth info, session ID, and request metadata.
+ * Optional annotations for a resource (from `@modelcontextprotocol/sdk` `Annotations`).
+ * @see https://modelcontextprotocol.io/specification/2025-06-18/server/resources#annotations
  */
-export type McpResourceExtra = RequestHandlerExtra<ServerRequest, ServerNotification>
+export type McpResourceAnnotations = Annotations
 
 // Re-export cache types for convenience
 export type McpResourceCacheOptions = McpCacheOptions<URL>
 export type McpResourceCache = McpCache<URL>
-
-/**
- * Annotations for a resource
- * @see https://modelcontextprotocol.io/specification/2025-06-18/server/resources#annotations
- */
-export interface McpResourceAnnotations {
-  audience?: ('user' | 'assistant')[]
-  priority?: number
-  lastModified?: string
-  [key: string]: unknown
-}
 
 /**
  * Definition of a standard MCP resource (with URI and handler)
@@ -48,7 +36,7 @@ export interface StandardMcpResourceDefinition {
    */
   tags?: string[]
   uri: string | ResourceTemplate
-  metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
+  metadata?: ResourceMetadata
   _meta?: Record<string, unknown>
   handler: ReadResourceCallback | ReadResourceTemplateCallback
   file?: never
@@ -87,7 +75,7 @@ export interface FileMcpResourceDefinition {
    */
   tags?: string[]
   uri?: string
-  metadata?: ResourceMetadata & { annotations?: McpResourceAnnotations }
+  metadata?: ResourceMetadata
   _meta?: Record<string, unknown>
   handler?: ReadResourceCallback
   /**
