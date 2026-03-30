@@ -60,8 +60,8 @@ importers:
         specifier: ^1.5.1
         version: 1.5.1(db0@0.3.4(@electric-sql/pglite@0.4.2)(better-sqlite3@12.8.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260329.1)(@electric-sql/pglite@0.4.2)(@opentelemetry/api@1.9.0)(better-sqlite3@12.8.0)(kysely@0.28.14)))(ioredis@5.10.1)(magicast@0.5.2)(vue@3.5.31(typescript@6.0.2))
       shaders:
-        specifier: ^2.5.84
-        version: 2.5.84(react@19.2.4)(vue@3.5.31(typescript@6.0.2))
+        specifier: ^2.5.85
+        version: 2.5.85(react@19.2.4)(vue@3.5.31(typescript@6.0.2))
     devDependencies:
       '@nuxt/eslint-config':
         specifier: ^1.15.2
@@ -8066,15 +8066,15 @@ packages:
     engines: {node: '>= 0.10'}
     hasBin: true
 
-  shaders@2.5.84:
-    resolution: {integrity: sha512-nTDLI7cUjaxCjatg2GS/v+Q1jn/85+QACJYdiF5S/owYYjbG+UHiyBVQs7o7vGTQFLHG46JjNCr4UymiZbbXCg==}
+  shaders@2.5.85:
+    resolution: {integrity: sha512-Ro2J8oI7TcQBst9ZTveYG86r9CVlRIcln0IhdgneIiU5g+yxZwV7GNywYub4i4NfBCWynwKtNgvX4/QKn0afpQ==}
     peerDependencies:
       pixi.js: ^8.0.0
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
       solid-js: ^1.8.0
       svelte: ^5
-      vue: ^3.0.0
+      vue: ^3.5.0
     peerDependenciesMeta:
       pixi.js:
         optional: true
@@ -19003,7 +19003,7 @@ snapshots:
       safe-buffer: 5.2.1
       to-buffer: 1.2.2
 
-  shaders@2.5.84(react@19.2.4)(vue@3.5.31(typescript@6.0.2)):
+  shaders@2.5.85(react@19.2.4)(vue@3.5.31(typescript@6.0.2)):
     dependencies:
       three: 0.183.2
     optionalDependencies:
