@@ -1,4 +1,3 @@
-export { getIncomingHeader } from '../utils'
 export * from './cache'
 export * from './sdk-extra'
 export * from './tools'

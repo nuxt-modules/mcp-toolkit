@@ -1,5 +1,5 @@
 import { createMcpTransportHandler } from './types'
-import { eventToWebRequest } from '../utils'
+import { toWebRequest } from '../compat'
 
 interface CloudflareContext {
   env: Record<string, unknown>
@@ -24,7 +24,7 @@ export default createMcpTransportHandler(async (createServer, event) => {
   const handler = createMcpHandler(server as any, {
     route: '', // allow any route
   }) // version mismatch
-  const request = eventToWebRequest(event)
+  const request = await toWebRequest(event)
   const cf = event.context.cloudflare as CloudflareContext | undefined
   return handler(request, cf?.env ?? {}, cf?.ctx ?? fallbackCtx)
 })

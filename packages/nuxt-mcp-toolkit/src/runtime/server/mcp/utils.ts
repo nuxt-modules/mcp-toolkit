@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import * as h3 from 'h3'
+import { eventHandler, sendRedirect } from 'h3'
 import type { H3Event } from 'h3'
 import type { McpMiddleware, McpIcon } from './definitions/handlers'
 import type { McpPromptDefinition } from './definitions/prompts'
@@ -9,21 +9,12 @@ import { registerResourceFromDefinition } from './definitions/resources'
 import type { McpToolDefinition, McpToolDefinitionListItem } from './definitions/tools'
 import { registerToolFromDefinition } from './definitions/tools'
 import type { CodeModeOptions } from './codemode'
+import { getHeader } from './compat'
 // @ts-expect-error - Generated template that re-exports from provider
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
 export type { McpTransportHandler } from './providers/types'
 export { createMcpTransportHandler } from './providers/types'
-
-/** Prefer `event.node.req` so we never call `.get()` on a plain Node header object (h3 v2 + Vercel). */
-export function getIncomingHeader(event: H3Event, name: string): string | undefined {
-  const key = name.toLowerCase()
-  const fromNode = event.node?.req?.headers?.[key]
-  if (fromNode !== undefined)
-    return Array.isArray(fromNode) ? fromNode[0] : fromNode
-  const req = (event as unknown as { req?: unknown }).req
-  return req instanceof Request ? (req.headers.get(key) ?? undefined) : undefined
-}
 
 type MaybeDynamic<T> = T | ((event: H3Event) => T | Promise<T>)
 
@@ -151,22 +142,19 @@ export async function createMcpServer(config: StaticMcpConfig): Promise<McpServe
 }
 
 export function createMcpHandler(config: CreateMcpHandlerConfig) {
-  return h3.defineEventHandler(async (event: H3Event) => {
+  return eventHandler(async (event: H3Event) => {
     const resolvedConfig = resolveConfig(config, event)
 
-    if (getIncomingHeader(event, 'accept')?.includes('text/html')) {
-      return h3.sendRedirect(event, resolvedConfig.browserRedirect)
+    if (getHeader(event, 'accept')?.includes('text/html')) {
+      return sendRedirect(event, resolvedConfig.browserRedirect)
     }
 
-    // Dynamic definitions are resolved inside the handler closure so they
-    // run AFTER middleware has populated event.context (e.g. auth data).
     const handler = async () => {
       const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
       const server = await createMcpServer(staticConfig)
       return handleMcpRequest(() => server, event)
     }
 
-    // If middleware is defined, wrap the handler with it
     if (resolvedConfig.middleware) {
       let nextCalled = false
       let handlerResult: Response
@@ -192,24 +180,4 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
 
     return handler()
   })
-}
-
-/**
- * Web `Request` for MCP.
- * h3 v2: `event.req` is the `Request`.
- * h3 v1: `toWebRequest` when present, else `event.web?.request`.
- */
-export function eventToWebRequest(event: H3Event): Request {
-  const e = event as H3Event & { req?: unknown, web?: { request?: Request } }
-  if (e.req instanceof Request) return e.req
-  if (e.web?.request) return e.web.request
-  const toWebRequest = (h3 as Record<string, unknown>).toWebRequest as
-    | ((ev: H3Event) => Request)
-    | undefined
-  if (typeof toWebRequest === 'function') {
-    return toWebRequest(event)
-  }
-  throw new TypeError(
-    '[@nuxtjs/mcp-toolkit] eventToWebRequest: need h3 v2 `event.req` or h3 v1 `toWebRequest`.',
-  )
 }
