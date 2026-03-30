@@ -231,13 +231,19 @@ export default defineNuxtModule<ModuleOptions>({
     }
 
     let isCloudflare = false
-    if (!nuxt.options.dev) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(nuxt.hook as any)('nitro:config', (nitroConfig: any) => {
-        const preset = nitroConfig.preset || process.env.NITRO_PRESET || ''
-        isCloudflare = preset.includes('cloudflare')
-      })
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(nuxt.hook as any)('nitro:config', (nitroConfig: any) => {
+      const preset = String(nitroConfig.preset || process.env.NITRO_PRESET || '')
+      const cfPreset = preset.includes('cloudflare')
+      if (cfPreset) {
+        nitroConfig.alias ??= {}
+        const executorPath = resolver.resolve('runtime/server/mcp/codemode/executor')
+        nitroConfig.alias[executorPath] = resolver.resolve('runtime/server/mcp/codemode/executor.cloudflare')
+      }
+      if (!nuxt.options.dev) {
+        isCloudflare = cfPreset
+      }
+    })
 
     addServerTemplate({
       filename: '#nuxt-mcp-toolkit/transport.mjs',

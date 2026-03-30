@@ -9,10 +9,19 @@ import {
   formatSearchResults,
   sanitizeToolName,
   type ToolCatalogEntry,
+  type CodeModeOptions,
 } from './types'
-import { execute, dispose, type CodeModeOptions } from './executor'
 
 export type { CodeModeOptions }
+
+async function runExecute(
+  code: string,
+  fns: Record<string, (args: unknown) => Promise<unknown>>,
+  options?: CodeModeOptions,
+) {
+  const { execute } = await import('./executor')
+  return execute(code, fns, options)
+}
 
 const CODE_TOOL_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate multiple tool calls in a SINGLE invocation. ALWAYS combine ALL related operations into one code block — never split into separate calls.
 
@@ -175,7 +184,7 @@ function buildCodeTool(
       code: z.string().describe('JavaScript code to execute. Write the body of an async function.'),
     },
     handler: async ({ code }) => {
-      const result = await execute(code, fns, options)
+      const result = await runExecute(code, fns, options)
       const logSuffix = formatLogs(result.logs)
 
       if (result.error) {
@@ -285,4 +294,8 @@ export { sanitizeToolName }
  * Dispose the code mode runtime and RPC server.
  * Call this during shutdown to release resources.
  */
-export { dispose as disposeCodeMode }
+export function disposeCodeMode(): void {
+  void import('./executor')
+    .then(m => m.dispose())
+    .catch(() => {})
+}

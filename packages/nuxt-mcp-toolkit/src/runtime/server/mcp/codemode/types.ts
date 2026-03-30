@@ -2,6 +2,32 @@ import { z } from 'zod'
 import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
 
+export interface CodeModeOptions {
+  /** V8 isolate memory limit in MB. Default: 64 */
+  memoryLimit?: number
+  /** CPU time limit per execution in ms. Default: 10000 */
+  cpuTimeLimitMs?: number
+  /** Max result size in bytes before truncation. Default: 102400 (100KB) */
+  maxResultSize?: number
+  /**
+   * Enable progressive disclosure: exposes a `search` tool for discovering
+   * available tools, keeping the `code` tool description lightweight.
+   * Recommended when the server exposes many tools (50+).
+   */
+  progressive?: boolean
+  /**
+   * Custom description template for the `code` tool.
+   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count).
+   */
+  description?: string
+}
+
+export interface ExecuteResult {
+  result: unknown
+  error?: string
+  logs: string[]
+}
+
 const RESERVED_WORDS = new Set([
   'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete', 'do',
   'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof', 'new',

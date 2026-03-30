@@ -1,31 +1,10 @@
 import { createServer, type Server } from 'node:http'
 import { randomBytes } from 'node:crypto'
+import type { CodeModeOptions, ExecuteResult } from './types'
+import { normalizeCode } from './normalize-code'
 
-export interface CodeModeOptions {
-  /** V8 isolate memory limit in MB. Default: 64 */
-  memoryLimit?: number
-  /** CPU time limit per execution in ms. Default: 10000 */
-  cpuTimeLimitMs?: number
-  /** Max result size in bytes before truncation. Default: 102400 (100KB) */
-  maxResultSize?: number
-  /**
-   * Enable progressive disclosure: exposes a `search` tool for discovering
-   * available tools, keeping the `code` tool description lightweight.
-   * Recommended when the server exposes many tools (50+).
-   */
-  progressive?: boolean
-  /**
-   * Custom description template for the `code` tool.
-   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count).
-   */
-  description?: string
-}
-
-export interface ExecuteResult {
-  result: unknown
-  error?: string
-  logs: string[]
-}
+export type { CodeModeOptions, ExecuteResult }
+export { normalizeCode }
 
 type DispatchFn = (args: unknown) => Promise<unknown>
 
@@ -157,53 +136,6 @@ function ensureRpcServer(): Promise<RpcState> {
       resolve(state)
     })
   })
-}
-
-export function normalizeCode(userCode: string): string {
-  let code = userCode.trim()
-
-  // Strip markdown fences
-  code = code
-    .replace(/^```(?:js|javascript|typescript|ts|tsx|jsx)?[ \t]*\n/, '')
-    .replace(/\n?```[ \t]*$/, '')
-    .trim()
-
-  // Strip `export default` prefix
-  code = code.replace(/^export\s+default\s+/, '')
-
-  // Unwrap arrow function: `async () => { ... }`
-  const arrowMatch = code.match(/^async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}[;\t ]*$/)
-  if (arrowMatch?.[1]) {
-    code = arrowMatch[1].trim()
-  }
-  else {
-    // Unwrap arrow expression: `async () => expr`
-    // Use indexOf to avoid regex backtracking between \s* and [\s\S]+
-    const arrowIdx = code.search(/^async\s*\(\s*\)\s*=>/)
-    if (arrowIdx === 0) {
-      const arrowEnd = code.indexOf('=>')
-      if (arrowEnd !== -1) {
-        const expr = code.slice(arrowEnd + 2).trim()
-        if (expr && !expr.startsWith('{')) {
-          code = `return ${expr.replace(/;[ \t]*$/, '')};`
-        }
-      }
-    }
-  }
-
-  // Unwrap IIFE: `(async () => { ... })()`
-  const iifeMatch = code.match(/^\(\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)\s*\(\s*\)[;\t ]*$/)
-  if (iifeMatch?.[1]) {
-    code = iifeMatch[1].trim()
-  }
-
-  // Unwrap `async function main() { ... }; main()` pattern
-  const namedFnMatch = code.match(/^async\s+function\s+(\w+)\s*\(\s*\)\s*\{([\s\S]*)\}[;\s]*\1\s*\(\s*\)[;\s]*$/)
-  if (namedFnMatch?.[2]) {
-    code = namedFnMatch[2].trim()
-  }
-
-  return code
 }
 
 let cachedProxyKey = ''
