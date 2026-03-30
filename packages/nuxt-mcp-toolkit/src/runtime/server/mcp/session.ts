@@ -1,6 +1,6 @@
 import { useStorage, useEvent } from 'nitropack/runtime'
-import { getHeader } from 'h3'
 import type { Storage } from 'unstorage'
+import { getIncomingHeader } from './utils'
 
 export interface McpSessionStore<T = Record<string, unknown>> {
   get<K extends keyof T & string>(key: K): Promise<T[K] | null>
@@ -15,7 +15,7 @@ export interface McpSessionStore<T = Record<string, unknown>> {
 
 export function useMcpSession<T = Record<string, unknown>>(): McpSessionStore<T> {
   const event = useEvent()
-  const sessionId = getHeader(event, 'mcp-session-id')
+  const sessionId = getIncomingHeader(event, 'mcp-session-id')
   if (!sessionId) {
     throw new Error(
       'No active MCP session. Ensure `mcp.sessions` is enabled '

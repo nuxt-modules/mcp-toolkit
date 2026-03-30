@@ -1,8 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import { getHeader } from 'h3'
 import { useStorage } from 'nitropack/runtime'
-import { eventToWebRequest } from '../utils'
+import { eventToWebRequest, getIncomingHeader } from '../utils'
 // @ts-expect-error - Generated template
 import config from '#nuxt-mcp-toolkit/config.mjs'
 import { createMcpTransportHandler } from './types'
@@ -54,7 +53,7 @@ export default createMcpTransportHandler(async (createServer, event) => {
   }
 
   const maxDuration: number = sessionsConfig?.maxDuration ?? 30 * 60 * 1000
-  const sessionId = getHeader(event, 'mcp-session-id')
+  const sessionId = getIncomingHeader(event, 'mcp-session-id')
 
   if (sessionId) {
     const session = sessions.get(sessionId)

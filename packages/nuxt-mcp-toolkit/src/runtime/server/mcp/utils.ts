@@ -15,6 +15,16 @@ import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 export type { McpTransportHandler } from './providers/types'
 export { createMcpTransportHandler } from './providers/types'
 
+/** Prefer `event.node.req` so we never call `.get()` on a plain Node header object (h3 v2 + Vercel). */
+export function getIncomingHeader(event: H3Event, name: string): string | undefined {
+  const key = name.toLowerCase()
+  const fromNode = event.node?.req?.headers?.[key]
+  if (fromNode !== undefined)
+    return Array.isArray(fromNode) ? fromNode[0] : fromNode
+  const req = (event as { req?: Request }).req
+  return req instanceof Request ? (req.headers.get(key) ?? undefined) : undefined
+}
+
 type MaybeDynamic<T> = T | ((event: H3Event) => T | Promise<T>)
 
 type MaybeDynamicTools = MaybeDynamic<McpToolDefinitionListItem[]>
@@ -144,7 +154,7 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
   return h3.defineEventHandler(async (event: H3Event) => {
     const resolvedConfig = resolveConfig(config, event)
 
-    if (h3.getHeader(event, 'accept')?.includes('text/html')) {
+    if (getIncomingHeader(event, 'accept')?.includes('text/html')) {
       return h3.sendRedirect(event, resolvedConfig.browserRedirect)
     }
 
