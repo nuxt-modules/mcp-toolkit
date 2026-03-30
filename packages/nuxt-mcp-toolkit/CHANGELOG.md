@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.13.1
+
+### Patch Changes
+
+- [#196](https://github.com/nuxt-modules/mcp-toolkit/pull/196) [`f608ddd`](https://github.com/nuxt-modules/mcp-toolkit/commit/f608ddd11b410efc44f543d5fc3bf352eb26e0bb) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Read incoming MCP headers from `event.node.req` first so Nitro on Node (e.g. Vercel) does not call `Headers#get` on plain header objects, avoiding `get is not a function` at `/mcp`. Exports `getIncomingHeader` from `@nuxtjs/mcp-toolkit/server` for app middleware.
+
 ## 0.13.0
 
 ### Minor Changes
