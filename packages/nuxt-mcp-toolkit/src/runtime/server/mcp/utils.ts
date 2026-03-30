@@ -21,7 +21,7 @@ export function getIncomingHeader(event: H3Event, name: string): string | undefi
   const fromNode = event.node?.req?.headers?.[key]
   if (fromNode !== undefined)
     return Array.isArray(fromNode) ? fromNode[0] : fromNode
-  const req = (event as { req?: Request }).req
+  const req = (event as unknown as { req?: unknown }).req
   return req instanceof Request ? (req.headers.get(key) ?? undefined) : undefined
 }
 
