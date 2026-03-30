@@ -1,5 +1,17 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.13.0
+
+### Minor Changes
+
+- [`8e0d297`](https://github.com/nuxt-modules/mcp-toolkit/commit/8e0d297c1a2486c7c302d9d76a9beb56945ec2cd) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Align MCP tool, resource, and prompt types with the MCP SDK; add `sdk-extra` exports; improve codemode typings; add `sdk-types-compat` tests ([#182](https://github.com/nuxt-modules/mcp-toolkit/pull/182)).
+
+### Patch Changes
+
+- [#192](https://github.com/nuxt-modules/mcp-toolkit/pull/192) [`e129387`](https://github.com/nuxt-modules/mcp-toolkit/commit/e129387838cbe9ebbae4500b138d3fc6af9ad431) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Fix Cloudflare (Nitro) builds failing when codemode’s Node-only executor pulled in `secure-exec` and `node:http`: lazy-load the executor and alias it to a Workers-safe stub when the preset is cloudflare ([#189](https://github.com/nuxt-modules/mcp-toolkit/issues/189)). `experimental_codeMode` remains unsupported on Workers and returns a clear runtime error if enabled.
+
+- [#183](https://github.com/nuxt-modules/mcp-toolkit/pull/183) [`8e011c5`](https://github.com/nuxt-modules/mcp-toolkit/commit/8e011c5f1dc2eb872ba84b5068e3fd8db1e178e7) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Improve h3 compatibility for MCP transports: `eventToWebRequest` uses `event.req` on h3 v2 and calls h3’s `toWebRequest` via namespace when available on v1 (no static `import { toWebRequest }` so h3 v2 installs don’t break); widen the `h3` peer range to `>=1.10.0`.
+
 ## 0.12.0
 
 ### Minor Changes
