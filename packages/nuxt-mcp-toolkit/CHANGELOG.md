@@ -1,5 +1,14 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.13.3
+
+### Patch Changes
+
+- [#201](https://github.com/nuxt-modules/mcp-toolkit/pull/201) [`7b46428`](https://github.com/nuxt-modules/mcp-toolkit/commit/7b4642859df2979af5f886239df41a26cd8fc7b7) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Fix h3 v2 poisoning Nitro bundle and suppress secure-exec warning
+
+  - Add Nitro alias to resolve h3 from nitropack's own dependency chain, preventing h3 v2 (from peer dep) from overriding h3 v1 in the entire Nitro bundle
+  - Add `secure-exec` to `rollupConfig.external` in addition to `externals.external` to suppress the Rollup warning in dev mode
+
 ## 0.13.2
 
 ### Patch Changes
