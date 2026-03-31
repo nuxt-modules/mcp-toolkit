@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
@@ -244,10 +245,31 @@ export default defineNuxtModule<ModuleOptions>({
         isCloudflare = cfPreset
       }
 
+      // When pnpm resolves the module's h3 peer dep to v2 while Nitro
+      // still ships h3 v1, the bundler may pick v2 for ALL h3 imports —
+      // breaking Nitro internals (e.g. missing `sendError`). Force h3
+      // resolution through nitropack's own dependency chain.
+      try {
+        const _require = createRequire(import.meta.url)
+        const nitroPkgPath = _require.resolve('nitropack/package.json')
+        const h3Path = createRequire(nitroPkgPath).resolve('h3')
+        nitroConfig.alias ??= {}
+        nitroConfig.alias.h3 ??= h3Path
+      }
+      // eslint-disable-next-line no-empty
+      catch {}
+
       // secure-exec is an optional lazy-loaded dependency for Code Mode
       nitroConfig.externals ??= {}
       nitroConfig.externals.external ??= []
       nitroConfig.externals.external.push('secure-exec')
+      nitroConfig.rollupConfig ??= {}
+      if (Array.isArray(nitroConfig.rollupConfig.external)) {
+        nitroConfig.rollupConfig.external.push('secure-exec')
+      }
+      else if (!nitroConfig.rollupConfig.external) {
+        nitroConfig.rollupConfig.external = ['secure-exec']
+      }
     })
 
     addServerTemplate({
