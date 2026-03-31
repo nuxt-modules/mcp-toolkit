@@ -28,7 +28,7 @@
     "motion-v": "^2.2.0",
     "nuxt": "^4.4.2",
     "nuxt-studio": "^1.5.1",
-    "shaders": "^2.5.85"
+    "shaders": "^2.5.86"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.2",

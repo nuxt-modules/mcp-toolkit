@@ -57,7 +57,7 @@
     "h3": ">=1.15.10",
     "zod": "^4.1.13",
     "agents": ">=0.8.7",
-    "secure-exec": ">=0.1.0"
+    "secure-exec": ">=0.2.1"
   },
   "peerDependenciesMeta": {
     "h3": {
