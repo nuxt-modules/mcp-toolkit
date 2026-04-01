@@ -79,7 +79,7 @@ export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'm
   const pattern = recursive ? '**/*' : '*'
   return layerDirectories.flatMap(layer =>
     paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/${pattern}.${ext}`)),
+      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/${pattern}.${ext}`).replace(/\\/g, '/')),
     ),
   )
 }
@@ -95,7 +95,7 @@ export function createLayerFilePatterns(
 ): string[] {
   const pattern = recursive ? '**/*' : '*'
   return paths.flatMap(pathPattern =>
-    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/${pattern}.${ext}`)),
+    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/${pattern}.${ext}`).replace(/\\/g, '/')),
   )
 }
 
@@ -166,7 +166,7 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
   // Check each layer in order (main app first)
   for (const layer of layerDirectories) {
     const indexPatterns = paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/index.${ext}`)),
+      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/index.${ext}`).replace(/\\/g, '/')),
     )
 
     const indexFiles = await glob(indexPatterns, {
@@ -202,7 +202,7 @@ function computeRelativeInfo(
   paths: string[],
 ): { relativePath: string, group?: string } {
   for (const pathPattern of paths) {
-    const baseDir = resolvePath(layerServer, pathPattern)
+    const baseDir = resolvePath(layerServer, pathPattern).replace(/\\/g, '/')
     const rel = normalizePath(relativePath(baseDir, filePath))
 
     if (!rel.startsWith('..')) {
