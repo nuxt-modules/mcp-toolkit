@@ -74,12 +74,21 @@ const RESERVED_KEYWORDS = new Set([
   'volatile',
 ])
 
+/**
+ * Normalize a path to always use forward slashes (for cross-platform consistency).
+ * `tinyglobby` returns forward-slash paths, but `path.resolve()` uses the platform
+ * separator, so we normalize everything to `/`.
+ */
+function normalizePath(p: string): string {
+  return sep === '/' ? p : p.split(sep).join('/')
+}
+
 export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs'], recursive = false): string[] {
   const layerDirectories = getLayerDirectories()
   const pattern = recursive ? '**/*' : '*'
   return layerDirectories.flatMap(layer =>
     paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/${pattern}.${ext}`)),
+      extensions.map(ext => normalizePath(resolvePath(layer.server, `${pathPattern}/${pattern}.${ext}`))),
     ),
   )
 }
@@ -95,7 +104,7 @@ export function createLayerFilePatterns(
 ): string[] {
   const pattern = recursive ? '**/*' : '*'
   return paths.flatMap(pathPattern =>
-    extensions.map(ext => resolvePath(layerServer, `${pathPattern}/${pattern}.${ext}`)),
+    extensions.map(ext => normalizePath(resolvePath(layerServer, `${pathPattern}/${pattern}.${ext}`))),
   )
 }
 
@@ -103,7 +112,7 @@ export function createExcludePatterns(paths: string[], subdirs: string[]): strin
   const layerDirectories = getLayerDirectories()
   return layerDirectories.flatMap(layer =>
     paths.flatMap(pathPattern =>
-      subdirs.map(subdir => resolvePath(layer.server, `${pathPattern}/${subdir}/**`)),
+      subdirs.map(subdir => normalizePath(resolvePath(layer.server, `${pathPattern}/${subdir}/**`))),
     ),
   )
 }
@@ -166,7 +175,7 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
   // Check each layer in order (main app first)
   for (const layer of layerDirectories) {
     const indexPatterns = paths.flatMap(pathPattern =>
-      extensions.map(ext => resolvePath(layer.server, `${pathPattern}/index.${ext}`)),
+      extensions.map(ext => normalizePath(resolvePath(layer.server, `${pathPattern}/index.${ext}`))),
     )
 
     const indexFiles = await glob(indexPatterns, {
@@ -184,15 +193,6 @@ export async function findIndexFile(paths: string[], extensions = ['ts', 'js', '
 }
 
 /**
- * Normalize a path to always use forward slashes (for cross-platform consistency).
- * `tinyglobby` returns forward-slash paths, but `path.resolve()` uses the platform
- * separator, so we normalize everything to `/`.
- */
-function normalizePath(p: string): string {
-  return sep === '/' ? p : p.split(sep).join('/')
-}
-
-/**
  * Compute the relative path of a file within its base directory,
  * and extract the group (subdirectory) if present.
  */
@@ -202,7 +202,7 @@ function computeRelativeInfo(
   paths: string[],
 ): { relativePath: string, group?: string } {
   for (const pathPattern of paths) {
-    const baseDir = resolvePath(layerServer, pathPattern)
+    const baseDir = normalizePath(resolvePath(layerServer, pathPattern))
     const rel = normalizePath(relativePath(baseDir, filePath))
 
     if (!rel.startsWith('..')) {
