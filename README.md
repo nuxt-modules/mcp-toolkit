@@ -34,8 +34,10 @@ Nuxt MCP Toolkit provides [Agent Skills](https://agentskills.io/) to help AI cod
 
 ### Installation
 
+Install the skill from the published documentation site ([Docus Agent Skills](https://docus.dev/en/ai/skills)):
+
 ```bash
-npx skills add nuxt-modules/mcp-toolkit
+npx skills add https://mcp-toolkit.nuxt.dev
 ```
 
 ### What it does

@@ -281,10 +281,12 @@ This repository includes agent skills for AI-assisted MCP server development.
 |-------|-------------|
 | `skills/manage-mcp` | Setup, create, review, troubleshoot, and test MCP servers in Nuxt |
 
-### Skill Structure
+### Skill Structure (in this repo)
+
+Skills live under the documentation app and are published with the docs site:
 
 ```
-skills/
+apps/docs/skills/
 └── manage-mcp/
     ├── SKILL.md              # Main skill instructions
     └── references/
@@ -296,12 +298,16 @@ skills/
         └── troubleshooting.md # Troubleshooting guide
 ```
 
+[Docus](https://docus.dev) serves them at `/.well-known/skills/` on the deployed docs (see [Agent Skills in Docus](https://docus.dev/en/ai/skills)).
+
 ### Using Skills
 
 Skills follow the [Agent Skills](https://agentskills.io/) specification. Compatible agents (Cursor, Claude Code, etc.) can discover and use these skills automatically.
 
-To manually install with the skills CLI:
+Install from production documentation (recommended):
 
 ```bash
-npx skills add nuxt-modules/mcp-toolkit
+npx skills add https://mcp-toolkit.nuxt.dev
 ```
+
+Discovery catalog: [https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json](https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json)
