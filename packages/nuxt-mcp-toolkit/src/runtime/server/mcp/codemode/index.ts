@@ -23,69 +23,54 @@ async function runExecute(
   return execute(code, fns, options)
 }
 
-const CODE_TOOL_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate multiple tool calls in a SINGLE invocation. ALWAYS combine ALL related operations into one code block — never split into separate calls.
+const CODE_TOOL_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in one invocation.
 
-Write the body of an async function. Use \`return\` to return the final result.
+Write the body of an async function and use \`return\` for the final value.
 
-Available tools via the \`codemode\` object:
+Available via the \`codemode\` object:
 \`\`\`typescript
 {{types}}
-\`\`\`
+\`\`\`{{example}}`
 
-IMPORTANT: Combine sequential, parallel, and conditional logic in ONE code block:
+const PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in one invocation.
+
+Write the body of an async function and use \`return\` for the final value.
+
+{{count}} tools are available via the \`codemode\` object. Use the \`search\` tool to find names and signatures before writing code.{{example}}`
+
+const STANDARD_CODE_EXAMPLE = `
+
+Example:
 \`\`\`javascript
-// Sequential: chain dependent calls
 const data = await codemode.get_data({ id: "123" });
 const result = await codemode.process({ input: data.value });
-
-// Parallel: use Promise.all for independent calls
-const [a, b, c] = await Promise.all([
-  codemode.task({ name: "a" }),
-  codemode.task({ name: "b" }),
-  codemode.task({ name: "c" }),
-]);
-
-// Conditional + loops
-for (const item of items) {
-  if (item.active) await codemode.handle({ id: item.id });
-}
-
 return result;
 \`\`\``
 
-const PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in a SINGLE invocation. ALWAYS combine ALL related operations into one code block.
+const PROGRESSIVE_CODE_EXAMPLE = `
 
-Write the body of an async function. Use \`return\` to return the final result.
-
-{{count}} tools available via the \`codemode\` object. Use the \`search\` tool first to discover tool names and type signatures, then write code using \`codemode.toolName(input)\`.
-
-IMPORTANT: Combine sequential, parallel, and conditional logic in ONE code block:
+Example:
 \`\`\`javascript
-// Sequential
-const data = await codemode.get_data({ id: "123" });
-const result = await codemode.process({ input: data.value });
-
-// Parallel
-const [a, b] = await Promise.all([
-  codemode.task_a(),
-  codemode.task_b(),
-]);
-
-return result;
+// After using the search tool to find the right method names:
+const user = await codemode.get_user({ id: "123" });
+return user;
 \`\`\``
 
 const SEARCH_TOOL_DESCRIPTION = `Search available tools by keyword. Returns tool names, descriptions, and type signatures you can use with the \`code\` tool.
 
 Use this to discover which \`codemode.*\` methods are available before writing code.`
 
+const MAX_TOOLS_WITH_EXAMPLE_BLOCK = 10
+
 function applyDescriptionTemplate(
   template: string,
-  vars: { types?: string, count?: number },
+  vars: { types?: string, count?: number, example?: string },
 ): string {
   let result = template
   if (vars.types !== undefined) result = result.replace('{{types}}', vars.types)
   if (vars.count !== undefined) result = result.replaceAll('{{count}}', String(vars.count))
-  return result
+  result = result.replace('{{example}}', vars.example ?? '')
+  return result.replace(/\n{3,}/g, '\n\n').trim()
 }
 
 /**
@@ -115,6 +100,7 @@ function createStandardTools(
   const description = applyDescriptionTemplate(template, {
     types: typeDefinitions,
     count: tools.length,
+    example: tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK ? '' : STANDARD_CODE_EXAMPLE,
   })
 
   const fns = buildDispatchFunctions(tools, toolNameMap)
@@ -131,7 +117,10 @@ function createProgressiveTools(
   const { entries, toolNameMap } = generateToolCatalog(tools)
 
   const template = options?.description || PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE
-  const description = applyDescriptionTemplate(template, { count: tools.length })
+  const description = applyDescriptionTemplate(template, {
+    count: tools.length,
+    example: tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK ? '' : PROGRESSIVE_CODE_EXAMPLE,
+  })
 
   const fns = buildDispatchFunctions(tools, toolNameMap)
   const toolNames = [...toolNameMap.keys()]

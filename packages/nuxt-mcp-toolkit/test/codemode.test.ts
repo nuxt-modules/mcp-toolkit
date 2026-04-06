@@ -60,6 +60,14 @@ const sampleTools = [
   }),
 ]
 
+const manyTools = Array.from({ length: 11 }, (_, i) =>
+  makeTool(`tool-${i + 1}`, `Tool ${i + 1}`, { id: z.string() }),
+)
+
+const boundaryTools = Array.from({ length: 10 }, (_, i) =>
+  makeTool(`tool-${i + 1}`, `Tool ${i + 1}`, { id: z.string() }),
+)
+
 describe('sanitizeToolName', () => {
   it('replaces hyphens with underscores', () => {
     expect(sanitizeToolName('get-user')).toBe('get_user')
@@ -96,6 +104,13 @@ describe('generateTypesFromTools', () => {
 
     expect(toolNameMap.get('delete_todo')).toBe('delete-todo')
     expect(toolNameMap.get('search_products')).toBe('search-products')
+  })
+
+  it('omits description comments from the embedded type block', () => {
+    const { typeDefinitions } = generateTypesFromTools(sampleTools)
+
+    expect(typeDefinitions).toContain('get_user')
+    expect(typeDefinitions).not.toContain('// Get a user by ID')
   })
 })
 
@@ -165,6 +180,7 @@ describe('generateToolCatalog', () => {
     expect(createTodoEntry).toBeDefined()
     expect(createTodoEntry!.signature).toContain('create_todo')
     expect(createTodoEntry!.signature).toContain('Promise<unknown>')
+    expect(createTodoEntry!.signature).toContain('// Create a new todo item')
   })
 })
 
@@ -260,7 +276,7 @@ describe('createCodemodeTools', () => {
 
     expect(result).toHaveLength(1)
     expect(result[0]!.name).toBe('code')
-    expect(result[0]!.description).toContain('Available tools via')
+    expect(result[0]!.description).toContain('Available via the `codemode` object')
     expect(result[0]!.description).toContain('get_user')
   })
 
@@ -276,7 +292,7 @@ describe('createCodemodeTools', () => {
     const result = createCodemodeTools(sampleTools, { progressive: true })
     const codeTool = result[1]!
 
-    expect(codeTool.description).toContain('5 tools available')
+    expect(codeTool.description).toContain('5 tools are available')
     expect(codeTool.description).toContain('search')
     expect(codeTool.description).not.toContain('declare const codemode')
   })
@@ -288,6 +304,7 @@ describe('createCodemodeTools', () => {
     expect(codeTool.description).toContain('declare const codemode')
     expect(codeTool.description).toContain('get_user')
     expect(codeTool.description).toContain('list_users')
+    expect(codeTool.description).not.toContain('// Get a user by ID')
   })
 
   it('uses custom description template in standard mode', () => {
@@ -314,6 +331,48 @@ describe('createCodemodeTools', () => {
 
     expect(searchTool.annotations?.readOnlyHint).toBe(true)
     expect(searchTool.annotations?.destructiveHint).toBe(false)
+  })
+
+  it('omits the example block when many tools are available in standard mode', () => {
+    const result = createCodemodeTools(manyTools)
+    const codeTool = result[0]!
+
+    expect(codeTool.description).toContain('declare const codemode')
+    expect(codeTool.description).not.toContain('Example:')
+    expect(codeTool.description).not.toContain('const data = await codemode.get_data')
+  })
+
+  it('omits the example block when many tools are available in progressive mode', () => {
+    const result = createCodemodeTools(manyTools, { progressive: true })
+    const codeTool = result[1]!
+
+    expect(codeTool.description).toContain('11 tools are available')
+    expect(codeTool.description).not.toContain('Example:')
+    expect(codeTool.description).not.toContain('const user = await codemode.get_user')
+  })
+
+  it('includes the example block when exactly at the threshold in standard mode', () => {
+    const result = createCodemodeTools(boundaryTools)
+    const codeTool = result[0]!
+
+    expect(codeTool.description).toContain('Example:')
+  })
+
+  it('includes the example block when exactly at the threshold in progressive mode', () => {
+    const result = createCodemodeTools(boundaryTools, { progressive: true })
+    const codeTool = result[1]!
+
+    expect(codeTool.description).toContain('Example:')
+  })
+
+  it('collapses triple newlines in description output', () => {
+    const result = createCodemodeTools(sampleTools, {
+      description: 'Line 1.\n\n\n\nLine 2. {{types}}',
+    })
+    const desc = result[0]!.description
+
+    expect(desc).not.toMatch(/\n{3,}/)
+    expect(desc).toContain('Line 1.\n\nLine 2.')
   })
 })
 

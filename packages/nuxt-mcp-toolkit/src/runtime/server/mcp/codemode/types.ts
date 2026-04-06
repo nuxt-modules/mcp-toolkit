@@ -25,7 +25,7 @@ export interface CodeModeOptions {
   progressive?: boolean
   /**
    * Custom description template for the `code` tool.
-   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count).
+   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count), `{{example}}` (usage example).
    */
   description?: string
 }
@@ -247,7 +247,7 @@ export function generateTypesFromTools(tools: McpToolDefinitionListItem[]): Gene
     .join('\n\n')
 
   const methods = toolInfos
-    .map(t => `  ${t.methodSignature}`)
+    .map(t => `  ${t.methodSignature.replace(/ \/\/.*$/, '').trimEnd()}`)
     .join('\n')
 
   const codemodeDecl = `declare const codemode: {\n${methods}\n};`
