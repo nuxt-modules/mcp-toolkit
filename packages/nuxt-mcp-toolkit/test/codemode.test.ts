@@ -97,6 +97,15 @@ describe('output type generation', () => {
     expect(typeDefinitions).not.toContain('interface CreateItemOutput')
   })
 
+  it('quotes output property names that are not TS-safe identifiers', () => {
+    const tools = [makeToolWithOutput('get-meta', 'Meta', {}, {
+      'repo-name': z.string(),
+      default: z.boolean(),
+    })]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('Promise<{ "repo-name": string; "default": boolean }>')
+  })
+
   it('generates named output interface for complex schemas', () => {
     const tools = [makeToolWithOutput('get-report', 'Report', {}, {
       id: z.string(),

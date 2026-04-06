@@ -48,6 +48,12 @@ function pascalCase(str: string): string {
   return str.replace(/(^|_)(\w)/g, (_, __, c) => c.toUpperCase())
 }
 
+function formatTsPropertyKey(key: string): string {
+  return /^[A-Za-z_$][\w$]*$/.test(key) && !RESERVED_WORDS.has(key)
+    ? key
+    : JSON.stringify(key)
+}
+
 function jsonSchemaPropertyToTs(prop: Record<string, unknown>): string {
   if (prop.enum && Array.isArray(prop.enum)) {
     return prop.enum.map(v => typeof v === 'string' ? `"${v}"` : String(v)).join(' | ')
@@ -100,6 +106,50 @@ function isPrimitiveProp(prop: Record<string, unknown>): boolean {
   return !!type && PRIMITIVE_TYPES.has(type)
 }
 
+interface SchemaTypeInfo {
+  interfaceDecl: string | null
+  typeExpression: string
+}
+
+function generateSchemaTypeInfo(
+  schema: Record<string, z.ZodTypeAny>,
+  typeName: string,
+): SchemaTypeInfo | null {
+  const jsonSchema = z.toJSONSchema(z.object(schema))
+  const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
+  const required = (jsonSchema.required as string[]) || []
+
+  if (!properties || Object.keys(properties).length === 0) {
+    return null
+  }
+
+  const entries = Object.entries(properties)
+  const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
+
+  if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
+    const inlineFields = entries.map(([key, prop]) => {
+      const opt = required.includes(key) ? '' : '?'
+      return `${formatTsPropertyKey(key)}${opt}: ${jsonSchemaPropertyToTs(prop)}`
+    })
+
+    return {
+      interfaceDecl: null,
+      typeExpression: `{ ${inlineFields.join('; ')} }`,
+    }
+  }
+
+  const fields = entries.map(([key, prop]) => {
+    const opt = required.includes(key) ? '' : '?'
+    const tsType = jsonSchemaPropertyToTs(prop)
+    return `  ${formatTsPropertyKey(key)}${opt}: ${tsType};`
+  })
+
+  return {
+    interfaceDecl: `interface ${typeName} {\n${fields.join('\n')}\n}`,
+    typeExpression: typeName,
+  }
+}
+
 interface ToolTypeInfo {
   originalName: string
   sanitizedName: string
@@ -125,30 +175,10 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
 
   if (tool.inputSchema && Object.keys(tool.inputSchema).length > 0) {
     try {
-      const jsonSchema = z.toJSONSchema(z.object(tool.inputSchema))
-      const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
-      const required = (jsonSchema.required as string[]) || []
-
-      if (properties && Object.keys(properties).length > 0) {
-        const entries = Object.entries(properties)
-        const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
-
-        if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
-          const inlineFields = entries.map(([key, prop]) => {
-            const opt = required.includes(key) ? '' : '?'
-            return `${key}${opt}: ${jsonSchemaPropertyToTs(prop)}`
-          })
-          paramSignature = `input: { ${inlineFields.join('; ')} }`
-        }
-        else {
-          const fields = entries.map(([key, prop]) => {
-            const opt = required.includes(key) ? '' : '?'
-            const tsType = jsonSchemaPropertyToTs(prop)
-            return `  ${key}${opt}: ${tsType};`
-          })
-          interfaceDecl = `interface ${typeName} {\n${fields.join('\n')}\n}`
-          paramSignature = `input: ${typeName}`
-        }
+      const schemaTypeInfo = generateSchemaTypeInfo(tool.inputSchema, typeName)
+      if (schemaTypeInfo) {
+        interfaceDecl = schemaTypeInfo.interfaceDecl
+        paramSignature = `input: ${schemaTypeInfo.typeExpression}`
       }
     }
     catch {
@@ -163,30 +193,10 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
 
   if (tool.outputSchema && Object.keys(tool.outputSchema).length > 0) {
     try {
-      const jsonSchema = z.toJSONSchema(z.object(tool.outputSchema))
-      const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
-      const required = (jsonSchema.required as string[]) || []
-
-      if (properties && Object.keys(properties).length > 0) {
-        const entries = Object.entries(properties)
-        const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
-
-        if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
-          const inlineFields = entries.map(([key, prop]) => {
-            const opt = required.includes(key) ? '' : '?'
-            return `${key}${opt}: ${jsonSchemaPropertyToTs(prop)}`
-          })
-          returnType = `{ ${inlineFields.join('; ')} }`
-        }
-        else {
-          const fields = entries.map(([key, prop]) => {
-            const opt = required.includes(key) ? '' : '?'
-            const tsType = jsonSchemaPropertyToTs(prop)
-            return `  ${key}${opt}: ${tsType};`
-          })
-          outputInterfaceDecl = `interface ${outputTypeName} {\n${fields.join('\n')}\n}`
-          returnType = outputTypeName
-        }
+      const schemaTypeInfo = generateSchemaTypeInfo(tool.outputSchema, outputTypeName)
+      if (schemaTypeInfo) {
+        outputInterfaceDecl = schemaTypeInfo.interfaceDecl
+        returnType = schemaTypeInfo.typeExpression
       }
     }
     catch {
