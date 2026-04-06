@@ -264,6 +264,11 @@ function buildDispatchFunctions(
       // Normalize string/number returns before code mode consumes them
       const result = normalizeToolResult(rawResult as Parameters<typeof normalizeToolResult>[0])
 
+      // Prefer structuredContent when available (preserves typed data)
+      if (result.structuredContent != null) {
+        return result.structuredContent
+      }
+
       if (result.content) {
         const textContent = result.content
           .filter((c): c is { type: 'text', text: string } => c.type === 'text')
