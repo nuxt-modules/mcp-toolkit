@@ -18,7 +18,7 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.32",
+    "@ai-sdk/mcp": "^1.0.33",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
@@ -28,7 +28,7 @@
     "motion-v": "^2.2.0",
     "nuxt": "^4.4.2",
     "nuxt-studio": "^1.5.1",
-    "shaders": "^2.5.91"
+    "shaders": "^2.5.92"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.2",
