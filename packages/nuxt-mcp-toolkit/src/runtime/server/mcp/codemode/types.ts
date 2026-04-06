@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z, type ZodRawShape } from 'zod'
 import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
 
@@ -112,7 +112,7 @@ interface SchemaTypeInfo {
 }
 
 function generateSchemaTypeInfo(
-  schema: Record<string, z.ZodTypeAny>,
+  schema: ZodRawShape,
   typeName: string,
 ): SchemaTypeInfo | null {
   const jsonSchema = z.toJSONSchema(z.object(schema))
