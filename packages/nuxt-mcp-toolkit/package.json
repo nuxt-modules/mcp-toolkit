@@ -54,9 +54,9 @@
     "tinyglobby": "^0.2.15"
   },
   "peerDependencies": {
-    "h3": ">=1.15.10",
+    "h3": ">=1.15.11",
     "zod": "^4.1.13",
-    "agents": ">=0.8.7",
+    "agents": ">=0.9.0",
     "secure-exec": ">=0.2.1"
   },
   "peerDependenciesMeta": {
