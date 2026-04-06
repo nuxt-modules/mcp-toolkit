@@ -105,6 +105,7 @@ interface ToolTypeInfo {
   sanitizedName: string
   typeName: string
   interfaceDecl: string | null
+  outputInterfaceDecl: string | null
   methodSignature: string
 }
 
@@ -155,14 +156,53 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
     }
   }
 
+  // Generate output type from outputSchema
+  let outputInterfaceDecl: string | null = null
+  let returnType = 'unknown'
+  const outputTypeName = `${pascalCase(sanitizedName)}Output`
+
+  if (tool.outputSchema && Object.keys(tool.outputSchema).length > 0) {
+    try {
+      const jsonSchema = z.toJSONSchema(z.object(tool.outputSchema))
+      const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
+      const required = (jsonSchema.required as string[]) || []
+
+      if (properties && Object.keys(properties).length > 0) {
+        const entries = Object.entries(properties)
+        const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
+
+        if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
+          const inlineFields = entries.map(([key, prop]) => {
+            const opt = required.includes(key) ? '' : '?'
+            return `${key}${opt}: ${jsonSchemaPropertyToTs(prop)}`
+          })
+          returnType = `{ ${inlineFields.join('; ')} }`
+        }
+        else {
+          const fields = entries.map(([key, prop]) => {
+            const opt = required.includes(key) ? '' : '?'
+            const tsType = jsonSchemaPropertyToTs(prop)
+            return `  ${key}${opt}: ${tsType};`
+          })
+          outputInterfaceDecl = `interface ${outputTypeName} {\n${fields.join('\n')}\n}`
+          returnType = outputTypeName
+        }
+      }
+    }
+    catch {
+      // Fall through to default Promise<unknown>
+    }
+  }
+
   const desc = tool.description ? ` // ${tool.description}` : ''
-  const methodSignature = `${sanitizedName}: (${paramSignature}) => Promise<unknown>;${desc}`
+  const methodSignature = `${sanitizedName}: (${paramSignature}) => Promise<${returnType}>;${desc}`
 
   return {
     originalName: name,
     sanitizedName,
     typeName,
     interfaceDecl,
+    outputInterfaceDecl,
     methodSignature,
   }
 }
@@ -184,7 +224,7 @@ export function generateTypesFromTools(tools: McpToolDefinitionListItem[]): Gene
   const toolInfos = tools.map(generateToolTypeInfo)
 
   const interfaces = toolInfos
-    .map(t => t.interfaceDecl)
+    .flatMap(t => [t.interfaceDecl, t.outputInterfaceDecl])
     .filter(Boolean)
     .join('\n\n')
 
@@ -221,7 +261,7 @@ export function generateToolCatalog(tools: McpToolDefinitionListItem[]): {
     originalName: info.originalName,
     description: info.description,
     signature: info.methodSignature,
-    interfaceDecl: info.interfaceDecl || undefined,
+    interfaceDecl: [info.interfaceDecl, info.outputInterfaceDecl].filter(Boolean).join('\n\n') || undefined,
   }))
 
   return { entries, toolNameMap: buildToolNameMap(toolInfos) }
