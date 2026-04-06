@@ -7,7 +7,7 @@ import {
   formatSearchResults,
   sanitizeToolName,
 } from '../src/runtime/server/mcp/codemode/types'
-import { createCodemodeTools, disposeCodeMode } from '../src/runtime/server/mcp/codemode/index'
+import { createCodemodeTools, disposeCodeMode, buildDispatchFunctions } from '../src/runtime/server/mcp/codemode/index'
 import { normalizeCode } from '../src/runtime/server/mcp/codemode/executor'
 import type { McpToolDefinition, McpToolDefinitionListItem } from '../src/runtime/server/mcp/definitions/tools'
 import type { McpRequestExtra } from '../src/runtime/server/mcp/definitions/sdk-extra'
@@ -459,6 +459,103 @@ describe('normalizeCode', () => {
   it('passes through plain code unchanged', () => {
     const code = 'const result = await codemode.list_users();\nreturn result;'
     expect(normalizeCode(code)).toBe(code)
+  })
+})
+
+describe('buildDispatchFunctions — error handling', () => {
+  it('returns __toolError sentinel for isError results', async () => {
+    const tool: McpToolDefinition = {
+      name: 'fail-tool',
+      description: 'A tool that fails',
+      inputSchema: { id: z.string() },
+      handler: async () => ({
+        isError: true,
+        content: [{ type: 'text' as const, text: 'Item not found' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.fail_tool!({ id: 'nonexistent' }) as Record<string, unknown>
+
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Item not found')
+    expect(result.tool).toBe('fail_tool')
+  })
+
+  it('includes structuredContent as details in error sentinel', async () => {
+    const tool: McpToolDefinition = {
+      name: 'validate-tool',
+      description: 'A validation tool',
+      inputSchema: { id: z.string() },
+      handler: async () => ({
+        isError: true,
+        structuredContent: { ok: false, error: { category: 'validation', retryable: false } },
+        content: [{ type: 'text' as const, text: 'Validation failed' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.validate_tool!({ id: 'bad' }) as Record<string, unknown>
+
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Validation failed')
+    expect(result.details).toEqual({ ok: false, error: { category: 'validation', retryable: false } })
+  })
+
+  it('error sentinel has no details when no structuredContent', async () => {
+    const tool: McpToolDefinition = {
+      name: 'simple-fail',
+      description: 'Simple failure',
+      inputSchema: {},
+      handler: async () => ({
+        isError: true,
+        content: [{ type: 'text' as const, text: 'Something went wrong' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.simple_fail!({}) as Record<string, unknown>
+
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Something went wrong')
+    expect(result.details).toBeUndefined()
+  })
+
+  it('non-error results are unaffected by error handling', async () => {
+    const tool: McpToolDefinition = {
+      name: 'ok-tool',
+      description: 'A tool that succeeds',
+      inputSchema: {},
+      handler: async () => ({
+        content: [{ type: 'text' as const, text: '{"status":"ok"}' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.ok_tool!({})
+
+    expect(result).toEqual({ status: 'ok' })
+  })
+
+  it('isError with structuredContent prioritizes error over structured data', async () => {
+    const tool: McpToolDefinition = {
+      name: 'error-with-data',
+      description: 'Error with data',
+      inputSchema: {},
+      handler: async () => ({
+        isError: true,
+        structuredContent: { field: 'id', expected: 'valid ObjectId' },
+        content: [{ type: 'text' as const, text: 'Invalid ID format' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.error_with_data!({}) as Record<string, unknown>
+
+    // Should be an error, not the structuredContent
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Invalid ID format')
+    expect(result.details).toEqual({ field: 'id', expected: 'valid ObjectId' })
   })
 })
 
