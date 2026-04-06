@@ -264,6 +264,21 @@ function buildDispatchFunctions(
       // Normalize string/number returns before code mode consumes them
       const result = normalizeToolResult(rawResult as Parameters<typeof normalizeToolResult>[0])
 
+      // Surface tool errors as a sentinel so the sandbox can throw
+      if (result.isError) {
+        const errorText = result.content
+          ?.filter((c): c is { type: 'text', text: string } => c.type === 'text')
+          .map(c => c.text)
+          .join('\n') ?? 'Tool execution failed'
+
+        return {
+          __toolError: true,
+          message: errorText,
+          tool: sanitized,
+          details: result.structuredContent ?? undefined,
+        }
+      }
+
       if (result.content) {
         const textContent = result.content
           .filter((c): c is { type: 'text', text: string } => c.type === 'text')
@@ -284,6 +299,11 @@ function buildDispatchFunctions(
 
   return fns
 }
+
+/**
+ * @internal
+ */
+export { buildDispatchFunctions }
 
 /**
  * Check if a tool name needs sanitization for JavaScript

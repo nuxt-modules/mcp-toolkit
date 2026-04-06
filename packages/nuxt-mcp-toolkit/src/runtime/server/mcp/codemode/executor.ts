@@ -166,6 +166,13 @@ async function rpc(toolName, args) {
   });
   const data = JSON.parse(typeof res.text === 'function' ? await res.text() : res.body);
   if (data.error) throw new Error(data.error);
+  if (data.result && data.result.__toolError) {
+    const err = new Error(data.result.message);
+    err.tool = data.result.tool;
+    err.isToolError = true;
+    err.details = data.result.details;
+    throw err;
+  }
   return data.result;
 }
 
