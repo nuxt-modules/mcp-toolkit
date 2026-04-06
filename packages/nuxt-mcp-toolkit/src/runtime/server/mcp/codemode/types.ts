@@ -9,6 +9,14 @@ export interface CodeModeOptions {
   cpuTimeLimitMs?: number
   /** Max result size in bytes before truncation. Default: 102400 (100KB) */
   maxResultSize?: number
+  /** Max bytes accepted in a single RPC request body from the sandbox. Default: 1_048_576 (1MB) */
+  maxRequestBodyBytes?: number
+  /** Max bytes for a single tool RPC response before truncation. Default: 1_048_576 (1MB) */
+  maxToolResponseSize?: number
+  /** Wall-clock timeout for the entire execution in ms. Default: 60_000 (60s) */
+  wallTimeLimitMs?: number
+  /** Max tool RPC calls per execution. Default: 200 */
+  maxToolCalls?: number
   /**
    * Enable progressive disclosure: exposes a `search` tool for discovering
    * available tools, keeping the `code` tool description lightweight.
