@@ -141,3 +141,20 @@ export function errorResult(message: string): CallToolResult {
 export function imageResult(data: string, mimeType: string): CallToolResult {
   return { content: [{ type: 'image', data, mimeType }] }
 }
+
+/**
+ * Create an audio result for an MCP tool response.
+ *
+ * @param data - Base64-encoded audio data
+ * @param mimeType - The MIME type of the audio (e.g., 'audio/mp3', 'audio/wav', 'audio/ogg')
+ *
+ * @example
+ * ```ts
+ * export default defineMcpTool({
+ *   handler: async () => audioResult(base64Audio, 'audio/mp3')
+ * })
+ * ```
+ */
+export function audioResult(data: string, mimeType: string): CallToolResult {
+  return { content: [{ type: 'audio', data, mimeType }] }
+}
