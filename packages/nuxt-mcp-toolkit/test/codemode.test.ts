@@ -7,15 +7,40 @@ import {
   formatSearchResults,
   sanitizeToolName,
 } from '../src/runtime/server/mcp/codemode/types'
-import { createCodemodeTools, disposeCodeMode } from '../src/runtime/server/mcp/codemode/index'
+import { createCodemodeTools, disposeCodeMode, buildDispatchFunctions } from '../src/runtime/server/mcp/codemode/index'
 import { normalizeCode } from '../src/runtime/server/mcp/codemode/executor'
-import type { McpToolDefinition } from '../src/runtime/server/mcp/definitions/tools'
+import type { McpToolDefinition, McpToolDefinitionListItem } from '../src/runtime/server/mcp/definitions/tools'
+import type { McpRequestExtra } from '../src/runtime/server/mcp/definitions/sdk-extra'
+
+function mockMcpExtra(): McpRequestExtra {
+  return {
+    signal: new AbortController().signal,
+    requestId: 0,
+    sendNotification: async () => {},
+    sendRequest: (async () => ({})) as McpRequestExtra['sendRequest'],
+  }
+}
 
 function makeTool(name: string, description: string, inputSchema?: Record<string, z.ZodTypeAny>): McpToolDefinition {
   return {
     name,
     description,
     inputSchema: inputSchema || {},
+    handler: async () => ({ content: [{ type: 'text' as const, text: 'ok' }] }),
+  }
+}
+
+function makeToolWithOutput(
+  name: string,
+  description: string,
+  inputSchema: Record<string, z.ZodTypeAny>,
+  outputSchema: Record<string, z.ZodTypeAny>,
+): McpToolDefinition {
+  return {
+    name,
+    description,
+    inputSchema,
+    outputSchema,
     handler: async () => ({ content: [{ type: 'text' as const, text: 'ok' }] }),
   }
 }
@@ -71,6 +96,49 @@ describe('generateTypesFromTools', () => {
 
     expect(toolNameMap.get('delete_todo')).toBe('delete-todo')
     expect(toolNameMap.get('search_products')).toBe('search-products')
+  })
+})
+
+describe('output type generation', () => {
+  it('generates inline return type from small outputSchema', () => {
+    const tools = [makeToolWithOutput('create-item', 'Create', { title: z.string() }, { id: z.string(), ok: z.boolean() })]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('Promise<{ id: string; ok: boolean }>')
+    expect(typeDefinitions).not.toContain('interface CreateItemOutput')
+  })
+
+  it('quotes output property names that are not TS-safe identifiers', () => {
+    const tools = [makeToolWithOutput('get-meta', 'Meta', {}, {
+      'repo-name': z.string(),
+      'default': z.boolean(),
+    })]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('Promise<{ "repo-name": string; "default": boolean }>')
+  })
+
+  it('generates named output interface for complex schemas', () => {
+    const tools = [makeToolWithOutput('get-report', 'Report', {}, {
+      id: z.string(),
+      title: z.string(),
+      status: z.enum(['draft', 'published']),
+      views: z.number(),
+    })]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('interface GetReportOutput')
+    expect(typeDefinitions).toContain('Promise<GetReportOutput>')
+  })
+
+  it('defaults to Promise<unknown> when no outputSchema', () => {
+    const tools = [makeTool('list-items', 'List items')]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('Promise<unknown>')
+    expect(typeDefinitions).not.toContain('Output')
+  })
+
+  it('catalog entries reflect output types in signatures', () => {
+    const tools = [makeToolWithOutput('create-item', 'Create', { title: z.string() }, { id: z.string(), ok: z.boolean() })]
+    const { entries } = generateToolCatalog(tools)
+    expect(entries[0]!.signature).toContain('Promise<{ id: string; ok: boolean }>')
   })
 })
 
@@ -249,6 +317,114 @@ describe('createCodemodeTools', () => {
   })
 })
 
+describe('buildDispatchFunctions — structuredContent handling', () => {
+  it('returns structuredContent when present, not text content', async () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'create-item',
+      description: 'Create an item',
+      inputSchema: { title: z.string() },
+      handler: async () => ({
+        structuredContent: { ok: true, data: { id: 'abc123' } },
+        content: [{ type: 'text' as const, text: 'Created item successfully' }],
+      }),
+    }]
+    const [codeTool] = createCodemodeTools(tools)
+    const result = await codeTool!.handler!({ code: 'return await codemode.create_item({ title: "Test" })' }, mockMcpExtra())
+    const text = (result as { content: { text: string }[] }).content[0]!.text
+    const parsed = JSON.parse(text)
+
+    expect(parsed).toEqual({ ok: true, data: { id: 'abc123' } })
+  })
+
+  it('preserves typed fields (booleans, nested objects) from structuredContent', async () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'get-status',
+      description: 'Get status',
+      inputSchema: {},
+      handler: async () => ({
+        structuredContent: { active: true, count: 42, nested: { a: [1, 2] } },
+        content: [{ type: 'text' as const, text: 'Status OK' }],
+      }),
+    }]
+    const [codeTool] = createCodemodeTools(tools)
+    const result = await codeTool!.handler!({ code: 'return await codemode.get_status()' }, mockMcpExtra())
+    const text = (result as { content: { text: string }[] }).content[0]!.text
+    const parsed = JSON.parse(text)
+
+    expect(parsed.active).toBe(true)
+    expect(parsed.count).toBe(42)
+    expect(parsed.nested).toEqual({ a: [1, 2] })
+  })
+
+  it('enables operation chaining with structuredContent IDs', async () => {
+    const tools: McpToolDefinitionListItem[] = [
+      {
+        name: 'create-item',
+        description: 'Create an item',
+        inputSchema: { title: z.string() },
+        handler: async () => ({
+          structuredContent: { ok: true, data: { id: 'xyz789' } },
+          content: [{ type: 'text' as const, text: 'Created' }],
+        }),
+      },
+      {
+        name: 'update-item',
+        description: 'Update an item',
+        inputSchema: { id: z.string(), title: z.string() },
+        handler: async (args: Record<string, unknown>) => ({
+          structuredContent: { ok: true, data: { id: args.id, title: args.title } },
+          content: [{ type: 'text' as const, text: `Updated ${args.id}` }],
+        }),
+      },
+    ]
+    const [codeTool] = createCodemodeTools(tools)
+    const result = await codeTool!.handler!({
+      code: `
+        const created = await codemode.create_item({ title: "Test" });
+        const updated = await codemode.update_item({ id: created.data.id, title: "Updated" });
+        return updated;
+      `,
+    }, mockMcpExtra())
+    const text = (result as { content: { text: string }[] }).content[0]!.text
+    const parsed = JSON.parse(text)
+
+    expect(parsed).toEqual({ ok: true, data: { id: 'xyz789', title: 'Updated' } })
+  })
+
+  it('falls back to text content when structuredContent is absent', async () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'echo',
+      description: 'Echo text',
+      inputSchema: { msg: z.string() },
+      handler: async (args: Record<string, unknown>) => ({
+        content: [{ type: 'text' as const, text: args.msg as string }],
+      }),
+    }]
+    const [codeTool] = createCodemodeTools(tools)
+    const result = await codeTool!.handler!({ code: 'return await codemode.echo({ msg: "hello" })' }, mockMcpExtra())
+    const text = (result as { content: { text: string }[] }).content[0]!.text
+
+    expect(text).toBe('hello')
+  })
+
+  it('handles structuredContent-only result (no content array)', async () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'data-only',
+      description: 'Data only tool',
+      inputSchema: {},
+      handler: async () => ({
+        structuredContent: { value: 99 },
+      }),
+    }]
+    const [codeTool] = createCodemodeTools(tools)
+    const result = await codeTool!.handler!({ code: 'return await codemode.data_only()' }, mockMcpExtra())
+    const text = (result as { content: { text: string }[] }).content[0]!.text
+    const parsed = JSON.parse(text)
+
+    expect(parsed).toEqual({ value: 99 })
+  })
+})
+
 describe('normalizeCode', () => {
   it('strips markdown fences', () => {
     const code = '```javascript\nconst x = 1;\n```'
@@ -283,6 +459,103 @@ describe('normalizeCode', () => {
   it('passes through plain code unchanged', () => {
     const code = 'const result = await codemode.list_users();\nreturn result;'
     expect(normalizeCode(code)).toBe(code)
+  })
+})
+
+describe('buildDispatchFunctions — error handling', () => {
+  it('returns __toolError sentinel for isError results', async () => {
+    const tool: McpToolDefinition = {
+      name: 'fail-tool',
+      description: 'A tool that fails',
+      inputSchema: { id: z.string() },
+      handler: async () => ({
+        isError: true,
+        content: [{ type: 'text' as const, text: 'Item not found' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.fail_tool!({ id: 'nonexistent' }) as Record<string, unknown>
+
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Item not found')
+    expect(result.tool).toBe('fail_tool')
+  })
+
+  it('includes structuredContent as details in error sentinel', async () => {
+    const tool: McpToolDefinition = {
+      name: 'validate-tool',
+      description: 'A validation tool',
+      inputSchema: { id: z.string() },
+      handler: async () => ({
+        isError: true,
+        structuredContent: { ok: false, error: { category: 'validation', retryable: false } },
+        content: [{ type: 'text' as const, text: 'Validation failed' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.validate_tool!({ id: 'bad' }) as Record<string, unknown>
+
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Validation failed')
+    expect(result.details).toEqual({ ok: false, error: { category: 'validation', retryable: false } })
+  })
+
+  it('error sentinel has no details when no structuredContent', async () => {
+    const tool: McpToolDefinition = {
+      name: 'simple-fail',
+      description: 'Simple failure',
+      inputSchema: {},
+      handler: async () => ({
+        isError: true,
+        content: [{ type: 'text' as const, text: 'Something went wrong' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.simple_fail!({}) as Record<string, unknown>
+
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Something went wrong')
+    expect(result.details).toBeUndefined()
+  })
+
+  it('non-error results are unaffected by error handling', async () => {
+    const tool: McpToolDefinition = {
+      name: 'ok-tool',
+      description: 'A tool that succeeds',
+      inputSchema: {},
+      handler: async () => ({
+        content: [{ type: 'text' as const, text: '{"status":"ok"}' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.ok_tool!({})
+
+    expect(result).toEqual({ status: 'ok' })
+  })
+
+  it('isError with structuredContent prioritizes error over structured data', async () => {
+    const tool: McpToolDefinition = {
+      name: 'error-with-data',
+      description: 'Error with data',
+      inputSchema: {},
+      handler: async () => ({
+        isError: true,
+        structuredContent: { field: 'id', expected: 'valid ObjectId' },
+        content: [{ type: 'text' as const, text: 'Invalid ID format' }],
+      }),
+    }
+    const { toolNameMap } = generateTypesFromTools([tool])
+    const fns = buildDispatchFunctions([tool], toolNameMap)
+    const result = await fns.error_with_data!({}) as Record<string, unknown>
+
+    // Should be an error, not the structuredContent
+    expect(result.__toolError).toBe(true)
+    expect(result.message).toBe('Invalid ID format')
+    expect(result.details).toEqual({ field: 'id', expected: 'valid ObjectId' })
   })
 })
 

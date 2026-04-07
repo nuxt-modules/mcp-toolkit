@@ -1,3 +1,2 @@
 - **Issues**: [Open an issue](https://github.com/nuxt-modules/mcp-toolkit/issues) for bugs or feature requests
-- **Discussions**: [Join the discussion](https://github.com/nuxt-modules/mcp-toolkit/discussions) for questions and ideas
 - **X**: Follow [@hugorcd](https://twitter.com/hugorcd) for updates

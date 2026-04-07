@@ -18,7 +18,7 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.33",
+    "@ai-sdk/mcp": "^1.0.35",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
