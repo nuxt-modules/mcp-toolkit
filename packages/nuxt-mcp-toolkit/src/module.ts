@@ -6,6 +6,7 @@ import { ROUTES } from './runtime/server/mcp/constants'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
 import { name, version } from '../package.json'
 import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
+import type { McpSecurityConfig } from './runtime/server/mcp/config'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
@@ -83,7 +84,7 @@ export interface ModuleOptions {
   /**
    * Enable MCP session management (stateful transport).
    * When enabled, the server assigns session IDs and maintains state across requests,
-   * enabling SSE streaming, server-to-client notifications, and resumability.
+   * enabling SSE streaming, server-to-client notifications, and session continuity.
    *
    * Pass `true` for defaults or an object to configure session behavior.
    * @default false
@@ -96,7 +97,17 @@ export interface ModuleOptions {
      * @default 1800000 (30 minutes)
      */
     maxDuration?: number
+    /**
+     * Maximum number of concurrent sessions. Returns 503 when exceeded.
+     * @default 1000
+     */
+    maxSessions?: number
   }
+  /**
+   * Security configuration for the MCP server.
+   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning
+   */
+  security?: McpSecurityConfig
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -133,6 +144,7 @@ export default defineNuxtModule<ModuleOptions>({
     if (mcpConfig.sessions.enabled && nitroOptions) {
       nitroOptions.storage ??= {}
       nitroOptions.storage['mcp:sessions'] ??= { driver: 'memory' }
+      nitroOptions.storage['mcp:sessions-meta'] ??= { driver: 'memory' }
     }
 
     if (options.autoImports !== false) {
@@ -308,6 +320,7 @@ export default defineNuxtModule<ModuleOptions>({
 
       addServerImports([
         { name: 'useMcpSession', from: mcpSessionPath },
+        { name: 'invalidateMcpSession', from: mcpSessionPath },
         { name: 'useMcpServer', from: mcpServerPath },
       ])
     }

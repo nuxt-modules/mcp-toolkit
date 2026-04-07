@@ -1,6 +1,8 @@
 import { useStorage, useEvent } from 'nitropack/runtime'
 import type { Storage } from 'unstorage'
 import { getHeader } from './compat'
+import { isValidSessionId } from './providers/security'
+import { requestSessionInvalidation } from './session-state'
 
 export interface McpSessionStore<T = Record<string, unknown>> {
   get<K extends keyof T & string>(key: K): Promise<T[K] | null>
@@ -22,6 +24,9 @@ export function useMcpSession<T = Record<string, unknown>>(): McpSessionStore<T>
       + 'and `nitro.experimental.asyncContext` is true.',
     )
   }
+  if (!isValidSessionId(sessionId)) {
+    throw new Error('Invalid MCP session ID format')
+  }
 
   const storage = useStorage(`mcp:sessions:${sessionId}`)
 
@@ -34,4 +39,17 @@ export function useMcpSession<T = Record<string, unknown>>(): McpSessionStore<T>
     clear: () => storage.clear(),
     storage,
   }
+}
+
+/**
+ * Terminate the current MCP session.
+ * Use this in middleware when auth state changes (e.g., token revocation)
+ * to force the client to re-initialize with a new session.
+ *
+ * Note: `enabled` guards on tools/resources/prompts evaluate at session creation.
+ * Call this to invalidate a session whose privileges should no longer apply.
+ */
+export function invalidateMcpSession(): boolean {
+  const event = useEvent()
+  return requestSessionInvalidation(event)
 }

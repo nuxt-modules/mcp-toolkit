@@ -3,6 +3,17 @@ import type { McpIcon } from './definitions/handlers'
 export interface McpSessionsConfig {
   enabled: boolean
   maxDuration: number
+  maxSessions: number
+}
+
+export interface McpSecurityConfig {
+  /**
+   * Allowed origins for Streamable HTTP requests.
+   * - `undefined` (default): same-origin enforcement (compare against the request origin)
+   * - `'*'`: disable origin checks (explicit opt-out)
+   * - `string[]`: allow only these origins
+   */
+  allowedOrigins?: string[] | '*'
 }
 
 export interface McpConfig {
@@ -16,6 +27,7 @@ export interface McpConfig {
   icons?: McpIcon[]
   dir: string
   sessions: McpSessionsConfig
+  security: McpSecurityConfig
 }
 
 export const defaultMcpConfig: McpConfig = {
@@ -28,7 +40,9 @@ export const defaultMcpConfig: McpConfig = {
   sessions: {
     enabled: false,
     maxDuration: 30 * 60 * 1000, // 30 minutes
+    maxSessions: 1000,
   },
+  security: {},
 }
 
 export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
@@ -36,6 +50,9 @@ export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
   const sessions = partial.sessions
     ? { ...defaultMcpConfig.sessions, ...partial.sessions }
     : defaultMcpConfig.sessions
+  const security = partial.security
+    ? { ...defaultMcpConfig.security, ...partial.security }
+    : defaultMcpConfig.security
   return {
     enabled: partial.enabled ?? defaultMcpConfig.enabled,
     route: partial.route ?? defaultMcpConfig.route,
@@ -47,5 +64,6 @@ export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
     icons: partial.icons,
     dir: partial.dir ?? defaultMcpConfig.dir,
     sessions,
+    security,
   }
 }

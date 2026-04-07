@@ -68,7 +68,7 @@ describe('Session Management', async () => {
     expect(transport1.sessionId).not.toBe(transport2.sessionId)
   })
 
-  it('should return 404 for invalid session ID', async () => {
+  it('should return 400 for malformed session ID', async () => {
     const mcpUrl = createMcpUrl()
     try {
       const response = await fetch(mcpUrl.toString(), {
@@ -84,12 +84,36 @@ describe('Session Management', async () => {
           id: 1,
         }),
       })
-      expect(response.status).toBe(404)
+      expect(response.status).toBe(400)
     }
     catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
-      expect(message).toContain('404')
+      expect(message).toMatch(/400|404/)
     }
+  })
+
+  it('should reject cross-scheme origins even on the same host', async () => {
+    const mcpUrl = createMcpUrl()
+    const requestOrigin = `${mcpUrl.protocol}//${mcpUrl.host}`
+    const crossSchemeOrigin = requestOrigin.startsWith('https://')
+      ? requestOrigin.replace('https://', 'http://')
+      : requestOrigin.replace('http://', 'https://')
+
+    const response = await fetch(mcpUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'Origin': crossSchemeOrigin,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    })
+
+    expect(response.status).toBe(403)
   })
 
   it('should list tools within a session', async () => {
@@ -121,5 +145,44 @@ describe('Session Management', async () => {
 
     const content = result.content as Array<{ type: string, text?: string }>
     expect(content[0]?.text).toBe('NOT_FOUND')
+  })
+
+  it('should invalidate the session after the current middleware request completes', async () => {
+    const { transport } = await createSessionClient()
+    const sessionId = transport.sessionId
+    expect(sessionId).toBeDefined()
+
+    const invalidateUrl = createMcpUrl('/mcp?invalidateSession=1')
+    const currentResponse = await fetch(invalidateUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'mcp-session-id': sessionId!,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    })
+
+    expect(currentResponse.status).toBe(200)
+
+    const nextResponse = await fetch(createMcpUrl().toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'mcp-session-id': sessionId!,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 2,
+      }),
+    })
+
+    expect(nextResponse.status).toBe(404)
   })
 })
