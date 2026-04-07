@@ -72,7 +72,7 @@ Write the body of an async function and use \`return\` for the final value.
 
 {{count}} tools are available via the \`codemode\` object. Use the \`search\` tool to find names and signatures before writing code.{{example}}`
 
-const STANDARD_CODE_EXAMPLE = `
+const STANDARD_CODE_EXAMPLE_FALLBACK = `
 
 Example:
 \`\`\`javascript
@@ -81,7 +81,7 @@ const result = await codemode.process({ input: data.value });
 return result;
 \`\`\``
 
-const PROGRESSIVE_CODE_EXAMPLE = `
+const PROGRESSIVE_CODE_EXAMPLE_FALLBACK = `
 
 Example:
 \`\`\`javascript
@@ -124,11 +124,15 @@ function createStandardTools(
   const { typeDefinitions, toolNameMap } = generateTypesFromTools(tools)
   const dispatchEntries = buildDispatchEntries(tools, toolNameMap)
 
+  const example = tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK
+    ? ''
+    : STANDARD_CODE_EXAMPLE_FALLBACK
+
   const template = options?.description || CODE_TOOL_DESCRIPTION_TEMPLATE
   const description = applyDescriptionTemplate(template, {
     types: typeDefinitions,
     count: tools.length,
-    example: tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK ? '' : STANDARD_CODE_EXAMPLE,
+    example,
   })
 
   const codeTool = buildCodeTool(description, dispatchEntries, options)
@@ -142,10 +146,14 @@ function createProgressiveTools(
   const { entries, toolNameMap } = generateToolCatalog(tools)
   const dispatchEntries = buildDispatchEntries(tools, toolNameMap)
 
+  const example = tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK
+    ? ''
+    : PROGRESSIVE_CODE_EXAMPLE_FALLBACK
+
   const template = options?.description || PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE
   const description = applyDescriptionTemplate(template, {
     count: tools.length,
-    example: tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK ? '' : PROGRESSIVE_CODE_EXAMPLE,
+    example,
   })
 
   const searchTool = buildSearchTool(entries)

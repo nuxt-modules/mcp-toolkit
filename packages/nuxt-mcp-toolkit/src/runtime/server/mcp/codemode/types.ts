@@ -1,5 +1,5 @@
 import { z, type ZodRawShape } from 'zod'
-import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
+import type { McpToolAnnotations, McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
 
 export interface CodeModeOptions {
@@ -25,7 +25,8 @@ export interface CodeModeOptions {
   progressive?: boolean
   /**
    * Custom description template for the `code` tool.
-   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count), `{{example}}` (usage example).
+   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count),
+   * `{{example}}` (usage example).
    */
   description?: string
 }
@@ -156,6 +157,15 @@ function generateSchemaTypeInfo(
   }
 }
 
+function buildAnnotationTags(annotations?: McpToolAnnotations): string[] {
+  if (!annotations) return []
+  const tags: string[] = []
+  if (annotations.readOnlyHint === true) tags.push('[read-only]')
+  if (annotations.destructiveHint === true) tags.push('[destructive]')
+  if (annotations.idempotentHint === true) tags.push('[idempotent]')
+  return tags
+}
+
 interface ToolTypeInfo {
   originalName: string
   sanitizedName: string
@@ -163,6 +173,8 @@ interface ToolTypeInfo {
   interfaceDecl: string | null
   outputInterfaceDecl: string | null
   methodSignature: string
+  /** True when hint or annotations are set — comment should be preserved in type block. */
+  preserveComment: boolean
 }
 
 function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
@@ -210,7 +222,11 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
     }
   }
 
-  const desc = tool.description ? ` // ${tool.description}` : ''
+  const annotationTags = buildAnnotationTags(tool.annotations)
+  const commentText = tool.description
+  const commentParts = [...annotationTags, ...(commentText ? [commentText] : [])]
+  const desc = commentParts.length > 0 ? ` // ${commentParts.join(' ')}` : ''
+
   const methodSignature = `${sanitizedName}: (${paramSignature}) => Promise<${returnType}>;${desc}`
 
   return {
@@ -220,6 +236,7 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
     interfaceDecl,
     outputInterfaceDecl,
     methodSignature,
+    preserveComment: annotationTags.length > 0,
   }
 }
 
@@ -251,7 +268,7 @@ export function generateTypesFromTools(tools: McpToolDefinitionListItem[]): Gene
     .join('\n\n')
 
   const methods = toolInfos
-    .map(t => `  ${t.methodSignature.replace(/ \/\/.*$/, '').trimEnd()}`)
+    .map(t => `  ${t.preserveComment ? t.methodSignature.trimEnd() : t.methodSignature.replace(/ \/\/.*$/, '').trimEnd()}`)
     .join('\n')
 
   const codemodeDecl = `declare const codemode: {\n${methods}\n};`
@@ -267,6 +284,8 @@ export interface ToolCatalogEntry {
   description: string
   signature: string
   interfaceDecl?: string
+  group?: string
+  annotations?: string[]
 }
 
 export function generateToolCatalog(tools: McpToolDefinitionListItem[]): {
@@ -278,13 +297,18 @@ export function generateToolCatalog(tools: McpToolDefinitionListItem[]): {
     return { ...info, description: tool.description || '' }
   })
 
-  const entries: ToolCatalogEntry[] = toolInfos.map(info => ({
-    name: info.sanitizedName,
-    originalName: info.originalName,
-    description: info.description,
-    signature: info.methodSignature,
-    interfaceDecl: [info.interfaceDecl, info.outputInterfaceDecl].filter(Boolean).join('\n\n') || undefined,
-  }))
+  const entries: ToolCatalogEntry[] = toolInfos.map((info, i) => {
+    const tool = tools[i]!
+    return {
+      name: info.sanitizedName,
+      originalName: info.originalName,
+      description: info.description,
+      signature: info.methodSignature,
+      interfaceDecl: [info.interfaceDecl, info.outputInterfaceDecl].filter(Boolean).join('\n\n') || undefined,
+      group: tool.group ?? (tool._meta?.group as string | undefined),
+      annotations: buildAnnotationTags(tool.annotations),
+    }
+  })
 
   return { entries, toolNameMap: buildToolNameMap(toolInfos) }
 }
@@ -318,23 +342,54 @@ export function searchToolCatalog(entries: ToolCatalogEntry[], query: string): T
   return scored.map(s => s.entry)
 }
 
+function formatToolEntry(m: ToolCatalogEntry): string {
+  return m.interfaceDecl
+    ? `${m.interfaceDecl}\n\ncodemode.${m.signature}`
+    : `codemode.${m.signature}`
+}
+
 export function formatSearchResults(matches: ToolCatalogEntry[], query: string, total: number): string {
   if (matches.length === 0) {
     return `No tools found matching "${query}". ${total} tools available — try a broader query.`
   }
 
-  const lines = matches.map((m) => {
-    const sig = m.interfaceDecl
-      ? `${m.interfaceDecl}\n\ncodemode.${m.signature}`
-      : `codemode.${m.signature}`
-    return sig
-  })
-
   const header = matches.length === total
     ? `All ${total} tools:`
     : `Found ${matches.length}/${total} tools matching "${query}":`
 
-  return `${header}\n\n${lines.join('\n\n')}`
+  const hasGroups = matches.some(m => m.group)
+
+  if (!hasGroups) {
+    const lines = matches.map(formatToolEntry)
+    return `${header}\n\n${lines.join('\n\n')}`
+  }
+
+  // Group by group field, ungrouped tools last
+  const grouped = new Map<string, ToolCatalogEntry[]>()
+  const ungrouped: ToolCatalogEntry[] = []
+
+  for (const m of matches) {
+    if (m.group) {
+      const list = grouped.get(m.group)
+      if (list) list.push(m)
+      else grouped.set(m.group, [m])
+    }
+    else {
+      ungrouped.push(m)
+    }
+  }
+
+  const sections: string[] = []
+  for (const [group, entries] of grouped) {
+    const lines = entries.map(formatToolEntry)
+    sections.push(`## ${group}\n\n${lines.join('\n\n')}`)
+  }
+  if (ungrouped.length > 0) {
+    const lines = ungrouped.map(formatToolEntry)
+    sections.push(lines.join('\n\n'))
+  }
+
+  return `${header}\n\n${sections.join('\n\n')}`
 }
 
 export { sanitizeToolName }

@@ -379,3 +379,125 @@ describe('buildDispatchFunctions error handling', () => {
     })
   })
 })
+
+describe('annotation surfacing', () => {
+  it('surfaces readOnlyHint as [read-only] tag', () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'list-items',
+      description: 'List items',
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+      handler: async () => 'ok',
+    }]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('[read-only]')
+  })
+
+  it('surfaces destructiveHint as [destructive] tag', () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'delete-item',
+      description: 'Delete item',
+      inputSchema: { id: z.string() },
+      annotations: { destructiveHint: true },
+      handler: async () => 'ok',
+    }]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('[destructive]')
+  })
+
+  it('surfaces idempotentHint as [idempotent] tag', () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'update-item',
+      description: 'Update item',
+      inputSchema: { id: z.string() },
+      annotations: { idempotentHint: true },
+      handler: async () => 'ok',
+    }]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('[idempotent]')
+  })
+
+  it('combines multiple annotation tags', () => {
+    const tools: McpToolDefinitionListItem[] = [{
+      name: 'safe-read',
+      description: 'Safe read',
+      inputSchema: {},
+      annotations: { readOnlyHint: true, idempotentHint: true },
+      handler: async () => 'ok',
+    }]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+    expect(typeDefinitions).toContain('[read-only] [idempotent] Safe read')
+  })
+})
+
+describe('grouped search results', () => {
+  it('groups tools by group field with section headers', () => {
+    const tools: McpToolDefinitionListItem[] = [
+      { name: 'create-runbook', description: 'Create', inputSchema: {}, group: 'workspace', handler: async () => 'ok' },
+      { name: 'list-runbooks', description: 'List', inputSchema: {}, group: 'workspace', handler: async () => 'ok' },
+      { name: 'search-public', description: 'Search', inputSchema: {}, group: 'public', handler: async () => 'ok' },
+    ]
+    const { entries } = generateToolCatalog(tools)
+    const formatted = formatSearchResults(entries, '', entries.length)
+
+    expect(formatted).toContain('## workspace')
+    expect(formatted).toContain('## public')
+    expect(formatted).toContain('codemode.create_runbook')
+    expect(formatted).toContain('codemode.search_public')
+  })
+
+  it('renders mixed grouped and ungrouped tools correctly', () => {
+    const tools: McpToolDefinitionListItem[] = [
+      { name: 'create-item', description: 'Create', inputSchema: {}, group: 'items', handler: async () => 'ok' },
+      { name: 'get-status', description: 'Status', inputSchema: {}, handler: async () => 'ok' },
+    ]
+    const { entries } = generateToolCatalog(tools)
+    const formatted = formatSearchResults(entries, '', entries.length)
+
+    expect(formatted).toContain('## items')
+    expect(formatted).toContain('codemode.get_status')
+  })
+
+  it('renders flat when no tools have groups (backward compat)', () => {
+    const { entries } = generateToolCatalog(sampleTools)
+    const formatted = formatSearchResults(entries, '', entries.length)
+
+    expect(formatted).not.toContain('##')
+    expect(formatted).toContain('codemode.get_user')
+  })
+})
+
+describe('backward compatibility', () => {
+  it('tools without annotations work identically', () => {
+    const { typeDefinitions } = generateTypesFromTools(sampleTools)
+
+    expect(typeDefinitions).toContain('get_user')
+    expect(typeDefinitions).toContain('declare const codemode')
+  })
+})
+
+describe('annotation vs description comment boundary', () => {
+  it('preserves annotation tag comments but strips plain description comments', () => {
+    const tools: McpToolDefinitionListItem[] = [
+      {
+        name: 'annotated-tool',
+        description: 'This has annotations',
+        inputSchema: {},
+        annotations: { readOnlyHint: true },
+        handler: async () => 'ok',
+      },
+      {
+        name: 'plain-tool',
+        description: 'This has no annotations',
+        inputSchema: {},
+        handler: async () => 'ok',
+      },
+    ]
+    const { typeDefinitions } = generateTypesFromTools(tools)
+
+    // Annotated tool: tag + description preserved
+    expect(typeDefinitions).toContain('[read-only] This has annotations')
+    // Plain tool: description stripped from compact type block
+    expect(typeDefinitions).not.toContain('// This has no annotations')
+  })
+})
