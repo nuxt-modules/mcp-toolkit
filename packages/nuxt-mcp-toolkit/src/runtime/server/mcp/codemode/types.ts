@@ -1,5 +1,5 @@
-import { z } from 'zod'
-import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
+import { z, type ZodRawShape } from 'zod'
+import type { McpToolAnnotations, McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
 import { enrichNameTitle } from '../definitions/utils'
 
 export interface CodeModeOptions {
@@ -9,6 +9,14 @@ export interface CodeModeOptions {
   cpuTimeLimitMs?: number
   /** Max result size in bytes before truncation. Default: 102400 (100KB) */
   maxResultSize?: number
+  /** Max bytes accepted in a single RPC request body from the sandbox. Default: 1_048_576 (1MB) */
+  maxRequestBodyBytes?: number
+  /** Max bytes for a single tool RPC response before truncation. Default: 1_048_576 (1MB) */
+  maxToolResponseSize?: number
+  /** Wall-clock timeout for the entire execution in ms. Default: 60_000 (60s) */
+  wallTimeLimitMs?: number
+  /** Max tool RPC calls per execution. Default: 200 */
+  maxToolCalls?: number
   /**
    * Enable progressive disclosure: exposes a `search` tool for discovering
    * available tools, keeping the `code` tool description lightweight.
@@ -17,16 +25,15 @@ export interface CodeModeOptions {
   progressive?: boolean
   /**
    * Custom description template for the `code` tool.
-   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count).
+   * Supports placeholders: `{{types}}` (type definitions), `{{count}}` (tool count),
+   * `{{example}}` (usage example).
    */
   description?: string
 }
 
-export interface ExecuteResult {
-  result: unknown
-  error?: string
-  logs: string[]
-}
+export type ExecuteResult
+  = | { result: unknown, error?: undefined, logs: string[], durationMs: number }
+    | { result?: undefined, error: string, logs: string[], durationMs: number }
 
 const RESERVED_WORDS = new Set([
   'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete', 'do',
@@ -48,9 +55,15 @@ function pascalCase(str: string): string {
   return str.replace(/(^|_)(\w)/g, (_, __, c) => c.toUpperCase())
 }
 
+function formatTsPropertyKey(key: string): string {
+  return /^[A-Z_$][\w$]*$/i.test(key) && !RESERVED_WORDS.has(key)
+    ? key
+    : JSON.stringify(key)
+}
+
 function jsonSchemaPropertyToTs(prop: Record<string, unknown>): string {
   if (prop.enum && Array.isArray(prop.enum)) {
-    return prop.enum.map(v => typeof v === 'string' ? `"${v}"` : String(v)).join(' | ')
+    return prop.enum.map(v => typeof v === 'string' ? JSON.stringify(v) : String(v)).join(' | ')
   }
 
   const type = prop.type as string | string[] | undefined
@@ -64,7 +77,7 @@ function jsonSchemaPropertyToTs(prop: Record<string, unknown>): string {
     const required = (prop.required as string[]) || []
     const fields = Object.entries(props).map(([key, value]) => {
       const opt = required.includes(key) ? '' : '?'
-      return `${key}${opt}: ${jsonSchemaPropertyToTs(value)}`
+      return `${formatTsPropertyKey(key)}${opt}: ${jsonSchemaPropertyToTs(value)}`
     })
     return `{ ${fields.join('; ')} }`
   }
@@ -100,11 +113,65 @@ function isPrimitiveProp(prop: Record<string, unknown>): boolean {
   return !!type && PRIMITIVE_TYPES.has(type)
 }
 
+interface SchemaTypeInfo {
+  interfaceDecl: string | null
+  typeExpression: string
+}
+
+function generateSchemaTypeInfo(
+  schema: ZodRawShape,
+  typeName: string,
+): SchemaTypeInfo | null {
+  const jsonSchema = z.toJSONSchema(z.object(schema))
+  const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
+  const required = (jsonSchema.required as string[]) || []
+
+  if (!properties || Object.keys(properties).length === 0) {
+    return null
+  }
+
+  const entries = Object.entries(properties)
+  const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
+
+  if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
+    const inlineFields = entries.map(([key, prop]) => {
+      const opt = required.includes(key) ? '' : '?'
+      return `${formatTsPropertyKey(key)}${opt}: ${jsonSchemaPropertyToTs(prop)}`
+    })
+
+    return {
+      interfaceDecl: null,
+      typeExpression: `{ ${inlineFields.join('; ')} }`,
+    }
+  }
+
+  const fields = entries.map(([key, prop]) => {
+    const opt = required.includes(key) ? '' : '?'
+    const tsType = jsonSchemaPropertyToTs(prop)
+    return `  ${formatTsPropertyKey(key)}${opt}: ${tsType};`
+  })
+
+  return {
+    interfaceDecl: `interface ${typeName} {\n${fields.join('\n')}\n}`,
+    typeExpression: typeName,
+  }
+}
+
+function buildAnnotationTags(annotations?: McpToolAnnotations): string[] {
+  if (!annotations) return []
+  const tags: string[] = []
+  if (annotations.readOnlyHint === true) tags.push('[read-only]')
+  if (annotations.destructiveHint === true) tags.push('[destructive]')
+  if (annotations.idempotentHint === true) tags.push('[idempotent]')
+  return tags
+}
+
 interface ToolTypeInfo {
   originalName: string
   sanitizedName: string
   typeName: string
   interfaceDecl: string | null
+  outputInterfaceDecl: string | null
   methodSignature: string
 }
 
@@ -124,30 +191,10 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
 
   if (tool.inputSchema && Object.keys(tool.inputSchema).length > 0) {
     try {
-      const jsonSchema = z.toJSONSchema(z.object(tool.inputSchema))
-      const properties = jsonSchema.properties as Record<string, Record<string, unknown>> | undefined
-      const required = (jsonSchema.required as string[]) || []
-
-      if (properties && Object.keys(properties).length > 0) {
-        const entries = Object.entries(properties)
-        const allPrimitive = entries.every(([, prop]) => isPrimitiveProp(prop))
-
-        if (entries.length <= INLINE_THRESHOLD && allPrimitive) {
-          const inlineFields = entries.map(([key, prop]) => {
-            const opt = required.includes(key) ? '' : '?'
-            return `${key}${opt}: ${jsonSchemaPropertyToTs(prop)}`
-          })
-          paramSignature = `input: { ${inlineFields.join('; ')} }`
-        }
-        else {
-          const fields = entries.map(([key, prop]) => {
-            const opt = required.includes(key) ? '' : '?'
-            const tsType = jsonSchemaPropertyToTs(prop)
-            return `  ${key}${opt}: ${tsType};`
-          })
-          interfaceDecl = `interface ${typeName} {\n${fields.join('\n')}\n}`
-          paramSignature = `input: ${typeName}`
-        }
+      const schemaTypeInfo = generateSchemaTypeInfo(tool.inputSchema, typeName)
+      if (schemaTypeInfo) {
+        interfaceDecl = schemaTypeInfo.interfaceDecl
+        paramSignature = `input: ${schemaTypeInfo.typeExpression}`
       }
     }
     catch {
@@ -155,14 +202,37 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
     }
   }
 
-  const desc = tool.description ? ` // ${tool.description}` : ''
-  const methodSignature = `${sanitizedName}: (${paramSignature}) => Promise<unknown>;${desc}`
+  // Generate output type from outputSchema
+  let outputInterfaceDecl: string | null = null
+  let returnType = 'unknown'
+  const outputTypeName = `${pascalCase(sanitizedName)}Output`
+
+  if (tool.outputSchema && Object.keys(tool.outputSchema).length > 0) {
+    try {
+      const schemaTypeInfo = generateSchemaTypeInfo(tool.outputSchema, outputTypeName)
+      if (schemaTypeInfo) {
+        outputInterfaceDecl = schemaTypeInfo.interfaceDecl
+        returnType = schemaTypeInfo.typeExpression
+      }
+    }
+    catch {
+      // Fall through to default Promise<unknown>
+    }
+  }
+
+  const annotationTags = buildAnnotationTags(tool.annotations)
+  const commentText = tool.description
+  const commentParts = [...annotationTags, ...(commentText ? [commentText] : [])]
+  const desc = commentParts.length > 0 ? ` // ${commentParts.join(' ')}` : ''
+
+  const methodSignature = `${sanitizedName}: (${paramSignature}) => Promise<${returnType}>;${desc}`
 
   return {
     originalName: name,
     sanitizedName,
     typeName,
     interfaceDecl,
+    outputInterfaceDecl,
     methodSignature,
   }
 }
@@ -170,6 +240,13 @@ function generateToolTypeInfo(tool: McpToolDefinition): ToolTypeInfo {
 function buildToolNameMap(infos: ToolTypeInfo[]): Map<string, string> {
   const map = new Map<string, string>()
   for (const info of infos) {
+    const existing = map.get(info.sanitizedName)
+    if (existing && existing !== info.originalName) {
+      console.warn(
+        `[nuxt-mcp-toolkit] Code Mode tool name collision: "${existing}" and "${info.originalName}" both sanitize to "${info.sanitizedName}". `
+        + `Only the last tool will be available. Rename one of the tools to avoid this. This will become an error in a future version.`,
+      )
+    }
     map.set(info.sanitizedName, info.originalName)
   }
   return map
@@ -184,12 +261,12 @@ export function generateTypesFromTools(tools: McpToolDefinitionListItem[]): Gene
   const toolInfos = tools.map(generateToolTypeInfo)
 
   const interfaces = toolInfos
-    .map(t => t.interfaceDecl)
+    .flatMap(t => [t.interfaceDecl, t.outputInterfaceDecl])
     .filter(Boolean)
     .join('\n\n')
 
   const methods = toolInfos
-    .map(t => `  ${t.methodSignature}`)
+    .map(t => `  ${t.methodSignature.trimEnd()}`)
     .join('\n')
 
   const codemodeDecl = `declare const codemode: {\n${methods}\n};`
@@ -205,6 +282,8 @@ export interface ToolCatalogEntry {
   description: string
   signature: string
   interfaceDecl?: string
+  group?: string
+  annotations?: string[]
 }
 
 export function generateToolCatalog(tools: McpToolDefinitionListItem[]): {
@@ -216,13 +295,18 @@ export function generateToolCatalog(tools: McpToolDefinitionListItem[]): {
     return { ...info, description: tool.description || '' }
   })
 
-  const entries: ToolCatalogEntry[] = toolInfos.map(info => ({
-    name: info.sanitizedName,
-    originalName: info.originalName,
-    description: info.description,
-    signature: info.methodSignature,
-    interfaceDecl: info.interfaceDecl || undefined,
-  }))
+  const entries: ToolCatalogEntry[] = toolInfos.map((info, i) => {
+    const tool = tools[i]!
+    return {
+      name: info.sanitizedName,
+      originalName: info.originalName,
+      description: info.description,
+      signature: info.methodSignature,
+      interfaceDecl: [info.interfaceDecl, info.outputInterfaceDecl].filter(Boolean).join('\n\n') || undefined,
+      group: tool.group ?? (tool._meta?.group as string | undefined),
+      annotations: buildAnnotationTags(tool.annotations),
+    }
+  })
 
   return { entries, toolNameMap: buildToolNameMap(toolInfos) }
 }
@@ -256,23 +340,54 @@ export function searchToolCatalog(entries: ToolCatalogEntry[], query: string): T
   return scored.map(s => s.entry)
 }
 
+function formatToolEntry(m: ToolCatalogEntry): string {
+  return m.interfaceDecl
+    ? `${m.interfaceDecl}\n\ncodemode.${m.signature}`
+    : `codemode.${m.signature}`
+}
+
 export function formatSearchResults(matches: ToolCatalogEntry[], query: string, total: number): string {
   if (matches.length === 0) {
     return `No tools found matching "${query}". ${total} tools available — try a broader query.`
   }
 
-  const lines = matches.map((m) => {
-    const sig = m.interfaceDecl
-      ? `${m.interfaceDecl}\n\ncodemode.${m.signature}`
-      : `codemode.${m.signature}`
-    return sig
-  })
-
   const header = matches.length === total
     ? `All ${total} tools:`
     : `Found ${matches.length}/${total} tools matching "${query}":`
 
-  return `${header}\n\n${lines.join('\n\n')}`
+  const hasGroups = matches.some(m => m.group)
+
+  if (!hasGroups) {
+    const lines = matches.map(formatToolEntry)
+    return `${header}\n\n${lines.join('\n\n')}`
+  }
+
+  // Group by group field, ungrouped tools last
+  const grouped = new Map<string, ToolCatalogEntry[]>()
+  const ungrouped: ToolCatalogEntry[] = []
+
+  for (const m of matches) {
+    if (m.group) {
+      const list = grouped.get(m.group)
+      if (list) list.push(m)
+      else grouped.set(m.group, [m])
+    }
+    else {
+      ungrouped.push(m)
+    }
+  }
+
+  const sections: string[] = []
+  for (const [group, entries] of grouped) {
+    const lines = entries.map(formatToolEntry)
+    sections.push(`## ${group}\n\n${lines.join('\n\n')}`)
+  }
+  if (ungrouped.length > 0) {
+    const lines = ungrouped.map(formatToolEntry)
+    sections.push(lines.join('\n\n'))
+  }
+
+  return `${header}\n\n${sections.join('\n\n')}`
 }
 
 export { sanitizeToolName }

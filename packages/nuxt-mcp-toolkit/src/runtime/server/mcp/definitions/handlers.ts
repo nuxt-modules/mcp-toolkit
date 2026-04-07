@@ -118,6 +118,11 @@ export interface McpHandlerOptions {
    *
    * This feature is experimental and may change in future releases.
    * Requires `secure-exec` to be installed: `npm install secure-exec`
+   * Code Mode also requires Node.js >=18.16.0 for AsyncLocalStorage context restoration.
+   *
+   * Pass `true` for defaults, or a `CodeModeOptions` object to configure limits:
+   * `memoryLimit`, `cpuTimeLimitMs`, `maxResultSize`, `maxRequestBodyBytes`,
+   * `maxToolResponseSize`, `wallTimeLimitMs`, `maxToolCalls`, `progressive`, `description`.
    *
    * @example
    * ```ts

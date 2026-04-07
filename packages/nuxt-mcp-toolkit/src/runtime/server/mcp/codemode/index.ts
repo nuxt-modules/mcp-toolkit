@@ -1,18 +1,52 @@
 import { z } from 'zod'
-import type { McpToolDefinition, McpToolDefinitionListItem } from '../definitions/tools'
-import { normalizeToolResult } from '../definitions/results'
-import { enrichNameTitle } from '../definitions/utils'
+import type { McpRequestExtra } from '../definitions/sdk-extra'
 import {
-  generateTypesFromTools,
-  generateToolCatalog,
-  searchToolCatalog,
+  type McpToolDefinition,
+  type McpToolDefinitionListItem,
+  createWrappedToolHandler,
+  invokeWrappedToolHandler,
+  normalizeErrorToResult,
+  resolveToolDefinitionName,
+} from '../definitions/tools'
+import { isCallToolResult } from '../definitions/results'
+import {
   formatSearchResults,
+  generateToolCatalog,
+  generateTypesFromTools,
   sanitizeToolName,
-  type ToolCatalogEntry,
+  searchToolCatalog,
   type CodeModeOptions,
+  type ExecuteResult,
+  type ToolCatalogEntry,
 } from './types'
 
 export type { CodeModeOptions }
+
+interface CodeModeToolError {
+  __mcp_toolkit_error__: true
+  message: string
+  tool: string
+  details?: unknown
+}
+
+type CodeToolEnvelope
+  = | { ok: true, result?: unknown, error?: undefined, logs?: string[], durationMs: number }
+    | { ok: false, result?: undefined, error: string, logs?: string[], durationMs: number }
+
+interface DispatchToolEntry {
+  originalName: string
+  sanitizedName: string
+  tool: McpToolDefinitionListItem
+  handler: (...args: unknown[]) => unknown
+}
+
+const CODE_TOOL_OUTPUT_SCHEMA = {
+  ok: z.boolean(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+  logs: z.array(z.string()).optional(),
+  durationMs: z.number(),
+}
 
 async function runExecute(
   code: string,
@@ -23,78 +57,56 @@ async function runExecute(
   return execute(code, fns, options)
 }
 
-const CODE_TOOL_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate multiple tool calls in a SINGLE invocation. ALWAYS combine ALL related operations into one code block — never split into separate calls.
+const CODE_TOOL_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in one invocation.
 
-Write the body of an async function. Use \`return\` to return the final result.
+Write the body of an async function and use \`return\` for the final value.
 
-Available tools via the \`codemode\` object:
+Available via the \`codemode\` object:
 \`\`\`typescript
 {{types}}
-\`\`\`
+\`\`\`{{example}}`
 
-IMPORTANT: Combine sequential, parallel, and conditional logic in ONE code block:
+const PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in one invocation.
+
+Write the body of an async function and use \`return\` for the final value.
+
+{{count}} tools are available via the \`codemode\` object. Use the \`search\` tool to find names and signatures before writing code.{{example}}`
+
+const STANDARD_CODE_EXAMPLE_FALLBACK = `
+
+Example:
 \`\`\`javascript
-// Sequential: chain dependent calls
 const data = await codemode.get_data({ id: "123" });
 const result = await codemode.process({ input: data.value });
-
-// Parallel: use Promise.all for independent calls
-const [a, b, c] = await Promise.all([
-  codemode.task({ name: "a" }),
-  codemode.task({ name: "b" }),
-  codemode.task({ name: "c" }),
-]);
-
-// Conditional + loops
-for (const item of items) {
-  if (item.active) await codemode.handle({ id: item.id });
-}
-
 return result;
 \`\`\``
 
-const PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE = `Execute JavaScript to orchestrate tool calls in a SINGLE invocation. ALWAYS combine ALL related operations into one code block.
+const PROGRESSIVE_CODE_EXAMPLE_FALLBACK = `
 
-Write the body of an async function. Use \`return\` to return the final result.
-
-{{count}} tools available via the \`codemode\` object. Use the \`search\` tool first to discover tool names and type signatures, then write code using \`codemode.toolName(input)\`.
-
-IMPORTANT: Combine sequential, parallel, and conditional logic in ONE code block:
+Example:
 \`\`\`javascript
-// Sequential
-const data = await codemode.get_data({ id: "123" });
-const result = await codemode.process({ input: data.value });
-
-// Parallel
-const [a, b] = await Promise.all([
-  codemode.task_a(),
-  codemode.task_b(),
-]);
-
-return result;
+// After using the search tool to find the right method names:
+const user = await codemode.get_user({ id: "123" });
+return user;
 \`\`\``
 
 const SEARCH_TOOL_DESCRIPTION = `Search available tools by keyword. Returns tool names, descriptions, and type signatures you can use with the \`code\` tool.
 
 Use this to discover which \`codemode.*\` methods are available before writing code.`
 
+const MAX_TOOLS_WITH_EXAMPLE_BLOCK = 10
+
 function applyDescriptionTemplate(
   template: string,
-  vars: { types?: string, count?: number },
+  vars: { types?: string, count?: number, example?: string },
 ): string {
   let result = template
   if (vars.types !== undefined) result = result.replace('{{types}}', vars.types)
   if (vars.count !== undefined) result = result.replaceAll('{{count}}', String(vars.count))
-  return result
+  result = result.replace('{{example}}', vars.example ?? '')
+  return result.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-/**
- * Wraps an array of tool definitions into code mode tools.
- *
- * Standard mode: single `code` tool with all type definitions embedded.
- * Progressive mode (`progressive: true`): `search` + `code` tools — the LLM
- * discovers tool signatures via search, keeping the code tool lightweight.
- */
 export function createCodemodeTools(
   tools: McpToolDefinitionListItem[],
   options?: CodeModeOptions,
@@ -110,17 +122,20 @@ function createStandardTools(
   options?: CodeModeOptions,
 ): McpToolDefinitionListItem[] {
   const { typeDefinitions, toolNameMap } = generateTypesFromTools(tools)
+  const dispatchEntries = buildDispatchEntries(tools, toolNameMap)
+
+  const example = tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK
+    ? ''
+    : STANDARD_CODE_EXAMPLE_FALLBACK
 
   const template = options?.description || CODE_TOOL_DESCRIPTION_TEMPLATE
   const description = applyDescriptionTemplate(template, {
     types: typeDefinitions,
     count: tools.length,
+    example,
   })
 
-  const fns = buildDispatchFunctions(tools, toolNameMap)
-  const toolNames = [...toolNameMap.keys()]
-
-  const codeTool = buildCodeTool(description, fns, toolNames, options)
+  const codeTool = buildCodeTool(description, dispatchEntries, options)
   return [codeTool as McpToolDefinitionListItem]
 }
 
@@ -129,15 +144,20 @@ function createProgressiveTools(
   options?: CodeModeOptions,
 ): McpToolDefinitionListItem[] {
   const { entries, toolNameMap } = generateToolCatalog(tools)
+  const dispatchEntries = buildDispatchEntries(tools, toolNameMap)
+
+  const example = tools.length > MAX_TOOLS_WITH_EXAMPLE_BLOCK
+    ? ''
+    : PROGRESSIVE_CODE_EXAMPLE_FALLBACK
 
   const template = options?.description || PROGRESSIVE_CODE_DESCRIPTION_TEMPLATE
-  const description = applyDescriptionTemplate(template, { count: tools.length })
-
-  const fns = buildDispatchFunctions(tools, toolNameMap)
-  const toolNames = [...toolNameMap.keys()]
+  const description = applyDescriptionTemplate(template, {
+    count: tools.length,
+    example,
+  })
 
   const searchTool = buildSearchTool(entries)
-  const codeTool = buildCodeTool(description, fns, toolNames, options)
+  const codeTool = buildCodeTool(description, dispatchEntries, options)
 
   return [searchTool as McpToolDefinitionListItem, codeTool as McpToolDefinitionListItem]
 }
@@ -167,14 +187,16 @@ function buildSearchTool(
 
 function buildCodeTool(
   description: string,
-  fns: Record<string, (args: unknown) => Promise<unknown>>,
-  toolNames: string[],
+  dispatchEntries: DispatchToolEntry[],
   options?: CodeModeOptions,
-): McpToolDefinition<{ code: z.ZodString }> {
+): McpToolDefinition<{ code: z.ZodString }, typeof CODE_TOOL_OUTPUT_SCHEMA> {
+  const toolNames = dispatchEntries.map(entry => entry.sanitizedName)
+
   return {
     name: 'code',
     title: 'Code Mode',
     description,
+    outputSchema: CODE_TOOL_OUTPUT_SCHEMA,
     annotations: {
       readOnlyHint: false,
       destructiveHint: true,
@@ -183,45 +205,169 @@ function buildCodeTool(
     inputSchema: {
       code: z.string().describe('JavaScript code to execute. Write the body of an async function.'),
     },
-    handler: async ({ code }) => {
-      const result = await runExecute(code, fns, options)
-      const logSuffix = formatLogs(result.logs)
-
-      if (result.error) {
-        return {
-          isError: true,
-          content: [{ type: 'text' as const, text: formatError(result.error, code, toolNames, logSuffix) }],
-        }
-      }
-
-      let resultText: string
-      if (result.result === undefined || result.result === null) {
-        resultText = 'No return value.'
-      }
-      else if (typeof result.result === 'string') {
-        resultText = result.result
-      }
-      else {
-        try {
-          resultText = JSON.stringify(result.result)
-        }
-        catch {
-          resultText = String(result.result)
-        }
-      }
+    handler: async ({ code }, extra) => {
+      const fns = buildDispatchFunctionsFromEntries(dispatchEntries, extra)
+      const executeResult = await runExecute(code, fns, options)
+      const envelope = createCodeToolEnvelope(executeResult)
 
       return {
-        content: [{ type: 'text' as const, text: `${resultText}${logSuffix}` }],
+        isError: !envelope.ok,
+        structuredContent: envelope,
+        content: [{
+          type: 'text' as const,
+          text: envelope.ok
+            ? formatSuccessContent(envelope)
+            : formatError(envelope.error ?? 'Execution failed', code, toolNames, envelope.logs ?? []),
+        }],
       }
     },
   }
+}
+
+function buildDispatchEntries(
+  tools: McpToolDefinitionListItem[],
+  toolNameMap: Map<string, string>,
+): DispatchToolEntry[] {
+  const toolsByName = new Map<string, McpToolDefinitionListItem>()
+  for (const tool of tools) {
+    toolsByName.set(resolveToolDefinitionName(tool), tool)
+  }
+
+  const entries: DispatchToolEntry[] = []
+  for (const [sanitizedName, originalName] of toolNameMap) {
+    const tool = toolsByName.get(originalName)
+    if (!tool) continue
+
+    entries.push({
+      originalName,
+      sanitizedName,
+      tool,
+      handler: createWrappedToolHandler(tool),
+    })
+  }
+
+  return entries
+}
+
+function buildDispatchFunctionsFromEntries(
+  entries: DispatchToolEntry[],
+  extra: McpRequestExtra,
+): Record<string, (args: unknown) => Promise<unknown>> {
+  const fns: Record<string, (args: unknown) => Promise<unknown>> = {}
+
+  for (const entry of entries) {
+    fns[entry.sanitizedName] = async (input: unknown) => {
+      let rawResult: unknown
+
+      try {
+        rawResult = await invokeWrappedToolHandler(entry.tool, entry.handler, input, extra)
+      }
+      catch (error) {
+        rawResult = normalizeErrorToResult(error)
+      }
+
+      return normalizeDispatchResult(rawResult, entry.sanitizedName)
+    }
+  }
+
+  return fns
+}
+
+function extractTextContent(result: { content?: Array<{ type: string, text?: string }> }): string | undefined {
+  const textContent = result.content
+    ?.filter((item): item is { type: 'text', text: string } => item.type === 'text' && typeof item.text === 'string')
+    .map(item => item.text)
+    .join('\n')
+
+  return textContent && textContent.length > 0 ? textContent : undefined
+}
+
+function toToolError(result: { content?: Array<{ type: string, text?: string }>, structuredContent?: unknown }, tool: string): CodeModeToolError {
+  return {
+    __mcp_toolkit_error__: true,
+    message: extractTextContent(result)
+      ?? (result.structuredContent !== undefined ? JSON.stringify(result.structuredContent) : 'Tool execution failed'),
+    tool,
+    details: result.structuredContent,
+  }
+}
+
+function normalizeDispatchResult(rawResult: unknown, tool: string): unknown {
+  if (rawResult == null) {
+    return rawResult
+  }
+
+  if (
+    typeof rawResult === 'string'
+    || typeof rawResult === 'number'
+    || typeof rawResult === 'boolean'
+    || Array.isArray(rawResult)
+  ) {
+    return rawResult
+  }
+
+  if (typeof rawResult === 'object') {
+    if (!isCallToolResult(rawResult)) {
+      return rawResult
+    }
+
+    if (rawResult.isError) {
+      return toToolError(rawResult, tool)
+    }
+
+    if (rawResult.structuredContent != null) {
+      return rawResult.structuredContent
+    }
+
+    const textContent = extractTextContent(rawResult)
+    if (textContent !== undefined) {
+      return textContent
+    }
+  }
+
+  return rawResult
+}
+
+function createCodeToolEnvelope(result: ExecuteResult): CodeToolEnvelope {
+  const logs = result.logs.length > 0 ? result.logs : undefined
+
+  if (result.error) {
+    return { ok: false, error: result.error, logs, durationMs: result.durationMs }
+  }
+
+  const envelope: CodeToolEnvelope = { ok: true, durationMs: result.durationMs, logs }
+  if (result.result !== undefined) {
+    envelope.result = result.result
+  }
+  return envelope
+}
+
+function formatSuccessContent(envelope: CodeToolEnvelope): string {
+  let resultText = 'No return value.'
+
+  if (envelope.result !== undefined && envelope.result !== null) {
+    if (typeof envelope.result === 'string') {
+      resultText = envelope.result
+    }
+    else {
+      try {
+        resultText = JSON.stringify(envelope.result)
+      }
+      catch {
+        resultText = String(envelope.result)
+      }
+    }
+  }
+
+  const logSuffix = formatLogs(envelope.logs ?? [])
+  return `${resultText}${logSuffix}`
 }
 
 function formatLogs(logs: string[]): string {
   return logs.length > 0 ? `\n\nConsole output:\n${logs.join('\n')}` : ''
 }
 
-function formatError(error: string, code: string, toolNames: string[], logOutput: string): string {
+function formatError(error: string, code: string, toolNames: string[], logs: string[]): string {
   const codePreview = code.length > 500 ? `${code.slice(0, 500)}...` : code
   return `Execution error: ${error}
 
@@ -231,71 +377,21 @@ ${codePreview}
 \`\`\`
 
 Available tools: ${toolNames.join(', ')}
-Fix the code and try again in a single combined block.${logOutput}`
+Fix the code and try again in a single combined block.${formatLogs(logs)}`
 }
 
-function buildDispatchFunctions(
+export function buildDispatchFunctions(
   tools: McpToolDefinitionListItem[],
   toolNameMap: Map<string, string>,
+  extra: McpRequestExtra,
 ): Record<string, (args: unknown) => Promise<unknown>> {
-  const fns: Record<string, (args: unknown) => Promise<unknown>> = {}
-
-  const toolsByName = new Map<string, McpToolDefinitionListItem>()
-  for (const tool of tools) {
-    const { name } = enrichNameTitle({
-      name: tool.name,
-      title: tool.title,
-      _meta: tool._meta,
-      type: 'tool',
-    })
-    toolsByName.set(name, tool)
-  }
-
-  for (const [sanitized, original] of toolNameMap) {
-    const tool = toolsByName.get(original)
-    if (!tool) continue
-
-    fns[sanitized] = async (input: unknown) => {
-      const args = input ?? {}
-      const rawResult = tool.inputSchema && Object.keys(tool.inputSchema).length > 0
-        ? await (tool.handler as (args: unknown, extra: unknown) => Promise<unknown>)(args, {})
-        : await (tool.handler as (extra: unknown) => Promise<unknown>)({})
-
-      // Normalize string/number returns before code mode consumes them
-      const result = normalizeToolResult(rawResult as Parameters<typeof normalizeToolResult>[0])
-
-      if (result.content) {
-        const textContent = result.content
-          .filter((c): c is { type: 'text', text: string } => c.type === 'text')
-          .map(c => c.text)
-          .join('\n')
-
-        try {
-          return JSON.parse(textContent)
-        }
-        catch {
-          return textContent
-        }
-      }
-
-      return result
-    }
-  }
-
-  return fns
+  return buildDispatchFunctionsFromEntries(buildDispatchEntries(tools, toolNameMap), extra)
 }
 
-/**
- * Check if a tool name needs sanitization for JavaScript
- */
 export { sanitizeToolName }
 
-/**
- * Dispose the code mode runtime and RPC server.
- * Call this during shutdown to release resources.
- */
 export function disposeCodeMode(): void {
   void import('./executor')
     .then(m => m.dispose())
-    .catch(() => {})
+    .catch(error => console.warn('[nuxt-mcp-toolkit] disposeCodeMode failed:', error))
 }

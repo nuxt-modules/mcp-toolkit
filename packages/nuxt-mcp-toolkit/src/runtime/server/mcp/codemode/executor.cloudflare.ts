@@ -20,6 +20,7 @@ export async function execute(
       + '(requires Node.js: secure-exec, node:http). Use a Node.js deployment target '
       + 'or disable experimental_codeMode.',
     logs: [],
+    durationMs: 0,
   }
 }
 

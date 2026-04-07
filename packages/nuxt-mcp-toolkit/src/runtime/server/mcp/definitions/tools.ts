@@ -122,21 +122,27 @@ export function normalizeErrorToResult(error: unknown): CallToolResult {
 }
 
 /**
- * Register a tool from a McpToolDefinition
+ * Resolve the normalized tool name used by registration and code mode.
+ *
  * @internal
  */
-export function registerToolFromDefinition(
-  server: McpServer,
-  tool: McpToolDefinition,
-) {
-  const { name, title } = enrichNameTitle({
+export function resolveToolDefinitionName(tool: McpToolDefinition): string {
+  const { name } = enrichNameTitle({
     name: tool.name,
     title: tool.title,
     _meta: tool._meta,
     type: 'tool',
   })
+  return name
+}
 
-  // Wrap handler with cache if cache is defined
+/**
+ * Apply the shared registration wrappers that must also be used by code mode.
+ *
+ * @internal
+ */
+export function createWrappedToolHandler(tool: McpToolDefinition): (...args: unknown[]) => unknown {
+  const name = resolveToolDefinitionName(tool)
   let handler = tool.handler as (...args: unknown[]) => unknown
 
   if (tool.cache !== undefined) {
@@ -148,9 +154,46 @@ export function registerToolFromDefinition(
       : undefined
 
     const cacheOptions = createCacheOptions(tool.cache, `mcp-tool:${name}`, defaultGetKey)
-
     handler = wrapWithCache(handler, cacheOptions)
   }
+
+  return handler
+}
+
+/**
+ * Invoke a wrapped tool handler with the same argument shape used by the MCP SDK.
+ *
+ * @internal
+ */
+export async function invokeWrappedToolHandler(
+  tool: McpToolDefinition,
+  handler: (...args: unknown[]) => unknown,
+  input: unknown,
+  extra: McpRequestExtra,
+): Promise<McpToolCallbackResult> {
+  if (tool.inputSchema !== undefined) {
+    return await handler(input ?? {}, extra) as McpToolCallbackResult
+  }
+
+  return await handler(extra) as McpToolCallbackResult
+}
+
+/**
+ * Register a tool from a McpToolDefinition
+ * @internal
+ */
+export function registerToolFromDefinition(
+  server: McpServer,
+  tool: McpToolDefinition,
+) {
+  const name = resolveToolDefinitionName(tool)
+  const { title } = enrichNameTitle({
+    name: tool.name,
+    title: tool.title,
+    _meta: tool._meta,
+    type: 'tool',
+  })
+  const handler = createWrappedToolHandler(tool)
 
   // Normalize returns and catch thrown errors into isError results
   const normalizedHandler: ToolCallback<ZodRawShape> = async (...args: unknown[]) => {
