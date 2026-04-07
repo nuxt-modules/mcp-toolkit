@@ -1,5 +1,6 @@
-import { createServer, type Server } from 'node:http'
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { randomBytes } from 'node:crypto'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { CodeModeOptions, ExecuteResult } from './types'
 import { normalizeCode } from './normalize-code'
 
@@ -10,6 +11,10 @@ type DispatchFn = (args: unknown) => Promise<unknown>
 
 const ERROR_PREFIX = '__ERROR__'
 const DEFAULT_MAX_RESULT_SIZE = 102_400 // 100KB
+const DEFAULT_MAX_REQUEST_BODY_BYTES = 1_048_576 // 1MB
+const DEFAULT_MAX_TOOL_RESPONSE_SIZE = 1_048_576 // 1MB
+const DEFAULT_WALL_TIME_LIMIT_MS = 60_000 // 60s
+const DEFAULT_MAX_TOOL_CALLS = 200
 const MAX_LOG_ENTRIES = 200
 const RETURN_TOOL = '__return__'
 
@@ -22,7 +27,8 @@ async function loadSecureExec() {
     secureExecModule = await import('secure-exec')
     return secureExecModule
   }
-  catch {
+  catch (error) {
+    console.error('[nuxt-mcp-toolkit] Failed to load secure-exec:', error)
     throw new Error(
       '[nuxt-mcp-toolkit] Code Mode requires `secure-exec`. Install it with: npm install secure-exec',
     )
@@ -73,69 +79,220 @@ function createRpcOnlyAdapter(allowedPort: number) {
   }
 }
 
-interface RpcState {
-  server: Server
-  port: number
-  token: string
+interface ExecutionContext {
   fns: Record<string, DispatchFn>
   onReturn?: (value: unknown) => void
+  returned: boolean
+  /**
+   * Function returned by AsyncLocalStorage.snapshot() that re-enters the
+   * async context active when execute() was called, before invoking the
+   * provided callback.
+   */
+  restoreContext: <R, TArgs extends unknown[]>(fn: (...args: TArgs) => R, ...args: TArgs) => R
+  deadlineMs: number
+  rpcCallCount: number
+  maxToolCalls: number
+  maxToolResponseSize: number
+}
+
+interface RpcState {
+  server: Server
+  readonly port: number
+  readonly token: string
+  readonly executions: Map<string, ExecutionContext>
+  readonly maxRequestBodyBytes: number
 }
 
 let rpcState: RpcState | null = null
+let rpcStatePromise: Promise<RpcState> | null = null
 
-function ensureRpcServer(): Promise<RpcState> {
-  if (rpcState) return Promise.resolve(rpcState)
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
-  return new Promise((resolve) => {
-    const token = randomBytes(32).toString('hex')
-    const state: RpcState = { server: null!, port: 0, token, fns: {} }
+function sanitizeErrorMessage(msg: string): string {
+  return msg
+    .replace(/(?:\/[\w.][-\w.]*)+\.\w+/g, '[path]')
+    .replace(/(?:[A-Z]:\\[\w.][-\w.\\]*)+/g, '[path]')
+    .replace(/\n\s+at .+/g, '')
+    .slice(0, 500)
+}
 
-    const server = createServer(async (req, res) => {
-      if (req.headers['x-rpc-token'] !== state.token) {
-        res.writeHead(403, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Forbidden' }))
+function sendJson(
+  res: ServerResponse,
+  status: number,
+  payload: Record<string, unknown>,
+): void {
+  let serialized: string
+  try {
+    serialized = JSON.stringify(payload)
+  }
+  catch (error) {
+    console.warn('[nuxt-mcp-toolkit] Failed to serialize RPC response:', getErrorMessage(error))
+    if (res.headersSent) {
+      res.destroy()
+      return
+    }
+    serialized = JSON.stringify({ error: 'Failed to serialize RPC response' })
+    status = 500
+  }
+
+  try {
+    res.writeHead(status, { 'Content-Type': 'application/json' })
+    res.end(serialized)
+  }
+  catch (error) {
+    console.warn('[nuxt-mcp-toolkit] Failed to write RPC response:', getErrorMessage(error))
+    if (res.headersSent) {
+      res.destroy()
+      return
+    }
+
+    try {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Failed to send RPC response' }))
+    }
+    catch (innerError) {
+      console.warn('[nuxt-mcp-toolkit] RPC response write failed, destroying socket:', getErrorMessage(innerError))
+      res.destroy()
+    }
+  }
+}
+
+async function handleRpcRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  state: Pick<RpcState, 'token' | 'executions' | 'maxRequestBodyBytes'>,
+): Promise<void> {
+  if (req.headers['x-rpc-token'] !== state.token) {
+    sendJson(res, 403, { error: 'Forbidden' })
+    return
+  }
+
+  try {
+    let body = ''
+    let byteCount = 0
+    for await (const chunk of req) {
+      const str = typeof chunk === 'string' ? chunk : (chunk as Buffer).toString()
+      byteCount += Buffer.byteLength(str)
+      if (byteCount > state.maxRequestBodyBytes) {
+        sendJson(res, 413, { error: 'Request body exceeds size limit' })
+        return
+      }
+      body += str
+    }
+
+    const { tool: name, args, execId } = JSON.parse(body) as {
+      tool: string
+      args: unknown
+      execId: string
+    }
+
+    if (typeof execId !== 'string' || execId.length === 0) {
+      sendJson(res, 400, { error: 'Missing execution id' })
+      return
+    }
+
+    const exec = state.executions.get(execId)
+    if (!exec) {
+      sendJson(res, 400, { error: `Unknown execution: ${execId}` })
+      return
+    }
+
+    if (Date.now() > exec.deadlineMs) {
+      sendJson(res, 408, { error: 'Execution wall-clock timeout exceeded' })
+      return
+    }
+
+    if (name === RETURN_TOOL) {
+      if (!exec.onReturn) {
+        sendJson(res, 400, { error: `Execution cannot accept return value: ${execId}` })
+        return
+      }
+      if (exec.returned) {
+        sendJson(res, 400, { error: 'Return value already received for this execution' })
         return
       }
 
-      let body = ''
-      for await (const chunk of req) body += chunk
+      exec.restoreContext(exec.onReturn, args)
+      exec.returned = true
+      sendJson(res, 200, { result: { ok: true } })
+      return
+    }
 
-      try {
-        const { tool: name, args } = JSON.parse(body) as { tool: string, args: unknown }
+    const fn = exec.fns[name]
+    if (!fn) {
+      sendJson(res, 400, { error: `Unknown tool: ${name}` })
+      return
+    }
 
-        if (name === RETURN_TOOL && state.onReturn) {
-          state.onReturn(args)
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ result: { ok: true } }))
-          return
+    exec.rpcCallCount++
+    if (exec.rpcCallCount > exec.maxToolCalls) {
+      sendJson(res, 429, { error: `Tool call limit exceeded (max ${exec.maxToolCalls})` })
+      return
+    }
+
+    const result = await exec.restoreContext(fn, args)
+    const serialized = JSON.stringify(result)
+    if (serialized.length > exec.maxToolResponseSize) {
+      sendJson(res, 200, { result: truncateResult(result, serialized.length, exec.maxToolResponseSize) })
+    }
+    else {
+      sendJson(res, 200, { result })
+    }
+  }
+  catch (error) {
+    console.error('[nuxt-mcp-toolkit] RPC dispatch error:', error)
+    sendJson(res, 500, { error: sanitizeErrorMessage(getErrorMessage(error)) })
+  }
+}
+
+/** RPC server is a singleton; the first successful bind pins `maxRequestBodyBytes` (like `NodeRuntime` options). */
+function ensureRpcServer(maxRequestBodyBytes: number): Promise<RpcState> {
+  if (rpcState) return Promise.resolve(rpcState)
+  if (rpcStatePromise) return rpcStatePromise
+
+  rpcStatePromise = new Promise((resolve, reject) => {
+    const token = randomBytes(32).toString('hex')
+    const executions = new Map<string, ExecutionContext>()
+    const stateRef = { token, executions, maxRequestBodyBytes }
+    const server = createServer((req, res) => {
+      handleRpcRequest(req, res, stateRef).catch((error) => {
+        console.error('[nuxt-mcp-toolkit] Unhandled RPC error:', error)
+        if (!res.headersSent) {
+          try {
+            sendJson(res, 500, { error: 'Internal server error' })
+          }
+          catch {
+            res.destroy()
+          }
         }
-
-        const fn = state.fns[name]
-        if (!fn) {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: `Unknown tool: ${name}` }))
-          return
-        }
-        const result = await fn(args)
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ result }))
-      }
-      catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          error: err instanceof Error ? err.message : String(err),
-        }))
-      }
+      })
     })
 
+    const onError = (error: Error) => {
+      rpcStatePromise = null
+      console.error('[nuxt-mcp-toolkit] RPC server startup failed:', error)
+      try {
+        server.close()
+      }
+      catch (closeError) {
+        console.warn('[nuxt-mcp-toolkit] Failed to close RPC server during error cleanup:', getErrorMessage(closeError))
+      }
+      reject(error)
+    }
+
+    server.once('error', onError)
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address() as { port: number }
-      state.server = server
-      state.port = addr.port
+      server.off('error', onError)
+      const state: RpcState = { server, port: addr.port, token, executions, maxRequestBodyBytes }
       rpcState = state
       resolve(state)
     })
   })
+
+  return rpcStatePromise
 }
 
 let cachedProxyKey = ''
@@ -162,10 +319,17 @@ async function rpc(toolName, args) {
   const res = await fetch('http://127.0.0.1:${port}', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-rpc-token': '${token}' },
-    body: JSON.stringify({ tool: toolName, args }),
+    body: JSON.stringify({ tool: toolName, args, execId: __execId }),
   });
   const data = JSON.parse(typeof res.text === 'function' ? await res.text() : res.body);
   if (data.error) throw new Error(data.error);
+  if (data.result && data.result.__toolError) {
+    const err = new Error(data.result.message);
+    err.tool = data.result.tool;
+    err.isToolError = true;
+    err.details = data.result.details;
+    throw err;
+  }
   return data.result;
 }
 
@@ -181,11 +345,13 @@ function buildSandboxCode(
   toolNames: string[],
   port: number,
   token: string,
+  execId: string,
 ): string {
   const boilerplate = getProxyBoilerplate(toolNames, port, token)
   const cleaned = normalizeCode(userCode)
 
-  return `${boilerplate}
+  return `const __execId = ${JSON.stringify(execId)};
+${boilerplate}
 
 const __fn = async () => {
 ${cleaned}
@@ -241,87 +407,135 @@ export async function execute(
   fns: Record<string, DispatchFn>,
   options?: CodeModeOptions,
 ): Promise<ExecuteResult> {
-  const secureExec = await loadSecureExec()
-
-  const rpc = await ensureRpcServer()
-  rpc.fns = fns
-
-  const toolNames = Object.keys(fns)
-  const sandboxCode = buildSandboxCode(code, toolNames, rpc.port, rpc.token)
-
-  // Result delivered via RPC — avoids console.log buffer limits (~4KB)
-  let returnedResult: { value: unknown, received: boolean } = { value: undefined, received: false }
-  rpc.onReturn = (value: unknown) => {
-    returnedResult = { value, received: true }
-  }
-
-  // Runtime is a singleton — memoryLimit and cpuTimeLimitMs are locked
-  // from the first call. Call dispose() and re-execute to change them.
-  if (!runtimeInstance) {
-    runtimeInstance = new secureExec.NodeRuntime({
-      systemDriver: secureExec.createNodeDriver({
-        networkAdapter: createRpcOnlyAdapter(rpc.port),
-        permissions: {
-          network: () => ({ allow: true }),
-        },
-      }),
-      runtimeDriverFactory: secureExec.createNodeRuntimeDriverFactory(),
-      memoryLimit: options?.memoryLimit ?? 64,
-      cpuTimeLimitMs: options?.cpuTimeLimitMs ?? 10_000,
-    })
-  }
-
-  let errorMsg: string | undefined
   const logs: string[] = []
 
-  const execResult = await runtimeInstance.exec(sandboxCode, {
-    onStdio: ({ channel, message }: { channel: string, message: string }) => {
-      if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
-        errorMsg = message.slice(ERROR_PREFIX.length)
-      }
-      else if (logs.length < MAX_LOG_ENTRIES) {
-        logs.push(`[${channel}] ${message}`)
-      }
-      else if (logs.length === MAX_LOG_ENTRIES) {
-        logs.push(`... log output truncated at ${MAX_LOG_ENTRIES} entries`)
-      }
-    },
-  })
-
-  rpc.onReturn = undefined
-
-  if (execResult.code !== 0 || errorMsg) {
+  if (typeof AsyncLocalStorage.snapshot !== 'function') {
     return {
       result: undefined,
-      error: errorMsg ?? execResult.errorMessage ?? `Exit code ${execResult.code}`,
+      error: '[nuxt-mcp-toolkit] Code Mode requires Node.js >=18.16.0 (AsyncLocalStorage.snapshot is unavailable).',
       logs,
     }
   }
 
-  let result: unknown
-  if (returnedResult.received) {
-    const maxSize = options?.maxResultSize ?? DEFAULT_MAX_RESULT_SIZE
-    const serialized = JSON.stringify(returnedResult.value)
+  let rpc: RpcState | undefined
+  let execId: string | undefined
+  let returnedResult: { value: unknown, received: boolean } = { value: undefined, received: false }
 
-    if (serialized.length <= maxSize) {
-      result = returnedResult.value
+  try {
+    const secureExec = await loadSecureExec()
+    rpc = await ensureRpcServer(options?.maxRequestBodyBytes ?? DEFAULT_MAX_REQUEST_BODY_BYTES)
+
+    execId = randomBytes(8).toString('hex')
+    const restoreContext = AsyncLocalStorage.snapshot()
+
+    // Result delivered via RPC per execution, avoiding console.log buffer limits (~4KB)
+    rpc.executions.set(execId, {
+      fns: Object.freeze({ ...fns }),
+      onReturn: (value: unknown) => {
+        returnedResult = { value, received: true }
+      },
+      returned: false,
+      restoreContext,
+      deadlineMs: Date.now() + (options?.wallTimeLimitMs ?? DEFAULT_WALL_TIME_LIMIT_MS),
+      rpcCallCount: 0,
+      maxToolCalls: options?.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS,
+      maxToolResponseSize: options?.maxToolResponseSize ?? DEFAULT_MAX_TOOL_RESPONSE_SIZE,
+    })
+
+    const toolNames = Object.keys(fns)
+    const sandboxCode = buildSandboxCode(code, toolNames, rpc.port, rpc.token, execId)
+
+    // Runtime is a singleton — memoryLimit and cpuTimeLimitMs are locked
+    // from the first call. Call dispose() and re-execute to change them.
+    if (!runtimeInstance) {
+      runtimeInstance = new secureExec.NodeRuntime({
+        systemDriver: secureExec.createNodeDriver({
+          networkAdapter: createRpcOnlyAdapter(rpc.port),
+          permissions: {
+            network: () => ({ allow: true }),
+          },
+        }),
+        runtimeDriverFactory: secureExec.createNodeRuntimeDriverFactory(),
+        memoryLimit: options?.memoryLimit ?? 64,
+        cpuTimeLimitMs: options?.cpuTimeLimitMs ?? 10_000,
+      })
     }
-    else {
-      result = truncateResult(returnedResult.value, serialized.length, maxSize)
+
+    let errorMsg: string | undefined
+    const execResult = await runtimeInstance.exec(sandboxCode, {
+      onStdio: ({ channel, message }: { channel: string, message: string }) => {
+        if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
+          errorMsg = message.slice(ERROR_PREFIX.length)
+        }
+        else if (logs.length < MAX_LOG_ENTRIES) {
+          logs.push(`[${channel}] ${message}`)
+        }
+        else if (logs.length === MAX_LOG_ENTRIES) {
+          logs.push(`... log output truncated at ${MAX_LOG_ENTRIES} entries`)
+        }
+      },
+    })
+
+    if (execResult.code !== 0 || errorMsg) {
+      return {
+        result: undefined,
+        error: errorMsg ?? execResult.errorMessage ?? `Exit code ${execResult.code}`,
+        logs,
+      }
+    }
+
+    let result: unknown
+    if (returnedResult.received) {
+      const maxSize = options?.maxResultSize ?? DEFAULT_MAX_RESULT_SIZE
+      const serialized = JSON.stringify(returnedResult.value)
+
+      if (serialized.length <= maxSize) {
+        result = returnedResult.value
+      }
+      else {
+        result = truncateResult(returnedResult.value, serialized.length, maxSize)
+      }
+    }
+
+    return { result, logs }
+  }
+  catch (error) {
+    console.error('[nuxt-mcp-toolkit] Execution error:', error)
+    return {
+      result: undefined,
+      error: sanitizeErrorMessage(getErrorMessage(error)),
+      logs,
     }
   }
-
-  return { result, logs }
+  finally {
+    if (rpc && execId) {
+      rpc.executions.delete(execId)
+    }
+  }
 }
 
 export function dispose(): void {
+  const state = rpcState
+  rpcState = null
+  rpcStatePromise = null
+
   if (runtimeInstance) {
-    runtimeInstance.dispose()
+    try {
+      runtimeInstance.dispose()
+    }
+    catch (error) {
+      console.warn('[nuxt-mcp-toolkit] Error disposing runtime:', getErrorMessage(error))
+    }
     runtimeInstance = null
   }
-  if (rpcState) {
-    rpcState.server.close()
-    rpcState = null
+  if (state) {
+    state.executions.clear()
+    try {
+      state.server.close()
+    }
+    catch (error) {
+      console.warn('[nuxt-mcp-toolkit] Error closing RPC server during dispose:', getErrorMessage(error))
+    }
   }
   secureExecModule = null
   cachedProxyKey = ''

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { textResult, jsonResult, errorResult, imageResult, normalizeToolResult } from '../src/runtime/server/mcp/definitions/results'
+import { textResult, jsonResult, errorResult, imageResult, audioResult, normalizeToolResult } from '../src/runtime/server/mcp/definitions/results'
 
 describe('Result Helpers', () => {
   describe('textResult', () => {
@@ -116,6 +116,35 @@ describe('Result Helpers', () => {
 
       expect(result).toEqual({
         content: [{ type: 'image', data: base64Data, mimeType: 'image/webp' }],
+      })
+    })
+  })
+
+  describe('audioResult', () => {
+    it('should create an audio result', () => {
+      const base64Data = '//uQx'
+      const result = audioResult(base64Data, 'audio/mp3')
+
+      expect(result).toEqual({
+        content: [{ type: 'audio', data: base64Data, mimeType: 'audio/mp3' }],
+      })
+    })
+
+    it('should handle wav mime type', () => {
+      const base64Data = 'UklGRiQAAABXQVZFZm10'
+      const result = audioResult(base64Data, 'audio/wav')
+
+      expect(result).toEqual({
+        content: [{ type: 'audio', data: base64Data, mimeType: 'audio/wav' }],
+      })
+    })
+
+    it('should handle ogg mime type', () => {
+      const base64Data = 'T2dnUwAC'
+      const result = audioResult(base64Data, 'audio/ogg')
+
+      expect(result).toEqual({
+        content: [{ type: 'audio', data: base64Data, mimeType: 'audio/ogg' }],
       })
     })
   })

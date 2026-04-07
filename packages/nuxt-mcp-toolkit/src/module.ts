@@ -294,6 +294,7 @@ export default defineNuxtModule<ModuleOptions>({
         'jsonResult',
         'errorResult',
         'imageResult',
+        'audioResult',
         'completable',
         'extractToolNames',
       ].map(name => ({ name, from: mcpDefinitionsPath })))

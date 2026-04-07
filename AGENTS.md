@@ -179,7 +179,7 @@ If `name` and `title` are omitted, they are auto-generated from the filename:
 
 ### Return Types
 
-- **Tools**: Return `string`, `number`, `boolean`, object, array (auto-wrapped), or full `CallToolResult`. Thrown errors become `isError` results.
+- **Tools**: Return `string`, `number`, `boolean`, object, array (auto-wrapped), or full `CallToolResult`. Use `imageResult` / `audioResult` for image and audio content blocks. Thrown errors become `isError` results.
 - **Resources**: Return `{ contents: [{ uri: string, text: string }] }`
 - **Prompts**: Return `{ messages: [{ role: 'user' | 'assistant', content: { type: 'text', text: string } }] }`
 
