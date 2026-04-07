@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import type { Annotations } from '@modelcontextprotocol/sdk/types.js'
 import type { McpServer, ResourceTemplate, ReadResourceCallback, ReadResourceTemplateCallback, ResourceMetadata } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { readFile } from 'node:fs/promises'
-import { resolve, extname } from 'node:path'
+import { resolve, extname, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { enrichNameTitle } from './utils'
 import { type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
@@ -167,7 +167,11 @@ export function registerResourceFromDefinition(
 
   // Handle file-based resources
   if ('file' in resource && resource.file) {
-    const filePath = resolve(process.cwd(), resource.file)
+    const projectRoot = process.cwd()
+    const filePath = resolve(projectRoot, resource.file)
+    if (!filePath.startsWith(projectRoot + sep)) {
+      throw new Error(`Resource file "${resource.file}" resolves outside project root`)
+    }
 
     // Auto-generate URI if not provided
     if (!uri) {
