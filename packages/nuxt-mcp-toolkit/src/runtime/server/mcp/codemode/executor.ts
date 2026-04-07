@@ -247,6 +247,7 @@ async function handleRpcRequest(
   }
 }
 
+/** RPC server is a singleton; the first successful bind pins `maxRequestBodyBytes` (like `NodeRuntime` options). */
 function ensureRpcServer(maxRequestBodyBytes: number): Promise<RpcState> {
   if (rpcState) return Promise.resolve(rpcState)
   if (rpcStatePromise) return rpcStatePromise

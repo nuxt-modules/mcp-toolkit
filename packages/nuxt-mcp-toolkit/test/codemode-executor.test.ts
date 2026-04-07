@@ -214,6 +214,34 @@ describe('executor AsyncLocalStorage context', () => {
     expect(result.error).toBeUndefined()
     expect(result.result).toBe('user-123')
   })
+
+  it('tool dispatch preserves AsyncLocalStorage after await inside handler', async () => {
+    const als = new AsyncLocalStorage<{ userId: string }>()
+
+    const warmupFns: Record<string, (args: unknown) => Promise<unknown>> = {
+      noop: async () => 'ok',
+    }
+    const warmup = await execute('return await codemode.noop();', warmupFns)
+    expect(warmup.error).toBeUndefined()
+
+    const fns: Record<string, (args: unknown) => Promise<unknown>> = {
+      get_user: async () => {
+        await Promise.resolve()
+        const store = als.getStore()
+        if (!store) {
+          throw new Error('AsyncLocalStorage context lost after await')
+        }
+        return store.userId
+      },
+    }
+
+    const result = await als.run({ userId: 'user-async-456' }, () =>
+      execute('return await codemode.get_user();', fns),
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(result.result).toBe('user-async-456')
+  })
 })
 
 describe('executor hardening', () => {
