@@ -1,5 +1,21 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.13.4
+
+### Patch Changes
+
+- [#214](https://github.com/nuxt-modules/mcp-toolkit/pull/214) [`576b87d`](https://github.com/nuxt-modules/mcp-toolkit/commit/576b87d9fdb55647e98420e81c68dc48432542da) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add `audioResult()` helper (and server auto-import) for tool handlers returning MCP audio content (base64 + MIME type), mirroring `imageResult`.
+
+- [`6a6227c`](https://github.com/nuxt-modules/mcp-toolkit/commit/6a6227cfa17f6479277bba47afaf2ea0c8110191) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Fix file path generation on Windows producing backslashes instead of forward slashes.
+
+- [`6a6227c`](https://github.com/nuxt-modules/mcp-toolkit/commit/6a6227cfa17f6479277bba47afaf2ea0c8110191) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Harden code-mode executor with resource limits (memory, timeout, call-depth), per-execution `AsyncLocalStorage` context, and concurrency safety via a semaphore that caps parallel sandbox runs.
+
+- [`6a6227c`](https://github.com/nuxt-modules/mcp-toolkit/commit/6a6227cfa17f6479277bba47afaf2ea0c8110191) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Prefer `structuredContent` over raw `content` when dispatching code-mode tool results, preserving typed return values for the caller.
+
+- [`6a6227c`](https://github.com/nuxt-modules/mcp-toolkit/commit/6a6227cfa17f6479277bba47afaf2ea0c8110191) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Surface tool errors as throwable exceptions inside the code-mode sandbox instead of silently returning `isError` results.
+
+- [`6a6227c`](https://github.com/nuxt-modules/mcp-toolkit/commit/6a6227cfa17f6479277bba47afaf2ea0c8110191) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Generate typed return values in the code-mode `codemode` object from each tool's `outputSchema`, so sandbox code gets accurate autocomplete and type-safety.
+
 ## 0.13.3
 
 ### Patch Changes
