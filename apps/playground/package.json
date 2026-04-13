@@ -26,7 +26,7 @@
     "@nuxt/ui": "^4.6.1",
     "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "ai": "^6.0.158",
+    "ai": "^6.0.159",
     "better-auth": "^1.6.2",
     "drizzle-orm": "^0.45.2",
     "evlog": "^2.12.0",
