@@ -18,22 +18,22 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.35",
+    "@ai-sdk/mcp": "^1.0.36",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "better-sqlite3": "^12.8.0",
+    "better-sqlite3": "^12.9.0",
     "docus": "^5.9.0",
     "minimark": "^1.0.0",
-    "motion-v": "^2.2.0",
+    "motion-v": "^2.2.1",
     "nuxt": "^4.4.2",
-    "nuxt-studio": "^1.5.1",
-    "shaders": "^2.5.92"
+    "nuxt-studio": "^1.6.0",
+    "shaders": "^2.5.93"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.2",
     "eslint": "^9.39.4",
     "evalite": "^1.0.0-beta.16",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   }
 }
