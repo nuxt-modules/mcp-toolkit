@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.13.5
+
+### Patch Changes
+
+- [#221](https://github.com/nuxt-modules/mcp-toolkit/pull/221) [`84bdb8e`](https://github.com/nuxt-modules/mcp-toolkit/commit/84bdb8e3ec54c01312233b6c808e3e79207e5ba8) Thanks [@benjamincanac](https://github.com/benjamincanac)! - Reject GET SSE requests in stateless mode to prevent serverless functions from hitting execution timeouts
+
 ## 0.13.4
 
 ### Patch Changes
