@@ -77,6 +77,13 @@ export default createMcpTransportHandler(async (createServer, event) => {
   const request = toWebRequest(event)
 
   if (!sessionsEnabled) {
+    // In stateless mode the SDK opens an SSE ReadableStream that never
+    // receives notifications or closes, causing serverless functions
+    // (e.g. Vercel) to hit their execution timeout.
+    if (request.method === 'GET') {
+      return createJsonRpcErrorResponse(405, -32_000, 'Method not allowed. Use POST for MCP requests.')
+    }
+
     const server = createServer()
     event.context._mcpServer = server
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })

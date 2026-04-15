@@ -36,4 +36,20 @@ describe('Endpoint', async () => {
       expect(httpError.statusCode).not.toBe(404)
     }
   })
+
+  it('should reject GET SSE requests in stateless mode with 405', async () => {
+    const body = await $fetch('/mcp', {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+      },
+      ignoreResponseError: true,
+    })
+
+    expect(body).toEqual({
+      jsonrpc: '2.0',
+      error: { code: -32000, message: 'Method not allowed. Use POST for MCP requests.' },
+      id: null,
+    })
+  })
 })
