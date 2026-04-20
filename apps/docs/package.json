@@ -23,12 +23,12 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "better-sqlite3": "^12.9.0",
-    "docus": "^5.9.0",
+    "docus": "^5.10.0",
     "minimark": "^1.0.0",
     "motion-v": "^2.2.1",
     "nuxt": "^4.4.2",
     "nuxt-studio": "^1.6.0",
-    "shaders": "^2.5.93"
+    "shaders": "^2.5.103"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.2",

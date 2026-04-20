@@ -33,11 +33,11 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.6.0",
-    "@changesets/cli": "^2.30.0",
+    "@changesets/cli": "^2.31.0",
     "@nuxt/eslint-config": "^1.15.2",
     "eslint": "^9.39.4",
     "turbo": "^2.9.6",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.3"
   },
   "workspaces": [
     "apps/*",
