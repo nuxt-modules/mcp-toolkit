@@ -1,5 +1,106 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.14.0
+
+### Minor Changes
+
+- [#226](https://github.com/nuxt-modules/mcp-toolkit/pull/226) [`2dd1e29`](https://github.com/nuxt-modules/mcp-toolkit/commit/2dd1e29ae5915d962508957d7a21740704ad6d04) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add `useMcpElicitation()` for requesting structured input from the connected client (MCP spec 2025-11-25).
+
+  ```typescript
+  const elicit = useMcpElicitation();
+
+  const result = await elicit.form({
+    message: "Pick a release channel",
+    schema: { channel: z.enum(["stable", "beta"]) },
+  });
+  if (result.action !== "accept") return "Cancelled.";
+  ```
+
+  - **Form mode** — pass a Zod raw shape; the response is validated and fully typed.
+  - **URL mode** — `elicit.url({ message, url })` redirects the user to a hosted page (opt-in per the spec).
+  - **Confirm** — `elicit.confirm(message)` returns a `boolean`.
+  - **Capability check** — `elicit.supports('form' | 'url')` follows the spec's backwards compatibility rule (an empty `elicitation: {}` capability defaults to form support; once `url` is declared explicitly, `form` must be too).
+  - **Typed errors** — `McpElicitationError` with `code: 'unsupported' | 'invalid-schema' | 'invalid-response'` so callers can fall back gracefully when the client doesn't support the prompt.
+  - Underlying validation: Zod → JSON Schema (per the MCP spec, the schema must be a flat object of primitives, enums, or string-enum arrays — nested objects are rejected up front).
+
+  The composable is auto-imported alongside the existing helpers and re-exported from `@nuxtjs/mcp-toolkit/server`. The toolkit also re-exports `useMcpServer()` and `useMcpSession()` from the same entry point.
+
+  Also bumps the DevTools MCP Inspector launch budget to 60s with a fast-path that resolves as soon as the inspector emits its ready URL with the captured `MCP_PROXY_AUTH_TOKEN`, so the Inspector tab no longer times out on a cold `npx` install when testing elicitation.
+
+- [#227](https://github.com/nuxt-modules/mcp-toolkit/pull/227) [`6ca0c23`](https://github.com/nuxt-modules/mcp-toolkit/commit/6ca0c23f7b077b6c5af7f862f63ffa5bdee5f87b) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add `useMcpLogger()` and first-class observability via [evlog](https://evlog.dev), shipped as an **optional peer dependency**.
+
+  The composable is split into two clearly-named channels so it's always obvious what reaches the user vs. your server logs:
+
+  ```typescript
+  const log = useMcpLogger("billing");
+
+  // → MCP client (Inspector / Cursor / Claude — notifications/message). Always works.
+  await log.notify.info({ msg: "starting charge", amount });
+
+  // → server-side wide event (dev terminal + drains). Requires `evlog` installed.
+  log.set({ user: { id: userId } });
+  log.event("charge_started", { amount });
+  ```
+
+  - **Client channel** — `log.notify(level, data, logger?)` plus `notify.debug` / `notify.info` / `notify.warning` / `notify.error` shortcuts. Always resolves, never throws, and respects the client's `logging/setLevel` per session. The toolkit declares the `logging` server capability automatically. Works without `evlog`.
+  - **Server channel** — `log.set(fields)` accumulates context onto the request's evlog wide event; `log.event(name, fields?)` captures a discrete event; `log.evlog` exposes the full [`RequestLogger`](https://evlog.dev/docs/api/request-logger) (`fork`, `error`, `getContext`, …). Throws `McpObservabilityNotEnabledError` when observability is off.
+
+  ### Opt-in observability
+
+  `evlog` is an **optional peer dependency** — install it to unlock wide events:
+
+  ```bash
+  pnpm add evlog
+  ```
+
+  `mcp.logging` modes:
+
+  | Value             | Behavior                                                                                              |
+  | ----------------- | ----------------------------------------------------------------------------------------------------- |
+  | omitted (default) | Auto-detect: on if `evlog` is installed, off otherwise.                                               |
+  | `true` or object  | Force on. Build throws with install instructions if `evlog` is missing.                               |
+  | `false`           | Force off. `notify` keeps working; `set` / `event` / `evlog` throw `McpObservabilityNotEnabledError`. |
+
+  ### Native MCP wide-event tagging
+
+  When observability is active, every MCP request is wrapped in an evlog wide event natively tagged with the JSON-RPC payload — no user code required:
+
+  | Field                                      | Description                                                |
+  | ------------------------------------------ | ---------------------------------------------------------- |
+  | `mcp.transport`                            | `streamable-http` / `cloudflare-do`                        |
+  | `mcp.route`                                | The configured MCP endpoint path                           |
+  | `mcp.session_id`                           | From the `mcp-session-id` header                           |
+  | `mcp.method`                               | `tools/call`, `tools/list`, `initialize`, …                |
+  | `mcp.request_id`                           | The JSON-RPC id                                            |
+  | `mcp.tool` / `mcp.resource` / `mcp.prompt` | Filled per `tools/call` / `resources/read` / `prompts/get` |
+
+  Batched JSON-RPC payloads expose plural arrays (`mcp.methods`, `mcp.tools`, …).
+
+  ### Ship to your observability stack
+
+  Once `evlog` is installed, every MCP wide event can be forwarded to **Axiom, Sentry, OTLP, HyperDX, Datadog, Better Stack, or PostHog** with a single Nitro plugin — no MCP-specific glue, just the standard `evlog:drain` hook:
+
+  ```typescript
+  // server/plugins/evlog-axiom.ts
+  import { createAxiomDrain } from "evlog/adapters/axiom";
+
+  export default defineNitroPlugin((nitroApp) => {
+    nitroApp.hooks.hook("evlog:drain", createAxiomDrain());
+  });
+  ```
+
+  Register multiple drains in parallel, or write a custom one with `(ctx) => Promise<void>`. See [evlog.dev](https://evlog.dev) for the full list.
+
+  ### Compatibility
+
+  When wired in, the integration plays nicely with `@nuxthub/core` and other modules that pull in CLI dependencies (e.g. `drizzle-kit`) — we no longer force `noExternals: true` globally; instead we inline only `evlog` and `evlog/nitro`.
+
+### Patch Changes
+
+- [#221](https://github.com/nuxt-modules/mcp-toolkit/pull/221) [`84bdb8e`](https://github.com/nuxt-modules/mcp-toolkit/commit/84bdb8e3ec54c01312233b6c808e3e79207e5ba8) Thanks [@benjamincanac](https://github.com/benjamincanac)! - Reject GET SSE requests in stateless mode to prevent serverless functions from hitting execution timeouts
+
+- [#228](https://github.com/nuxt-modules/mcp-toolkit/pull/228) [`756985b`](https://github.com/nuxt-modules/mcp-toolkit/commit/756985ba2987d8aa288ec4ed3fd0727b14d9f249) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Internal refactor: tighten TypeScript across the module and split `module.ts` into focused setup helpers (`evlog`, `nitro-aliases`, `definitions`, `auto-imports`). Removes the remaining `as any` casts in `server.ts`, `logger.ts`, `elicitation.ts`, `utils.ts`, `compat.ts`, `executor.ts` and `handler.ts`, centralises virtual-module declarations under `runtime/types/virtual-modules.d.ts`, and adds an ambient type surface for the optional `secure-exec` peer dep. No public API changes.
+
 ## 0.13.4
 
 ### Patch Changes
