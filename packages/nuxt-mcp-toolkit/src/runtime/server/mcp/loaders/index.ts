@@ -234,14 +234,8 @@ export async function loadAllDefinitions(paths: LoaderPaths) {
  */
 export async function getHandlerRoutes(): Promise<HandlerRouteInfo[]> {
   try {
-    // @ts-expect-error - Generated module, types available at runtime
-    const handlersModule = await import('#nuxt-mcp-toolkit/handlers.mjs')
-    interface HandlerDef {
-      name: string
-      route?: string
-    }
-    const handlers = handlersModule.handlers as HandlerDef[]
-    return handlers.map(h => ({ name: h.name, route: h.route }))
+    const { handlers } = await import('#nuxt-mcp-toolkit/handlers.mjs')
+    return handlers.map(h => ({ name: h.name ?? '', route: h.route }))
   }
   catch {
     return []

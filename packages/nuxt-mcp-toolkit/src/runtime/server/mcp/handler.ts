@@ -1,85 +1,51 @@
 import { getRouterParam } from 'h3'
 import type { H3Event } from 'h3'
-import type { McpToolDefinition, McpResourceDefinition, McpPromptDefinition } from './definitions'
 import type { McpHandlerOptions } from './definitions/handlers'
-// @ts-expect-error - TODO: Fix this
 import config from '#nuxt-mcp-toolkit/config.mjs'
-// @ts-expect-error - TODO: Fix this
 import { tools } from '#nuxt-mcp-toolkit/tools.mjs'
-// @ts-expect-error - TODO: Fix this
 import { resources } from '#nuxt-mcp-toolkit/resources.mjs'
-// @ts-expect-error - TODO: Fix this
 import { prompts } from '#nuxt-mcp-toolkit/prompts.mjs'
-// @ts-expect-error - TODO: Fix this
 import { handlers } from '#nuxt-mcp-toolkit/handlers.mjs'
-// @ts-expect-error - TODO: Fix this
 import { defaultHandler } from '#nuxt-mcp-toolkit/default-handler.mjs'
 import { createMcpHandler } from './utils'
+
+/**
+ * Merge a per-handler override (custom or `defaultHandler`) onto the
+ * module's global config + auto-discovered tools/resources/prompts.
+ *
+ * `name` is special-cased: when no override is set it falls back to
+ * `config.name` and finally a sensible default chosen by the caller.
+ */
+function mergeMcpConfig(override: McpHandlerOptions | null, fallbackName: string) {
+  return {
+    name: override?.name ?? config.name ?? fallbackName,
+    version: override?.version ?? config.version,
+    description: override?.description ?? config.description,
+    instructions: override?.instructions ?? config.instructions,
+    icons: override?.icons ?? config.icons,
+    browserRedirect: override?.browserRedirect ?? config.browserRedirect,
+    tools: override?.tools ?? tools,
+    resources: override?.resources ?? resources,
+    prompts: override?.prompts ?? prompts,
+    middleware: override?.middleware,
+    experimental_codeMode: override?.experimental_codeMode,
+  }
+}
 
 export default createMcpHandler((event: H3Event) => {
   const handlerName = getRouterParam(event, 'handler')
 
-  // Custom handler via /mcp/:handler
   if (handlerName) {
-    const handlerDef = (handlers as McpHandlerOptions[]).find(
-      h => h.name === handlerName,
-    )
-
+    const handlerDef = handlers.find(h => h.name === handlerName)
     if (!handlerDef) {
       throw new Error(`Handler "${handlerName}" not found`)
     }
-
-    const globalTools = tools as McpToolDefinition[]
-    const globalResources = resources as McpResourceDefinition[]
-    const globalPrompts = prompts as McpPromptDefinition[]
-
-    return {
-      name: handlerDef.name ?? handlerName,
-      version: handlerDef.version ?? config.version,
-      description: handlerDef.description ?? config.description,
-      instructions: handlerDef.instructions ?? config.instructions,
-      icons: handlerDef.icons ?? config.icons,
-      browserRedirect: handlerDef.browserRedirect ?? config.browserRedirect,
-      tools: handlerDef.tools ?? globalTools,
-      resources: handlerDef.resources ?? globalResources,
-      prompts: handlerDef.prompts ?? globalPrompts,
-      middleware: handlerDef.middleware,
-      experimental_codeMode: handlerDef.experimental_codeMode,
-    }
+    return mergeMcpConfig(handlerDef, handlerName)
   }
 
-  // Default handler override via server/mcp/index.ts
-  const defaultHandlerDef = defaultHandler as McpHandlerOptions | null
-  if (defaultHandlerDef) {
-    const globalTools = tools as McpToolDefinition[]
-    const globalResources = resources as McpResourceDefinition[]
-    const globalPrompts = prompts as McpPromptDefinition[]
-
-    return {
-      name: defaultHandlerDef.name ?? config.name ?? 'MCP Server',
-      version: defaultHandlerDef.version ?? config.version,
-      description: defaultHandlerDef.description ?? config.description,
-      instructions: defaultHandlerDef.instructions ?? config.instructions,
-      icons: defaultHandlerDef.icons ?? config.icons,
-      browserRedirect: defaultHandlerDef.browserRedirect ?? config.browserRedirect,
-      tools: defaultHandlerDef.tools ?? globalTools,
-      resources: defaultHandlerDef.resources ?? globalResources,
-      prompts: defaultHandlerDef.prompts ?? globalPrompts,
-      middleware: defaultHandlerDef.middleware,
-      experimental_codeMode: defaultHandlerDef.experimental_codeMode,
-    }
+  if (defaultHandler) {
+    return mergeMcpConfig(defaultHandler, 'MCP Server')
   }
 
-  // Default behavior: expose all global tools, resources, and prompts
-  return {
-    name: config.name || 'MCP Server',
-    version: config.version,
-    description: config.description,
-    instructions: config.instructions,
-    icons: config.icons,
-    browserRedirect: config.browserRedirect,
-    tools: tools as McpToolDefinition[],
-    resources: resources as McpResourceDefinition[],
-    prompts: prompts as McpPromptDefinition[],
-  }
+  return mergeMcpConfig(null, 'MCP Server')
 })

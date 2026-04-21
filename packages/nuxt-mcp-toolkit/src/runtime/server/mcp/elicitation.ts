@@ -4,9 +4,9 @@ import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js
 import type {
   ElicitRequestFormParams,
   ElicitRequestURLParams,
-  ElicitResult,
 } from '@modelcontextprotocol/sdk/types.js'
 import { useMcpServer } from './server'
+import { getSdkServerFromHelper } from './internals'
 
 /**
  * Restricted JSON Schema property allowed by the MCP elicitation spec.
@@ -202,12 +202,7 @@ function clientSupports(capabilities: { elicitation?: Record<string, unknown> } 
  */
 export function useMcpElicitation(): McpElicitation {
   const helper = useMcpServer()
-  // The high-level `McpServer` exposes the underlying SDK `Server` via `.server`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sdkServer = (helper.server as any).server as {
-    elicitInput: (params: ElicitRequestFormParams | ElicitRequestURLParams) => Promise<ElicitResult>
-    getClientCapabilities: () => { elicitation?: Record<string, unknown> } | undefined
-  }
+  const sdkServer = getSdkServerFromHelper(helper)
 
   function supports(mode: ElicitationMode = 'form'): boolean {
     return clientSupports(sdkServer.getClientCapabilities(), mode)

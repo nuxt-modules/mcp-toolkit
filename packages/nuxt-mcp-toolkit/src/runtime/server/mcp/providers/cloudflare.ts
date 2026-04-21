@@ -2,7 +2,6 @@ import { createMcpTransportHandler } from './types'
 import { getHeader, toWebRequest } from '../compat'
 import { validateOrigin } from './security'
 import { isSessionInvalidated, isSessionInvalidationRequested, markSessionInvalidated } from '../session-state'
-// @ts-expect-error - Generated template
 import config from '#nuxt-mcp-toolkit/config.mjs'
 
 interface CloudflareContext {
@@ -48,10 +47,14 @@ export default createMcpTransportHandler(async (createServer, event) => {
   const server = createServer()
   event.context._mcpServer = server
   const { createMcpHandler } = await import('agents/mcp')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handler = createMcpHandler(server as any, {
-    route: '', // allow any route
-  }) // version mismatch
+  // `agents/mcp` accepts the SDK `McpServer` but its public type signature
+  // pins a slightly older minor of `@modelcontextprotocol/sdk`. The runtime
+  // contract is identical — we cast through `unknown` to dodge the
+  // structurally-incompatible internal types without weakening the rest of
+  // the file.
+  const handler = createMcpHandler(server as unknown as Parameters<typeof createMcpHandler>[0], {
+    route: '',
+  })
   const request = toWebRequest(event)
   const cf = event.context.cloudflare as CloudflareContext | undefined
   return handler(request, cf?.env ?? {}, cf?.ctx ?? fallbackCtx)

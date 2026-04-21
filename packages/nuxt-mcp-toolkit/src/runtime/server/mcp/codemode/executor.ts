@@ -1,8 +1,11 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
+import type { NodeRuntime as SecureExecRuntime } from 'secure-exec'
 import type { CodeModeOptions, ExecuteResult } from './types'
 import { normalizeCode } from './normalize-code'
+
+type SecureExecModule = typeof import('secure-exec')
 
 export type { CodeModeOptions, ExecuteResult }
 export { normalizeCode }
@@ -18,10 +21,9 @@ const DEFAULT_MAX_TOOL_CALLS = 200
 const MAX_LOG_ENTRIES = 200
 const RETURN_TOOL = '__return__'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let secureExecModule: any = null
+let secureExecModule: SecureExecModule | null = null
 
-async function loadSecureExec() {
+async function loadSecureExec(): Promise<SecureExecModule> {
   if (secureExecModule) return secureExecModule
   try {
     secureExecModule = await import('secure-exec')
@@ -365,8 +367,7 @@ __fn().then(
 `
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let runtimeInstance: any = null
+let runtimeInstance: SecureExecRuntime | null = null
 
 function truncateResult(value: unknown, totalSize: number, maxSize: number): Record<string, unknown> {
   if (Array.isArray(value)) {
@@ -463,7 +464,7 @@ export async function execute(
 
     let errorMsg: string | undefined
     const execResult = await runtimeInstance.exec(sandboxCode, {
-      onStdio: ({ channel, message }: { channel: string, message: string }) => {
+      onStdio: ({ channel, message }) => {
         if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
           errorMsg = message.slice(ERROR_PREFIX.length)
         }

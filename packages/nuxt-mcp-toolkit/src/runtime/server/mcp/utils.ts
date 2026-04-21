@@ -9,8 +9,8 @@ import { registerResourceFromDefinition } from './definitions/resources'
 import type { McpToolDefinition, McpToolDefinitionListItem } from './definitions/tools'
 import { registerToolFromDefinition } from './definitions/tools'
 import type { CodeModeOptions } from './codemode'
-import { getHeader } from './compat'
-// @ts-expect-error - Generated template that re-exports from provider
+import { getHeader, getRequestMethod } from './compat'
+import { getEvlogLogger } from './internals'
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
 export type { McpTransportHandler } from './providers/types'
@@ -210,9 +210,8 @@ function pickOne<T>(values: T[]): T | T[] | undefined {
  * populated `event.context.log`, regardless of plugin ordering.
  */
 async function tagEvlogContext(event: H3Event, route: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const log = (event.context as any).log as { set?: (data: Record<string, unknown>) => void } | undefined
-  if (!log?.set) return
+  const log = getEvlogLogger(event)
+  if (!log) return
 
   const sessionId = getHeader(event, 'mcp-session-id')
   const mcp: Record<string, unknown> = {
@@ -221,9 +220,8 @@ async function tagEvlogContext(event: H3Event, route: string) {
   }
   if (sessionId) mcp.session_id = sessionId
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const method = (event as any).method ?? (event as any).node?.req?.method
-  if (typeof method === 'string' && method.toUpperCase() === 'POST') {
+  const method = getRequestMethod(event)
+  if (method.toUpperCase() === 'POST') {
     let summary: RpcSummary | undefined
     try {
       summary = summarizeRpcBody(await readBody(event))

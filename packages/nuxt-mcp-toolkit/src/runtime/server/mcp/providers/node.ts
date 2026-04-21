@@ -2,10 +2,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import type { H3Event } from 'h3'
 import { useStorage } from 'nitropack/runtime'
-import { getHeader, toWebRequest } from '../compat'
+import { getHeader, getNodeResponse, toWebRequest } from '../compat'
 import { validateOrigin, isValidSessionId } from './security'
 import { clearSessionInvalidation, isSessionInvalidated, isSessionInvalidationRequested, markSessionInvalidated } from '../session-state'
-// @ts-expect-error - Generated template
 import config from '#nuxt-mcp-toolkit/config.mjs'
 import { createMcpTransportHandler } from './types'
 
@@ -60,9 +59,8 @@ function ensureCleanup(maxDuration: number) {
 }
 
 function onResponseClose(event: H3Event, fn: () => void) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodeRes = (event as any).node?.res
-  if (nodeRes && typeof nodeRes.on === 'function') {
+  const nodeRes = getNodeResponse(event)
+  if (nodeRes?.on) {
     nodeRes.on('close', fn)
   }
 }

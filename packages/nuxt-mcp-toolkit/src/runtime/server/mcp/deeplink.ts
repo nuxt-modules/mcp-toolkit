@@ -1,5 +1,4 @@
 import { defineEventHandler, getRequestURL, getQuery, setHeader } from 'h3'
-// @ts-expect-error - virtual module
 import mcpConfig from '#nuxt-mcp-toolkit/config.mjs'
 
 export type SupportedIDE = 'cursor' | 'vscode'

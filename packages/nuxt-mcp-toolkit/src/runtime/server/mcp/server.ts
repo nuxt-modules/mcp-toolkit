@@ -45,15 +45,28 @@ function removeByName(map: Map<string, Removable>, name: string): boolean {
   return true
 }
 
-function wrapRegister(server: McpServer, method: 'registerTool' | 'registerPrompt' | 'registerResource', map: Map<string, Removable>) {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const fn = (server[method] as any).bind(server)
-  return (...args: any[]) => {
+/**
+ * The SDK exposes three slightly different `register*` overloads. We keep
+ * the original signature transparent to callers by relaying the exact
+ * parameters and return type through a generic, then track the returned
+ * handle in `map` so we can `.remove()` it later by name.
+ *
+ * `args[0]` is always the registration name (tool/prompt/resource) — that
+ * is the only positional invariant across the three overloads.
+ */
+type RegisterMethod = 'registerTool' | 'registerPrompt' | 'registerResource'
+
+function wrapRegister<K extends RegisterMethod>(
+  server: McpServer,
+  method: K,
+  map: Map<string, Removable>,
+): McpServer[K] {
+  const fn = server[method].bind(server) as (...args: Parameters<McpServer[K]>) => ReturnType<McpServer[K]>
+  return ((...args: Parameters<McpServer[K]>) => {
     const handle = fn(...args)
-    map.set(args[0], handle)
+    map.set(args[0] as string, handle as unknown as Removable)
     return handle
-  }
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  }) as unknown as McpServer[K]
 }
 
 /**
@@ -79,9 +92,9 @@ export function useMcpServer(): McpServerHelper {
   const reg = getRegistrations(server)
 
   return {
-    registerTool: wrapRegister(server, 'registerTool', reg.tools) as McpServer['registerTool'],
-    registerPrompt: wrapRegister(server, 'registerPrompt', reg.prompts) as McpServer['registerPrompt'],
-    registerResource: wrapRegister(server, 'registerResource', reg.resources) as McpServer['registerResource'],
+    registerTool: wrapRegister(server, 'registerTool', reg.tools),
+    registerPrompt: wrapRegister(server, 'registerPrompt', reg.prompts),
+    registerResource: wrapRegister(server, 'registerResource', reg.resources),
     removeTool: (name: string) => removeByName(reg.tools, name),
     removePrompt: (name: string) => removeByName(reg.prompts, name),
     removeResource: (name: string) => removeByName(reg.resources, name),

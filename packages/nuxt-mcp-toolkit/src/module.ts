@@ -1,12 +1,12 @@
-import { createRequire } from 'node:module'
-import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
-import { loadAllDefinitions } from './runtime/server/mcp/loaders'
+import { addServerHandler, addServerTemplate, createResolver, defineNuxtModule, logger } from '@nuxt/kit'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
-import { ROUTES } from './runtime/server/mcp/constants'
-import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from './utils/ide'
+import { setupAutoImports } from './setup/auto-imports'
+import { buildDefaultPaths, setupDefinitionsLoader } from './setup/definitions'
+import { setupEvlog } from './setup/evlog'
+import { setupNitroAliases } from './setup/nitro-aliases'
 import { name, version } from '../package.json'
 import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
-import type { McpSecurityConfig } from './runtime/server/mcp/config'
+import type { McpConfig, McpSecurityConfig } from './runtime/server/mcp/config'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
@@ -141,120 +141,32 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: defaultMcpConfig,
   async setup(options, nuxt) {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    const nitroOptions = (nuxt.options as any).nitro as Record<string, any> | undefined
+    if (!options.enabled) return
 
-    if (nitroOptions?.static || (nuxt.options as any)._generate) {
-      /* eslint-enable @typescript-eslint/no-explicit-any */
+    const nitroOptions = nuxt.options.nitro
+    const isGenerating = (nuxt.options as { _generate?: boolean })._generate === true
+    if (nitroOptions?.static || isGenerating) {
       log.warn('@nuxtjs/mcp-toolkit is not compatible with `nuxt generate` as it needs a server to run.')
       return
     }
-
-    const resolver = createResolver(import.meta.url)
 
     if (typeof options.sessions === 'boolean') {
       options.sessions = { enabled: options.sessions }
     }
 
-    const mcpConfig = getMcpConfig(options as Partial<import('./runtime/server/mcp/config').McpConfig>)
-
-    if (!options.enabled) {
-      return
-    }
-
-    if (mcpConfig.sessions.enabled && nitroOptions) {
+    const mcpConfig = getMcpConfig(options as Partial<McpConfig>)
+    if (mcpConfig.sessions.enabled) {
       nitroOptions.storage ??= {}
       nitroOptions.storage['mcp:sessions'] ??= { driver: 'memory' }
       nitroOptions.storage['mcp:sessions-meta'] ??= { driver: 'memory' }
     }
 
-    const loggingExplicit = options.logging !== undefined
-    const loggingForcedOff = options.logging === false
-    const loggingForcedOn = options.logging === true || (typeof options.logging === 'object' && options.logging !== null)
+    const resolver = createResolver(import.meta.url)
 
-    let evlogAvailable = false
-    if (!loggingForcedOff) {
-      try {
-        const moduleRequire = createRequire(import.meta.url)
-        moduleRequire.resolve('evlog/nitro')
-        evlogAvailable = true
-      }
-      catch {
-        // evlog not installed — fall through. Only an error if explicitly forced on.
-      }
-    }
-
-    if (loggingForcedOn && !evlogAvailable) {
-      throw new Error(
-        '[@nuxtjs/mcp-toolkit] `mcp.logging` is enabled but the optional `evlog` peer dependency is not installed. '
-        + 'Run `pnpm add evlog` (or `npm install evlog` / `yarn add evlog` / `bun add evlog`) to enable server-side observability, '
-        + 'or set `mcp.logging: false` to opt out.',
-      )
-    }
-
-    const loggingActive = evlogAvailable && !loggingForcedOff
-    if (loggingActive && nitroOptions) {
-      const { default: evlogNitro } = await import('evlog/nitro') as typeof import('evlog/nitro')
-      const loggingOptions = (typeof options.logging === 'object' && options.logging) || {}
-      const { service, ...evlogOptions } = loggingOptions as { service?: string, env?: Record<string, unknown>, [key: string]: unknown }
-      const resolvedService = service ?? options.name ?? 'mcp-server'
-
-      const evlogModule = evlogNitro({
-        ...evlogOptions,
-        env: {
-          ...(evlogOptions.env as Record<string, unknown> | undefined),
-          service: (evlogOptions.env as { service?: string } | undefined)?.service ?? resolvedService,
-        },
-      })
-
-      // Wrap the evlog module so we can roll back its `noExternals: true` flag
-      // after setup. evlog forces bundling of its runtime, but that flag also
-      // tries to bundle every other dependency (`drizzle-kit`, native modules,
-      // …) which breaks integrations like `@nuxthub/core`. We just need
-      // evlog's *own* package inlined, so we reset the global flag and add
-      // evlog to the inline list instead. The MCP-specific context tagging
-      // happens directly in `createMcpHandler` (see `runtime/server/mcp/utils`),
-      // so we don't need a separate Nitro plugin here — that avoids ordering
-      // issues with evlog's own request hook.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const wrappedEvlogModule: any = {
-        name: 'evlog',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async setup(nitro: any) {
-          const previousNoExternals = nitro.options.noExternals
-          await evlogModule.setup?.(nitro)
-          nitro.options.noExternals = previousNoExternals ?? false
-          nitro.options.externals ??= {}
-          nitro.options.externals.inline = Array.from(new Set([
-            ...(nitro.options.externals.inline ?? []),
-            'evlog',
-            'evlog/nitro',
-          ]))
-        },
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(nuxt.hook as any)('nitro:config', (nitroConfig: any) => {
-        nitroConfig.modules ??= []
-        if (!nitroConfig.modules.some((m: unknown) => typeof m === 'object' && m !== null && 'name' in m && (m as { name: string }).name === 'evlog')) {
-          nitroConfig.modules.push(wrappedEvlogModule)
-        }
-      })
-
-      log.info(`Observability enabled · evlog wide events on \`${options.route ?? '/mcp'}\``)
-    }
-    else if (loggingExplicit && loggingForcedOff) {
-      log.info('Observability disabled (`mcp.logging: false`) · `useMcpLogger().notify` still active')
-    }
-    else if (!evlogAvailable) {
-      log.info('Observability inactive · install `evlog` to enable wide-event tracing — `useMcpLogger().notify` still works')
-    }
+    await setupEvlog(nuxt, options, log)
 
     if (options.autoImports !== false) {
-      addComponent({
-        name: 'InstallButton',
-        filePath: resolver.resolve('runtime/components/InstallButton.vue'),
-      })
+      setupAutoImports(resolver)
     }
 
     addServerTemplate({
@@ -262,195 +174,48 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => `export default ${JSON.stringify(mcpConfig)}`,
     })
 
-    const mcpDir = mcpConfig.dir
+    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log)
 
-    const paths = {
-      tools: [`${mcpDir}/tools`],
-      resources: [`${mcpDir}/resources`],
-      prompts: [`${mcpDir}/prompts`],
-      handlers: [mcpDir],
-    }
+    registerTypeReferences(nuxt, resolver)
 
-    let mcpSummary: string | null = null
-
-    nuxt.hook('modules:done', async () => {
-      try {
-        const callCustomHook = nuxt.callHook as (name: string, ...args: unknown[]) => Promise<void>
-        await callCustomHook('mcp:definitions:paths', paths)
-
-        const result = await loadAllDefinitions(paths)
-
-        if (result.handlers && result.handlers.count > 0) {
-          addServerHandler({
-            route: ROUTES.CUSTOM_HANDLER,
-            handler: resolver.resolve('runtime/server/mcp/handler'),
-          })
-        }
-
-        if (result.total === 0) {
-          log.warn('No MCP definitions found. Create tools, resources, or prompts in server/mcp/')
-        }
-        else {
-          const summary: string[] = []
-          if (result.tools.count > 0) summary.push(`${result.tools.count} tool${result.tools.count > 1 ? 's' : ''}`)
-          if (result.resources.count > 0) summary.push(`${result.resources.count} resource${result.resources.count > 1 ? 's' : ''}`)
-          if (result.prompts.count > 0) summary.push(`${result.prompts.count} prompt${result.prompts.count > 1 ? 's' : ''}`)
-          if (result.handlers.count > 0) summary.push(`${result.handlers.count} handler${result.handlers.count > 1 ? 's' : ''}`)
-
-          mcpSummary = summary.join(', ')
-        }
-      }
-      catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        log.error('Failed to initialize MCP server')
-        log.error(`Error: ${errorMessage}`)
-        throw error
-      }
-    })
-
-    nuxt.hook('listen', (_, listener) => {
-      if (!mcpSummary) return
-
-      const ide = detectIDE()
-      if (ide) {
-        const baseUrl = listener.url.replace(/\/$/, '')
-        const mcpUrl = `${baseUrl}${options.route}`
-
-        // Check if the MCP server is already installed
-        const installedConfig = findInstalledMCPConfig(ide, nuxt.options.rootDir, mcpUrl)
-        if (installedConfig) {
-          log.success(`\`${options.route}\` enabled with ${mcpSummary} · MCP server already installed in \`${installedConfig.displayPath}\``)
-          return
-        }
-
-        const ideName = IDE_CONFIGS[ide].name
-        const deeplinkUrl = generateDeeplinkUrl(baseUrl, options.route!, ide, options.name || 'mcp-server')
-        log.info(`${ideName} detected. ${terminalLink('Install Nuxt MCP server', deeplinkUrl)}`)
-        log.success(`\`${options.route}\` enabled with ${mcpSummary}`)
-      }
-      else {
-        log.success(`\`${options.route}\` enabled with ${mcpSummary}`)
-      }
-    })
-
-    nuxt.hook('prepare:types', ({ references }) => {
-      references.push({
-        path: resolver.resolve('runtime/server/types.server.d.ts'),
-      })
-    })
-
-    if (nitroOptions) {
-      nitroOptions.typescript ??= {}
-      nitroOptions.typescript.tsConfig ??= {}
-      nitroOptions.typescript.tsConfig.include ??= []
-      nitroOptions.typescript.tsConfig.include.push(resolver.resolve('runtime/server/types.server.d.ts'))
-    }
-
-    let isCloudflare = false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(nuxt.hook as any)('nitro:config', (nitroConfig: any) => {
-      const preset = String(nitroConfig.preset || process.env.NITRO_PRESET || '')
-      const cfPreset = preset.includes('cloudflare')
-      if (cfPreset) {
-        nitroConfig.alias ??= {}
-        const executorPath = resolver.resolve('runtime/server/mcp/codemode/executor')
-        nitroConfig.alias[executorPath] = resolver.resolve('runtime/server/mcp/codemode/executor.cloudflare')
-      }
-      if (!nuxt.options.dev) {
-        isCloudflare = cfPreset
-      }
-
-      // When pnpm resolves the module's h3 peer dep to v2 while Nitro
-      // still ships h3 v1, the bundler may pick v2 for ALL h3 imports —
-      // breaking Nitro internals (e.g. missing `sendError`). Force h3
-      // resolution through nitropack's own dependency chain.
-      try {
-        const _require = createRequire(import.meta.url)
-        const nitroPkgPath = _require.resolve('nitropack/package.json')
-        const h3Path = createRequire(nitroPkgPath).resolve('h3')
-        nitroConfig.alias ??= {}
-        nitroConfig.alias.h3 ??= h3Path
-      }
-      // eslint-disable-next-line no-empty
-      catch {}
-
-      // secure-exec is an optional lazy-loaded dependency for Code Mode
-      nitroConfig.externals ??= {}
-      nitroConfig.externals.external ??= []
-      nitroConfig.externals.external.push('secure-exec')
-      nitroConfig.rollupConfig ??= {}
-      if (Array.isArray(nitroConfig.rollupConfig.external)) {
-        nitroConfig.rollupConfig.external.push('secure-exec')
-      }
-      else if (!nitroConfig.rollupConfig.external) {
-        nitroConfig.rollupConfig.external = ['secure-exec']
-      }
-    })
+    const aliases = setupNitroAliases(nuxt, resolver)
 
     addServerTemplate({
       filename: '#nuxt-mcp-toolkit/transport.mjs',
       getContents: () => {
-        const provider = isCloudflare ? 'cloudflare' : 'node'
+        const provider = aliases.isCloudflare() ? 'cloudflare' : 'node'
         return `export { default } from '${resolver.resolve(`runtime/server/mcp/providers/${provider}`)}'`
       },
     })
 
-    const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
-    const mcpSessionPath = resolver.resolve('runtime/server/mcp/session')
-    const mcpServerPath = resolver.resolve('runtime/server/mcp/server')
-    const mcpElicitationPath = resolver.resolve('runtime/server/mcp/elicitation')
-    const mcpLoggerPath = resolver.resolve('runtime/server/mcp/logger')
-
-    if (options.autoImports !== false) {
-      addServerImports([
-        'defineMcpTool',
-        'defineMcpResource',
-        'defineMcpPrompt',
-        'defineMcpHandler',
-        'textResult',
-        'jsonResult',
-        'errorResult',
-        'imageResult',
-        'audioResult',
-        'completable',
-        'extractToolNames',
-      ].map(name => ({ name, from: mcpDefinitionsPath })))
-
-      addServerImports([
-        'McpRequestExtra',
-        'McpToolExtra',
-        'McpPromptExtra',
-        'McpResourceExtra',
-      ].map(name => ({ name, from: mcpDefinitionsPath, type: true })))
-
-      addServerImports([
-        { name: 'useMcpSession', from: mcpSessionPath },
-        { name: 'invalidateMcpSession', from: mcpSessionPath },
-        { name: 'useMcpServer', from: mcpServerPath },
-        { name: 'useMcpElicitation', from: mcpElicitationPath },
-        { name: 'useMcpLogger', from: mcpLoggerPath },
-      ])
-    }
-
-    addServerHandler({
-      route: options.route,
-      handler: resolver.resolve('runtime/server/mcp/handler'),
-    })
-
-    addServerHandler({
-      route: `${options.route}/deeplink`,
-      handler: resolver.resolve('runtime/server/mcp/deeplink'),
-    })
-
-    addServerHandler({
-      route: `${options.route}/badge.svg`,
-      handler: resolver.resolve('runtime/server/mcp/badge-image'),
-    })
+    registerServerHandlers(options.route!, resolver)
 
     if (nuxt.options.dev) {
-      import('./runtime/server/mcp/devtools').then(({ addDevToolsCustomTabs }) => {
-        addDevToolsCustomTabs(nuxt, options)
-      })
+      const { addDevToolsCustomTabs } = await import('./runtime/server/mcp/devtools')
+      addDevToolsCustomTabs(nuxt, options)
     }
   },
 })
+
+function registerTypeReferences(nuxt: import('@nuxt/schema').Nuxt, resolver: ReturnType<typeof createResolver>) {
+  const virtualModulesDts = resolver.resolve('runtime/types/virtual-modules.d.ts')
+  const hooksDts = resolver.resolve('runtime/server/types/hooks')
+
+  nuxt.hook('prepare:types', ({ references }) => {
+    references.push({ path: virtualModulesDts })
+    references.push({ path: hooksDts })
+  })
+
+  const nitroOptions = nuxt.options.nitro
+  if (!nitroOptions) return
+  nitroOptions.typescript ??= {}
+  nitroOptions.typescript.tsConfig ??= {}
+  nitroOptions.typescript.tsConfig.include ??= []
+  nitroOptions.typescript.tsConfig.include.push(virtualModulesDts, hooksDts)
+}
+
+function registerServerHandlers(route: string, resolver: ReturnType<typeof createResolver>) {
+  addServerHandler({ route, handler: resolver.resolve('runtime/server/mcp/handler') })
+  addServerHandler({ route: `${route}/deeplink`, handler: resolver.resolve('runtime/server/mcp/deeplink') })
+  addServerHandler({ route: `${route}/badge.svg`, handler: resolver.resolve('runtime/server/mcp/badge-image') })
+}

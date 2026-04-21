@@ -3,6 +3,7 @@ import { useEvent } from 'nitropack/runtime'
 import type { H3Event } from 'h3'
 import { getHeader } from './compat'
 import { useMcpServer } from './server'
+import { getEvlogLogger, getSdkServerFromHelper } from './internals'
 
 /**
  * Methods that send `notifications/message` to the connected MCP client
@@ -100,22 +101,6 @@ class McpObservabilityNotEnabledError extends Error {
   }
 }
 
-function getRequestLogger(event: H3Event | null): McpRequestLogger | null {
-  if (!event) return null
-  // evlog's Nitro request plugin assigns the per-request logger here.
-  // Duck-typed so we don't import from `evlog` (it's an optional peer dep).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const candidate = (event.context as any).log as Partial<McpRequestLogger> | undefined
-  if (
-    candidate
-    && typeof candidate.set === 'function'
-    && typeof candidate.info === 'function'
-  ) {
-    return candidate as McpRequestLogger
-  }
-  return null
-}
-
 function safeEvent(): H3Event | null {
   try {
     return useEvent()
@@ -148,14 +133,10 @@ function safeEvent(): H3Event | null {
  */
 export function useMcpLogger(prefix?: string): McpLogger {
   const helper = useMcpServer()
-  // The high-level `McpServer` exposes the underlying SDK `Server` via `.server`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sdkServer = (helper.server as any).server as {
-    sendLoggingMessage: (params: { level: LoggingLevel, data: unknown, logger?: string }, sessionId?: string) => Promise<void>
-  }
+  const sdkServer = getSdkServerFromHelper(helper)
 
   const event = safeEvent()
-  const requestLogger = getRequestLogger(event)
+  const requestLogger = getEvlogLogger(event)
 
   // The SDK tracks `logging/setLevel` per session id, so we must forward the
   // current MCP session header to `sendLoggingMessage` for filtering to apply.

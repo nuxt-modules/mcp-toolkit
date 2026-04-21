@@ -1,4 +1,3 @@
-// Declare module to extend Nuxt hooks
 declare module '@nuxt/schema' {
   interface NuxtHooks {
     /**
