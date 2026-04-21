@@ -324,7 +324,6 @@ export default defineNuxtModule<ModuleOptions>({
         { name: 'invalidateMcpSession', from: mcpSessionPath },
         { name: 'useMcpServer', from: mcpServerPath },
         { name: 'useMcpElicitation', from: mcpElicitationPath },
-        { name: 'McpElicitationError', from: mcpElicitationPath },
       ])
     }
 
