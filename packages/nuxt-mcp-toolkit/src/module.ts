@@ -295,6 +295,7 @@ export default defineNuxtModule<ModuleOptions>({
     const mcpDefinitionsPath = resolver.resolve('runtime/server/mcp/definitions')
     const mcpSessionPath = resolver.resolve('runtime/server/mcp/session')
     const mcpServerPath = resolver.resolve('runtime/server/mcp/server')
+    const mcpElicitationPath = resolver.resolve('runtime/server/mcp/elicitation')
 
     if (options.autoImports !== false) {
       addServerImports([
@@ -322,6 +323,8 @@ export default defineNuxtModule<ModuleOptions>({
         { name: 'useMcpSession', from: mcpSessionPath },
         { name: 'invalidateMcpSession', from: mcpSessionPath },
         { name: 'useMcpServer', from: mcpServerPath },
+        { name: 'useMcpElicitation', from: mcpElicitationPath },
+        { name: 'McpElicitationError', from: mcpElicitationPath },
       ])
     }
 
