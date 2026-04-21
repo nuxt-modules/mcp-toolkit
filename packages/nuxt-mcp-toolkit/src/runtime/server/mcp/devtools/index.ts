@@ -8,7 +8,10 @@ import type { ChildProcess } from 'node:child_process'
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
 // Constants
-const INSPECTOR_TIMEOUT = 15000
+// First-run npx may need to download the inspector (~50MB) before starting; the
+// 60s ceiling covers cold starts on slow networks while the on-demand health
+// check resolves immediately once the inspector is ready.
+const INSPECTOR_TIMEOUT = 60000
 const HEALTH_CHECK_TIMEOUT = 3000
 const INSPECTOR_DEFAULT_CLIENT_PORT = 6274
 const INSPECTOR_DEFAULT_SERVER_PORT = 6277
@@ -46,8 +49,14 @@ function buildInspectorUrl(baseUrl: string, mcpServerUrl: string): string {
 }
 
 function extractProxyToken(text: string): string | null {
-  const match = text.match(/Session token:\s+([a-f0-9]+)/i)
-  return match?.[1] ?? null
+  // The MCP Inspector emits the token in two distinct places depending on
+  // version: `Session token: <hex>` and the pre-filled URL on the
+  // `🔗 Open inspector with token pre-filled: …?MCP_PROXY_AUTH_TOKEN=<hex>`
+  // line. Either is enough to authenticate the iframe embed.
+  const sessionMatch = text.match(/Session token:\s+([a-f0-9]+)/i)
+  if (sessionMatch?.[1]) return sessionMatch[1]
+  const urlMatch = text.match(/MCP_PROXY_AUTH_TOKEN=([a-f0-9]+)/i)
+  return urlMatch?.[1] ?? null
 }
 
 function limitBuffer(buffer: string, maxSize: number): string {
@@ -220,6 +229,17 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
             if (token) {
               proxyAuthToken = token
             }
+          }
+
+          // Fast path: the inspector prints "🔗 Open inspector with token
+          // pre-filled: http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=…" once
+          // it is fully ready. We only short-circuit the polling delay when
+          // the token has already been captured, otherwise we'd hand
+          // DevTools an iframe URL the inspector rejects as unauthenticated.
+          if (!isResolved && proxyAuthToken && /Open inspector with token|MCP Inspector .*running/i.test(stdoutBuffer)) {
+            isResolved = true
+            log.success(`✅ MCP Inspector is ready at ${inspectorBaseUrl}`)
+            handleUrlDetected(inspectorBaseUrl, mcpServerUrl, timeoutId, resolve)
           }
         },
         stderr: (data: Buffer) => {

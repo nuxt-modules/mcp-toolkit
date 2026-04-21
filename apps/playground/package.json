@@ -23,6 +23,7 @@
     "@ai-sdk/mcp": "^1.0.36",
     "@better-auth/api-key": "^1.6.5",
     "@electric-sql/pglite": "^0.4.4",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@nuxt/ui": "^4.6.1",
     "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",

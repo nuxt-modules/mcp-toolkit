@@ -189,5 +189,15 @@ async function onSignUp(payload: FormSubmitEvent<SignUpSchema>) {
         </template>
       </UTabs>
     </UPageCard>
+
+    <UButton
+      to="/mcp-test"
+      variant="link"
+      color="neutral"
+      icon="i-lucide-flask-conical"
+      size="sm"
+    >
+      Try the MCP test console (no auth required)
+    </UButton>
   </div>
 </template>

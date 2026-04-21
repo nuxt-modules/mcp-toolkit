@@ -350,6 +350,45 @@ See [detailed middleware guide →](./references/middleware.md)
 
 ---
 
+## Interactive Composables
+
+### `useMcpElicitation()`
+
+Ask the connected client for structured input mid-request, or send the user to a URL.
+
+```typescript
+import { z } from 'zod'
+
+export default defineMcpTool({
+  name: 'create_release',
+  inputSchema: { name: z.string() },
+  handler: async ({ name }) => {
+    const elicit = useMcpElicitation()
+
+    const result = await elicit.form({
+      message: `Pick a channel for "${name}"`,
+      schema: {
+        channel: z.enum(['stable', 'beta']).describe('Release channel'),
+      },
+    })
+
+    if (result.action !== 'accept') return 'Cancelled.'
+    return `Released "${name}" on ${result.content.channel}.`
+  },
+})
+```
+
+- **Form mode**: pass a Zod raw shape, the response is validated and typed.
+- **URL mode**: `elicit.url({ message, url })` — opt-in per spec, gate with `elicit.supports('url')`.
+- **Confirm**: `await elicit.confirm('Continue?')` returns a boolean.
+- **Capability check**: `elicit.supports('form' | 'url')` — always `false` before init completes.
+- **Errors**: catch `McpElicitationError` (`code: 'unsupported' | 'invalid-schema' | 'invalid-response'`) to fall back when the client doesn't support elicitation.
+- Schema must be a **flat object of primitives** (string/number/boolean), enums, or string-enum arrays — nested objects are rejected by the spec.
+
+See [elicitation docs →](https://mcp-toolkit.nuxt.dev/advanced/elicitation)
+
+---
+
 ## Review & Best Practices
 
 ### MCP code review (agents & humans)

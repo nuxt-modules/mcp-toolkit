@@ -92,6 +92,14 @@ const items = computed(() => ([
               label="API Keys"
               :class="{ 'bg-elevated': $route.path === '/app/api-keys' }"
             />
+            <UButton
+              to="/mcp-test"
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              icon="i-lucide-flask-conical"
+              label="MCP Tester"
+            />
           </nav>
         </div>
 

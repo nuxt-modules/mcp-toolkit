@@ -109,6 +109,9 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.4.4
         version: 0.4.4
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
       '@nuxt/ui':
         specifier: ^4.6.1
         version: 4.6.1(699bb06fc4f2c1acd5b0dbb57204db4d)
