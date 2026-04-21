@@ -389,6 +389,41 @@ See [elicitation docs →](https://mcp-toolkit.nuxt.dev/advanced/elicitation)
 
 ---
 
+## Observability
+
+### `useMcpLogger()`
+
+Split-channel logger: notify the connected client and capture structured wide events (powered by [evlog](https://evlog.dev), shipped as a direct dependency).
+
+```typescript
+export default defineMcpTool({
+  name: 'charge_card',
+  inputSchema: { userId: z.string(), amount: z.number().int() },
+  handler: async ({ userId, amount }) => {
+    const log = useMcpLogger('billing')
+
+    // → server-side wide event (dev terminal + drains)
+    log.set({ user: { id: userId }, billing: { amount } })
+    log.event('charge_started', { amount })
+
+    // → MCP client (Inspector / Cursor / Claude)
+    await log.notify.info({ msg: 'starting charge', amount })
+
+    const receipt = await charge(userId, amount)
+    return `Charged ${amount}.`
+  },
+})
+```
+
+- **Client channel** (`log.notify`): `notify(level, data, logger?)` plus `notify.debug` / `notify.info` / `notify.warning` / `notify.error` shortcuts. Always resolves, never throws — respects the client's `logging/setLevel` per session.
+- **Server channel**: `set(fields)` accumulates context onto the request's evlog wide event; `event(name, fields?)` captures a discrete event; `evlog` exposes the full `RequestLogger`.
+- Wide events are auto-tagged with `mcp.transport`, `mcp.route`, `mcp.session_id`, `mcp.method`, `mcp.request_id`, and `mcp.tool` / `mcp.resource` / `mcp.prompt` based on the JSON-RPC payload (no user code required).
+- Configure drains, sampling, redaction via `mcp.logging` in `nuxt.config.ts`. Pass `logging: false` to disable evlog entirely (the `notify` channel keeps working).
+
+See [logging docs →](https://mcp-toolkit.nuxt.dev/advanced/logging)
+
+---
+
 ## Review & Best Practices
 
 ### MCP code review (agents & humans)

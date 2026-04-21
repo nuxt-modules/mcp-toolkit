@@ -2,7 +2,8 @@
 node_modules
 
 # Logs
-*.log*
+*.log
+*.log.*
 
 # Temp directories
 .temp

@@ -5,14 +5,15 @@ definePageMeta({
 
 useSeoMeta({
   title: 'MCP Test Console',
-  description: 'Interactively test elicitation features against the playground MCP server.',
+  description: 'Interactively test elicitation, logging notifications and wide events against the playground MCP server.',
 })
 
 const tester = useMcpTester()
 const formAnswers = ref<Record<string, unknown>>({})
 const toolArgs = ref<Record<string, Record<string, unknown>>>({})
+const currentLevel = ref<'debug' | 'info' | 'warning' | 'error'>('debug')
 
-const featuredToolNames = ['release_channel', 'connect_account']
+const featuredToolNames = ['release_channel', 'connect_account', 'observability_demo']
 
 const featuredTools = computed(() => {
   return featuredToolNames
@@ -28,6 +29,13 @@ const elicitationOptions = [
   { label: 'Form mode (default)', value: 'form' },
   { label: 'Form + URL mode', value: 'form+url' },
   { label: 'Disabled (refuse all)', value: 'none' },
+] as const
+
+const levels = [
+  { label: 'debug (verbose)', value: 'debug' },
+  { label: 'info', value: 'info' },
+  { label: 'warning', value: 'warning' },
+  { label: 'error (silent unless error)', value: 'error' },
 ] as const
 
 const statusColor = computed(() => {
@@ -83,6 +91,10 @@ async function runTool(toolName: string) {
   await tester.callTool(toolName, args)
 }
 
+async function applyLevel() {
+  await tester.setLevel(currentLevel.value)
+}
+
 watch(() => tester.pendingElicit.value, (next) => {
   if (next?.mode === 'form' && next.requestedSchema) {
     const initial: Record<string, unknown> = {}
@@ -108,6 +120,13 @@ function formatResult(entry: typeof tester.toolCalls.value[number]) {
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString()
+}
+
+function levelColor(level: string): 'neutral' | 'info' | 'warning' | 'error' {
+  if (level === 'debug') return 'neutral'
+  if (level === 'info' || level === 'notice') return 'info'
+  if (level === 'warning') return 'warning'
+  return 'error'
 }
 
 onMounted(() => {
@@ -189,17 +208,40 @@ onBeforeUnmount(() => {
             </div>
           </template>
 
-          <UFormField
-            label="Elicitation capability"
-            hint="Switch to test how tools react when the client supports different modes."
-          >
-            <USelect
-              :model-value="tester.options.value.elicitation"
-              :items="[...elicitationOptions]"
-              class="w-full sm:max-w-sm"
-              @update:model-value="(value: string) => tester.connect({ elicitation: value as 'none' | 'form' | 'form+url' })"
-            />
-          </UFormField>
+          <div class="grid gap-4 md:grid-cols-2">
+            <UFormField
+              label="Elicitation capability"
+              hint="Switch to test how tools react when the client supports different modes."
+            >
+              <USelect
+                :model-value="tester.options.value.elicitation"
+                :items="[...elicitationOptions]"
+                class="w-full"
+                @update:model-value="(value: string) => tester.connect({ elicitation: value as 'none' | 'form' | 'form+url' })"
+              />
+            </UFormField>
+
+            <UFormField
+              label="Client log level (logging/setLevel)"
+              hint="Filter which notifications/message entries the server forwards."
+            >
+              <div class="flex gap-2">
+                <USelect
+                  v-model="currentLevel"
+                  :items="[...levels]"
+                  class="flex-1"
+                />
+                <UButton
+                  color="neutral"
+                  variant="subtle"
+                  :disabled="tester.status.value !== 'connected'"
+                  @click="applyLevel"
+                >
+                  Apply
+                </UButton>
+              </div>
+            </UFormField>
+          </div>
         </UCard>
 
         <UCard>
@@ -271,63 +313,114 @@ onBeforeUnmount(() => {
           </div>
         </UCard>
 
-        <UCard>
-          <template #header>
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold">
-                Tool calls
-              </h2>
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-trash-2"
-                @click="tester.clearCalls()"
-              >
-                Clear
-              </UButton>
-            </div>
-          </template>
-          <div
-            v-if="tester.toolCalls.value.length === 0"
-            class="py-8 text-center text-sm text-muted"
-          >
-            No calls yet. Pick a tool above and hit Run.
-          </div>
-          <ul class="space-y-3">
-            <li
-              v-for="entry in tester.toolCalls.value"
-              :key="entry.id"
-              class="rounded-md border border-default bg-elevated/40 p-3"
+        <div class="grid gap-6 lg:grid-cols-2">
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold">
+                  Tool calls
+                </h2>
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-trash-2"
+                  @click="tester.clearCalls()"
+                >
+                  Clear
+                </UButton>
+              </div>
+            </template>
+            <div
+              v-if="tester.toolCalls.value.length === 0"
+              class="py-8 text-center text-sm text-muted"
             >
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-mono text-xs font-semibold">{{ entry.tool }}</span>
-                <span class="text-[10px] uppercase text-dimmed">{{ formatTime(entry.startedAt) }}</span>
-              </div>
-              <pre
-                v-if="Object.keys(entry.args).length"
-                class="mt-2 overflow-x-auto rounded bg-default/60 p-2 text-[11px]"
-              >{{ JSON.stringify(entry.args) }}</pre>
-              <div
-                v-if="entry.finishedAt"
-                class="mt-2 whitespace-pre-wrap rounded text-xs"
-                :class="entry.error ? 'text-error' : 'text-default'"
+              No calls yet. Pick a tool above and hit Run.
+            </div>
+            <ul class="space-y-3">
+              <li
+                v-for="entry in tester.toolCalls.value"
+                :key="entry.id"
+                class="rounded-md border border-default bg-elevated/40 p-3"
               >
-                {{ formatResult(entry) }}
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-mono text-xs font-semibold">{{ entry.tool }}</span>
+                  <span class="text-[10px] uppercase text-dimmed">{{ formatTime(entry.startedAt) }}</span>
+                </div>
+                <pre
+                  v-if="Object.keys(entry.args).length"
+                  class="mt-2 overflow-x-auto rounded bg-default/60 p-2 text-[11px]"
+                >{{ JSON.stringify(entry.args) }}</pre>
+                <div
+                  v-if="entry.finishedAt"
+                  class="mt-2 whitespace-pre-wrap rounded text-xs"
+                  :class="entry.error ? 'text-error' : 'text-default'"
+                >
+                  {{ formatResult(entry) }}
+                </div>
+                <UBadge
+                  v-else
+                  color="warning"
+                  variant="subtle"
+                  size="xs"
+                  icon="i-lucide-loader"
+                  class="mt-2"
+                >
+                  pending
+                </UBadge>
+              </li>
+            </ul>
+          </UCard>
+
+          <UCard>
+            <template #header>
+              <div class="flex items-center justify-between">
+                <h2 class="font-semibold">
+                  Notifications
+                  <span class="text-xs font-normal text-muted">(notifications/message)</span>
+                </h2>
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-trash-2"
+                  @click="tester.clearNotifications()"
+                >
+                  Clear
+                </UButton>
               </div>
-              <UBadge
-                v-else
-                color="warning"
-                variant="subtle"
-                size="xs"
-                icon="i-lucide-loader"
-                class="mt-2"
+            </template>
+            <div
+              v-if="tester.notifications.value.length === 0"
+              class="py-8 text-center text-sm text-muted"
+            >
+              No notifications yet. Run <span class="font-mono">observability_demo</span> to stream a few.
+            </div>
+            <ul class="space-y-2">
+              <li
+                v-for="entry in tester.notifications.value"
+                :key="entry.id"
+                class="rounded-md border border-default bg-elevated/40 p-2"
               >
-                pending
-              </UBadge>
-            </li>
-          </ul>
-        </UCard>
+                <div class="flex items-center gap-2">
+                  <UBadge
+                    :color="levelColor(entry.level)"
+                    variant="subtle"
+                    size="xs"
+                  >
+                    {{ entry.level }}
+                  </UBadge>
+                  <span
+                    v-if="entry.logger"
+                    class="font-mono text-[10px] text-muted"
+                  >{{ entry.logger }}</span>
+                  <span class="ml-auto text-[10px] text-dimmed">{{ formatTime(entry.receivedAt) }}</span>
+                </div>
+                <pre class="mt-1 overflow-x-auto whitespace-pre-wrap text-[11px]">{{ JSON.stringify(entry.data, null, 2) }}</pre>
+              </li>
+            </ul>
+          </UCard>
+        </div>
 
         <UCard v-if="otherTools.length">
           <template #header>

@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module'
 import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
+import type { NitroModuleOptions } from 'evlog/nitro'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
@@ -108,6 +109,24 @@ export interface ModuleOptions {
    * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning
    */
   security?: McpSecurityConfig
+  /**
+   * Server-side logging configuration powered by [evlog](https://evlog.dev).
+   *
+   * The toolkit ships evlog as a direct dependency and registers its Nitro
+   * module automatically so `useMcpLogger().set()`, `.event()`, and `.evlog`
+   * feed structured wide events for every MCP request.
+   *
+   * Pass `false` to disable the integration entirely (the `useMcpLogger()`
+   * composable still works for `notify()` calls — it just won't emit wide
+   * events). Pass an object to forward options to the evlog Nitro module.
+   *
+   * @default true
+   * @see https://evlog.dev
+   */
+  logging?: false | (NitroModuleOptions & {
+    /** Service name advertised on every wide event. Defaults to `options.name || 'mcp-server'`. */
+    service?: string
+  })
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -145,6 +164,56 @@ export default defineNuxtModule<ModuleOptions>({
       nitroOptions.storage ??= {}
       nitroOptions.storage['mcp:sessions'] ??= { driver: 'memory' }
       nitroOptions.storage['mcp:sessions-meta'] ??= { driver: 'memory' }
+    }
+
+    const loggingEnabled = options.logging !== false
+    if (loggingEnabled && nitroOptions) {
+      const { default: evlogNitro } = await import('evlog/nitro')
+      const loggingOptions = (typeof options.logging === 'object' && options.logging) || {}
+      const { service, ...evlogOptions } = loggingOptions
+      const resolvedService = service ?? options.name ?? 'mcp-server'
+
+      const evlogModule = evlogNitro({
+        ...evlogOptions,
+        env: {
+          ...evlogOptions.env,
+          service: evlogOptions.env?.service ?? resolvedService,
+        },
+      })
+
+      // Wrap the evlog module so we can roll back its `noExternals: true` flag
+      // after setup. evlog forces bundling of its runtime, but that flag also
+      // tries to bundle every other dependency (`drizzle-kit`, native modules,
+      // …) which breaks integrations like `@nuxthub/core`. We just need
+      // evlog's *own* package inlined, so we reset the global flag and add
+      // evlog to the inline list instead. The MCP-specific context tagging
+      // happens directly in `createMcpHandler` (see `runtime/server/mcp/utils`),
+      // so we don't need a separate Nitro plugin here — that avoids ordering
+      // issues with evlog's own request hook.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wrappedEvlogModule: any = {
+        name: 'evlog',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async setup(nitro: any) {
+          const previousNoExternals = nitro.options.noExternals
+          await evlogModule.setup?.(nitro)
+          nitro.options.noExternals = previousNoExternals ?? false
+          nitro.options.externals ??= {}
+          nitro.options.externals.inline = Array.from(new Set([
+            ...(nitro.options.externals.inline ?? []),
+            'evlog',
+            'evlog/nitro',
+          ]))
+        },
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(nuxt.hook as any)('nitro:config', (nitroConfig: any) => {
+        nitroConfig.modules ??= []
+        if (!nitroConfig.modules.some((m: unknown) => typeof m === 'object' && m !== null && 'name' in m && (m as { name: string }).name === 'evlog')) {
+          nitroConfig.modules.push(wrappedEvlogModule)
+        }
+      })
     }
 
     if (options.autoImports !== false) {
@@ -296,6 +365,7 @@ export default defineNuxtModule<ModuleOptions>({
     const mcpSessionPath = resolver.resolve('runtime/server/mcp/session')
     const mcpServerPath = resolver.resolve('runtime/server/mcp/server')
     const mcpElicitationPath = resolver.resolve('runtime/server/mcp/elicitation')
+    const mcpLoggerPath = resolver.resolve('runtime/server/mcp/logger')
 
     if (options.autoImports !== false) {
       addServerImports([
@@ -324,6 +394,7 @@ export default defineNuxtModule<ModuleOptions>({
         { name: 'invalidateMcpSession', from: mcpSessionPath },
         { name: 'useMcpServer', from: mcpServerPath },
         { name: 'useMcpElicitation', from: mcpElicitationPath },
+        { name: 'useMcpLogger', from: mcpLoggerPath },
       ])
     }
 

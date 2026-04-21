@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { ElicitRequestSchema, LoggingMessageNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
 
 export type ElicitionMode = 'form' | 'url'
 
@@ -14,6 +14,14 @@ export interface PendingElicit {
     required?: string[]
   }
   resolve: (response: { action: 'accept' | 'decline' | 'cancel', content?: Record<string, unknown> }) => void
+}
+
+export interface NotificationEntry {
+  id: string
+  level: string
+  data: unknown
+  logger?: string
+  receivedAt: number
 }
 
 export interface ToolCallEntry {
@@ -44,6 +52,7 @@ export function useMcpTester() {
   const sessionId = ref<string | null>(null)
   const tools = ref<ToolDescriptor[]>([])
   const toolCalls = ref<ToolCallEntry[]>([])
+  const notifications = ref<NotificationEntry[]>([])
   const pendingElicit = ref<PendingElicit | null>(null)
   const options = ref<ConnectOptions>({ ...DEFAULT_OPTIONS })
 
@@ -52,6 +61,7 @@ export function useMcpTester() {
 
   function reset() {
     toolCalls.value = []
+    notifications.value = []
     tools.value = []
     sessionId.value = null
     pendingElicit.value = null
@@ -114,6 +124,17 @@ export function useMcpTester() {
         })
       }
 
+      client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
+        const params = notification.params as { level: string, data: unknown, logger?: string }
+        notifications.value.unshift({
+          id: crypto.randomUUID(),
+          level: params.level,
+          data: params.data,
+          logger: params.logger,
+          receivedAt: Date.now(),
+        })
+      })
+
       transport = new StreamableHTTPClientTransport(new URL('/mcp', window.location.origin))
       await client.connect(transport)
       sessionId.value = transport.sessionId ?? null
@@ -159,6 +180,15 @@ export function useMcpTester() {
     pendingElicit.value?.resolve(response)
   }
 
+  async function setLevel(level: 'debug' | 'info' | 'notice' | 'warning' | 'error' | 'critical' | 'alert' | 'emergency') {
+    if (!client) throw new Error('Not connected')
+    await client.setLoggingLevel(level)
+  }
+
+  function clearNotifications() {
+    notifications.value = []
+  }
+
   function clearCalls() {
     toolCalls.value = []
   }
@@ -169,12 +199,15 @@ export function useMcpTester() {
     sessionId,
     tools,
     toolCalls,
+    notifications,
     pendingElicit,
     options,
     connect,
     disconnect,
     callTool,
     answerElicit,
+    setLevel,
+    clearNotifications,
     clearCalls,
   }
 }

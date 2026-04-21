@@ -118,6 +118,77 @@ export default defineMcpTool({
 })
 ```
 
+## Interactive Tool (Elicitation)
+
+Ask the user for missing details mid-request and validate the response against a Zod shape.
+
+```typescript
+import { z } from 'zod'
+
+export default defineMcpTool({
+  description: 'Create a release after asking for the channel',
+  inputSchema: {
+    name: z.string().describe('Release name'),
+  },
+  handler: async ({ name }) => {
+    const elicit = useMcpElicitation()
+
+    if (!elicit.supports('form')) {
+      return `Use a client that supports elicitation, then re-run for "${name}".`
+    }
+
+    const result = await elicit.form({
+      message: `Pick a release channel for "${name}"`,
+      schema: {
+        channel: z.enum(['stable', 'beta', 'canary']).describe('Release channel'),
+        notify: z.boolean().default(true).describe('Notify subscribers'),
+      },
+    })
+
+    if (result.action !== 'accept') {
+      return `Release cancelled (${result.action}).`
+    }
+
+    return `Created "${name}" on ${result.content.channel} (notify=${result.content.notify}).`
+  },
+})
+```
+
+## Observability (Logger)
+
+Stream `notifications/message` to the client and capture a structured wide event for each request.
+
+```typescript
+import { z } from 'zod'
+
+export default defineMcpTool({
+  description: 'Charge a payment method',
+  inputSchema: {
+    userId: z.string(),
+    amount: z.number().int().positive(),
+  },
+  annotations: { destructiveHint: true, idempotentHint: false },
+  handler: async ({ userId, amount }) => {
+    const log = useMcpLogger('billing')
+
+    log.set({ user: { id: userId }, billing: { amount } })
+    await log.notify.info({ msg: 'starting charge', amount })
+
+    try {
+      const receipt = await chargeCard(userId, amount)
+      log.event('charge_completed', { receiptId: receipt.id })
+      await log.notify.info({ msg: 'charge ok', receiptId: receipt.id })
+      return `Charged ${amount}. Receipt: ${receipt.id}`
+    }
+    catch (err) {
+      log.evlog.error('charge failed', err)
+      await log.notify.error({ msg: 'charge failed', error: String(err) })
+      throw err
+    }
+  },
+})
+```
+
 ## File Operation
 
 ```typescript
