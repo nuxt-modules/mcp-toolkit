@@ -1,6 +1,5 @@
 import { createRequire } from 'node:module'
 import { defineNuxtModule, addServerHandler, addServerTemplate, createResolver, addServerImports, addComponent, logger } from '@nuxt/kit'
-import type { NitroModuleOptions } from 'evlog/nitro'
 import { loadAllDefinitions } from './runtime/server/mcp/loaders'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
@@ -110,22 +109,25 @@ export interface ModuleOptions {
    */
   security?: McpSecurityConfig
   /**
-   * Server-side logging configuration powered by [evlog](https://evlog.dev).
+   * Server-side observability powered by the optional [evlog](https://evlog.dev) peer dependency.
    *
-   * The toolkit ships evlog as a direct dependency and registers its Nitro
-   * module automatically so `useMcpLogger().set()`, `.event()`, and `.evlog`
-   * feed structured wide events for every MCP request.
+   * Behavior:
+   * - `undefined` (default): **auto-detect**. If `evlog` is installed, it is
+   *   wired into Nitro automatically and `useMcpLogger().set()` / `.event()` /
+   *   `.evlog` start feeding the request-scoped wide event. Otherwise it stays
+   *   off — only `useMcpLogger().notify(...)` (the client channel) works.
+   * - `true`: force on. If `evlog` is not installed, the build throws with
+   *   install instructions.
+   * - object: force on with options forwarded to the evlog Nitro module.
+   *   Same install requirement as `true`.
+   * - `false`: force off. `set()` / `event()` / `evlog` throw on use.
    *
-   * Pass `false` to disable the integration entirely (the `useMcpLogger()`
-   * composable still works for `notify()` calls — it just won't emit wide
-   * events). Pass an object to forward options to the evlog Nitro module.
-   *
-   * @default true
    * @see https://evlog.dev
    */
-  logging?: false | (NitroModuleOptions & {
+  logging?: boolean | ({
     /** Service name advertised on every wide event. Defaults to `options.name || 'mcp-server'`. */
     service?: string
+    [key: string]: unknown
   })
 }
 
@@ -166,18 +168,42 @@ export default defineNuxtModule<ModuleOptions>({
       nitroOptions.storage['mcp:sessions-meta'] ??= { driver: 'memory' }
     }
 
-    const loggingEnabled = options.logging !== false
-    if (loggingEnabled && nitroOptions) {
-      const { default: evlogNitro } = await import('evlog/nitro')
+    const loggingExplicit = options.logging !== undefined
+    const loggingForcedOff = options.logging === false
+    const loggingForcedOn = options.logging === true || (typeof options.logging === 'object' && options.logging !== null)
+
+    let evlogAvailable = false
+    if (!loggingForcedOff) {
+      try {
+        const moduleRequire = createRequire(import.meta.url)
+        moduleRequire.resolve('evlog/nitro')
+        evlogAvailable = true
+      }
+      catch {
+        // evlog not installed — fall through. Only an error if explicitly forced on.
+      }
+    }
+
+    if (loggingForcedOn && !evlogAvailable) {
+      throw new Error(
+        '[@nuxtjs/mcp-toolkit] `mcp.logging` is enabled but the optional `evlog` peer dependency is not installed. '
+        + 'Run `pnpm add evlog` (or `npm install evlog` / `yarn add evlog` / `bun add evlog`) to enable server-side observability, '
+        + 'or set `mcp.logging: false` to opt out.',
+      )
+    }
+
+    const loggingActive = evlogAvailable && !loggingForcedOff
+    if (loggingActive && nitroOptions) {
+      const { default: evlogNitro } = await import('evlog/nitro') as typeof import('evlog/nitro')
       const loggingOptions = (typeof options.logging === 'object' && options.logging) || {}
-      const { service, ...evlogOptions } = loggingOptions
+      const { service, ...evlogOptions } = loggingOptions as { service?: string, env?: Record<string, unknown>, [key: string]: unknown }
       const resolvedService = service ?? options.name ?? 'mcp-server'
 
       const evlogModule = evlogNitro({
         ...evlogOptions,
         env: {
-          ...evlogOptions.env,
-          service: evlogOptions.env?.service ?? resolvedService,
+          ...(evlogOptions.env as Record<string, unknown> | undefined),
+          service: (evlogOptions.env as { service?: string } | undefined)?.service ?? resolvedService,
         },
       })
 
@@ -214,6 +240,14 @@ export default defineNuxtModule<ModuleOptions>({
           nitroConfig.modules.push(wrappedEvlogModule)
         }
       })
+
+      log.info(`Observability enabled · evlog wide events on \`${options.route ?? '/mcp'}\``)
+    }
+    else if (loggingExplicit && loggingForcedOff) {
+      log.info('Observability disabled (`mcp.logging: false`) · `useMcpLogger().notify` still active')
+    }
+    else if (!evlogAvailable) {
+      log.info('Observability inactive · install `evlog` to enable wide-event tracing — `useMcpLogger().notify` still works')
     }
 
     if (options.autoImports !== false) {

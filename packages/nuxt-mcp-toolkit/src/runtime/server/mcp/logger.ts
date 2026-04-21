@@ -1,7 +1,6 @@
 import type { LoggingLevel } from '@modelcontextprotocol/sdk/types.js'
-import type { RequestLogger } from 'evlog'
 import { useEvent } from 'nitropack/runtime'
-import { useLogger as useEvlogLogger } from 'evlog/nitro'
+import type { H3Event } from 'h3'
 import { getHeader } from './compat'
 import { useMcpServer } from './server'
 
@@ -29,6 +28,21 @@ export interface McpClientNotifier {
 }
 
 /**
+ * Minimal shape of evlog's per-request logger. Kept structural so the
+ * toolkit doesn't pull `evlog` into its public types — users get the
+ * full type signature only when they install `evlog` themselves.
+ */
+export interface McpRequestLogger {
+  set: (fields: Record<string, unknown>) => void
+  info: (name: string, fields?: Record<string, unknown>) => void
+  warn: (name: string, fields?: Record<string, unknown>) => void
+  error: (name: string, fields?: Record<string, unknown>) => void
+  getContext: () => Record<string, unknown>
+  emit?: (...args: unknown[]) => unknown
+  fork?: (...args: unknown[]) => unknown
+}
+
+/**
  * Split-channel logger for MCP servers.
  *
  * Two clearly separated channels:
@@ -36,14 +50,12 @@ export interface McpClientNotifier {
  * - `log.notify(...)` (and `.notify.info`, `.notify.warning`, ...): **client
  *   notifications** sent over the MCP transport. Visible in the MCP
  *   Inspector "Server Notifications" panel and to AI clients. Honours the
- *   per-session `logging/setLevel`.
+ *   per-session `logging/setLevel`. Always available, even without evlog.
  * - `log.set(...)` / `log.event(...)`: **server-side wide event** fed to
  *   evlog. Pretty-printed in the dev terminal at the end of each request,
  *   shipped to drains (Axiom, Sentry, OTLP, ...) in production. Operator
- *   facing.
- *
- * Pick the channel based on the audience: end-users / AI client → `notify`,
- * operators / dashboards → `set` + `event`.
+ *   facing. Requires the optional `evlog` peer dependency to be installed
+ *   and `mcp.logging` not explicitly disabled.
  */
 export interface McpLogger {
   /**
@@ -52,33 +64,64 @@ export interface McpLogger {
    */
   notify: McpClientNotifier
 
-  /** Accumulate context onto the current request's evlog wide event. */
+  /**
+   * Accumulate context onto the current request's evlog wide event.
+   *
+   * @throws when observability is not active on this request — install
+   * the optional `evlog` peer dependency and make sure `mcp.logging` is
+   * not set to `false`.
+   */
   set: (fields: Record<string, unknown>) => void
   /**
    * Append a discrete entry to the wide event's `requestLogs` and merge
    * any extra fields. Equivalent to `evlog.info(name, fields)`.
+   *
+   * @throws when observability is not active on this request — see `set`.
    */
   event: (name: string, fields?: Record<string, unknown>) => void
-  /** Underlying evlog request logger for advanced use (`fork`, `error`, …). */
-  evlog: RequestLogger
+  /**
+   * Underlying evlog request logger for advanced use (`fork`, `error`, …).
+   *
+   * @throws when observability is not active on this request — see `set`.
+   */
+  evlog: McpRequestLogger
 }
 
-const noopEvlog: RequestLogger = {
-  set: () => {},
-  error: () => {},
-  info: () => {},
-  warn: () => {},
-  emit: () => null,
-  getContext: () => ({}),
+const OBSERVABILITY_HINT
+  = 'Server-side observability is not active on this request. '
+    + 'Install the optional `evlog` peer dependency (`pnpm add evlog`) '
+    + 'and make sure `mcp.logging` is not set to `false` in nuxt.config. '
+    + '`log.notify.*` (client channel) keeps working without evlog.'
+
+class McpObservabilityNotEnabledError extends Error {
+  constructor() {
+    super(OBSERVABILITY_HINT)
+    this.name = 'McpObservabilityNotEnabledError'
+  }
 }
 
-function safeEvlog(): RequestLogger {
+function getRequestLogger(event: H3Event | null): McpRequestLogger | null {
+  if (!event) return null
+  // evlog's Nitro request plugin assigns the per-request logger here.
+  // Duck-typed so we don't import from `evlog` (it's an optional peer dep).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const candidate = (event.context as any).log as Partial<McpRequestLogger> | undefined
+  if (
+    candidate
+    && typeof candidate.set === 'function'
+    && typeof candidate.info === 'function'
+  ) {
+    return candidate as McpRequestLogger
+  }
+  return null
+}
+
+function safeEvent(): H3Event | null {
   try {
-    const event = useEvent()
-    return useEvlogLogger(event)
+    return useEvent()
   }
   catch {
-    return noopEvlog
+    return null
   }
 }
 
@@ -95,10 +138,10 @@ function safeEvlog(): RequestLogger {
  * ```ts
  * const log = useMcpLogger('billing')
  *
- * // → MCP client (Inspector, Cursor, …)
+ * // → MCP client (Inspector, Cursor, …) — always works
  * await log.notify.info({ msg: 'starting charge', amount: 1000 })
  *
- * // → server terminal / evlog drains
+ * // → server terminal / evlog drains — requires `evlog` installed
  * log.set({ user: { id: ctx.userId } })
  * log.event('charge_started', { amount: 1000 })
  * ```
@@ -111,17 +154,12 @@ export function useMcpLogger(prefix?: string): McpLogger {
     sendLoggingMessage: (params: { level: LoggingLevel, data: unknown, logger?: string }, sessionId?: string) => Promise<void>
   }
 
-  const evlog = safeEvlog()
+  const event = safeEvent()
+  const requestLogger = getRequestLogger(event)
+
   // The SDK tracks `logging/setLevel` per session id, so we must forward the
   // current MCP session header to `sendLoggingMessage` for filtering to apply.
-  let sessionId: string | undefined
-  try {
-    const event = useEvent()
-    sessionId = getHeader(event, 'mcp-session-id') ?? undefined
-  }
-  catch {
-    // Outside of a request scope (e.g., bootstrap) — sessionId stays undefined.
-  }
+  const sessionId = event ? (getHeader(event, 'mcp-session-id') ?? undefined) : undefined
 
   const sendNotify = async (level: LoggingLevel, data: unknown, logger?: string): Promise<void> => {
     try {
@@ -133,33 +171,43 @@ export function useMcpLogger(prefix?: string): McpLogger {
     }
     catch (err) {
       // Disconnected client / unsubscribed level / no transport — never throw.
-      try {
-        evlog.warn('mcp logger notify failed', {
-          mcp: { logger: logger ?? prefix, level },
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-      catch {
-        // Evlog drain itself failed — stay silent to honor the no-throw contract.
+      if (requestLogger) {
+        try {
+          requestLogger.warn('mcp logger notify failed', {
+            mcp: { logger: logger ?? prefix, level },
+            error: err instanceof Error ? err.message : String(err),
+          })
+        }
+        catch {
+          // Drain itself failed — stay silent to honor the no-throw contract.
+        }
       }
     }
   }
 
-  // The notifier is a callable + level shortcuts so both styles read well.
   const notify = sendNotify as McpClientNotifier
   notify.debug = (data, logger) => sendNotify('debug', data, logger)
   notify.info = (data, logger) => sendNotify('info', data, logger)
   notify.warning = (data, logger) => sendNotify('warning', data, logger)
   notify.error = (data, logger) => sendNotify('error', data, logger)
 
+  const requireRequestLogger = (): McpRequestLogger => {
+    if (!requestLogger) throw new McpObservabilityNotEnabledError()
+    return requestLogger
+  }
+
   return {
     notify,
     set: (fields) => {
-      evlog.set(fields)
+      requireRequestLogger().set(fields)
     },
     event: (name, fields) => {
-      evlog.info(name, fields)
+      requireRequestLogger().info(name, fields)
     },
-    evlog,
+    get evlog() {
+      return requireRequestLogger()
+    },
   }
 }
+
+export { McpObservabilityNotEnabledError }

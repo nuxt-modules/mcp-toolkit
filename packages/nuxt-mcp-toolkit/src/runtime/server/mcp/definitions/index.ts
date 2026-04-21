@@ -24,8 +24,8 @@ export type {
   McpElicitation,
 } from '../elicitation'
 
-export { useMcpLogger } from '../logger'
-export type { McpLogger } from '../logger'
+export { useMcpLogger, McpObservabilityNotEnabledError } from '../logger'
+export type { McpClientNotifier, McpLogger, McpRequestLogger } from '../logger'
 
 /** Commonly used MCP protocol types from `@modelcontextprotocol/sdk` (single import path with the toolkit). */
 export type {

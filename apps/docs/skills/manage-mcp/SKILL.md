@@ -393,7 +393,7 @@ See [elicitation docs →](https://mcp-toolkit.nuxt.dev/advanced/elicitation)
 
 ### `useMcpLogger()`
 
-Split-channel logger: notify the connected client and capture structured wide events (powered by [evlog](https://evlog.dev), shipped as a direct dependency).
+Split-channel logger: notify the connected client and capture structured wide events (powered by [evlog](https://evlog.dev), an **optional peer dependency** — install with `pnpm add evlog` to enable wide events).
 
 ```typescript
 export default defineMcpTool({
@@ -415,10 +415,26 @@ export default defineMcpTool({
 })
 ```
 
-- **Client channel** (`log.notify`): `notify(level, data, logger?)` plus `notify.debug` / `notify.info` / `notify.warning` / `notify.error` shortcuts. Always resolves, never throws — respects the client's `logging/setLevel` per session.
-- **Server channel**: `set(fields)` accumulates context onto the request's evlog wide event; `event(name, fields?)` captures a discrete event; `evlog` exposes the full `RequestLogger`.
+- **Client channel** (`log.notify`): `notify(level, data, logger?)` plus `notify.debug` / `notify.info` / `notify.warning` / `notify.error` shortcuts. Always resolves, never throws — respects the client's `logging/setLevel` per session. Works with or without `evlog`.
+- **Server channel** (requires `evlog` installed): `set(fields)` accumulates context onto the request's wide event; `event(name, fields?)` captures a discrete event; `evlog` exposes the full request logger. These throw `McpObservabilityNotEnabledError` when observability is off.
 - Wide events are auto-tagged with `mcp.transport`, `mcp.route`, `mcp.session_id`, `mcp.method`, `mcp.request_id`, and `mcp.tool` / `mcp.resource` / `mcp.prompt` based on the JSON-RPC payload (no user code required).
-- Configure drains, sampling, redaction via `mcp.logging` in `nuxt.config.ts`. Pass `logging: false` to disable evlog entirely (the `notify` channel keeps working).
+- `mcp.logging` modes: omit (auto-detect — on if `evlog` installed), `true` / object (force on, throws at build if missing), `false` (force off — `notify` keeps working).
+
+#### Ship to a backend (drains)
+
+Ship every MCP wide event to **Axiom, Sentry, OTLP, HyperDX, Datadog, Better Stack, or PostHog** with a single Nitro plugin. Each adapter lives under `evlog/adapters/*` and is registered on the `evlog:drain` hook:
+
+```typescript [server/plugins/evlog-axiom.ts]
+import { createAxiomDrain } from 'evlog/adapters/axiom'
+
+export default defineNitroPlugin((nitroApp) => {
+  nitroApp.hooks.hook('evlog:drain', createAxiomDrain())
+})
+```
+
+The hook is additive — register multiple drains in parallel. Custom drains are just `(ctx) => Promise<void>` registered on the same hook.
+
+See [evlog.dev →](https://evlog.dev) for the full list of adapters, env-var conventions, sampling, and redaction.
 
 See [logging docs →](https://mcp-toolkit.nuxt.dev/advanced/logging)
 
