@@ -75,25 +75,28 @@ async function loadMcpDefinitions(
   type: 'tools' | 'resources' | 'prompts',
   templateFilename: string,
   paths: string[],
+  extraFiles: LoadedFile[] = [],
 ): Promise<LoadResult> {
   try {
     const result = await loadDefinitionFiles(paths, { recursive: true })
 
     warnOnNameCollisions(type, result.files)
 
+    const allFiles = [...result.files, ...extraFiles]
+
     // Always generate the template file, even if empty (for imports)
     addServerTemplate({
       filename: templateFilename,
       getContents: () => {
-        if (result.count === 0) {
+        if (allFiles.length === 0) {
           return `export const ${type} = []\n`
         }
-        const entries = result.files.map(fileToTemplateEntry)
+        const entries = allFiles.map(fileToTemplateEntry)
         return createTemplateContent(type, entries)
       },
     })
 
-    return result
+    return { ...result, count: allFiles.length, files: allFiles }
   }
   catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
@@ -150,12 +153,12 @@ async function loadHandlers(paths: string[] = []): Promise<LoadResult> {
   }
 }
 
-export async function loadTools(paths: string[]) {
-  return loadMcpDefinitions('tools', '#nuxt-mcp-toolkit/tools.mjs', paths)
+export async function loadTools(paths: string[], extraFiles: LoadedFile[] = []) {
+  return loadMcpDefinitions('tools', '#nuxt-mcp-toolkit/tools.mjs', paths, extraFiles)
 }
 
-export async function loadResources(paths: string[]) {
-  return loadMcpDefinitions('resources', '#nuxt-mcp-toolkit/resources.mjs', paths)
+export async function loadResources(paths: string[], extraFiles: LoadedFile[] = []) {
+  return loadMcpDefinitions('resources', '#nuxt-mcp-toolkit/resources.mjs', paths, extraFiles)
 }
 
 export async function loadPrompts(paths: string[]) {
@@ -197,11 +200,16 @@ async function loadDefaultHandler(paths: string[] = []): Promise<boolean> {
   }
 }
 
-export async function loadAllDefinitions(paths: LoaderPaths) {
+export interface LoaderExtras {
+  toolFiles?: LoadedFile[]
+  resourceFiles?: LoadedFile[]
+}
+
+export async function loadAllDefinitions(paths: LoaderPaths, extras: LoaderExtras = {}) {
   try {
     const [tools, resources, prompts, handlers, hasDefaultHandler] = await Promise.all([
-      loadTools(paths.tools),
-      loadResources(paths.resources),
+      loadTools(paths.tools, extras.toolFiles),
+      loadResources(paths.resources, extras.resourceFiles),
       loadPrompts(paths.prompts),
       loadHandlers(paths.handlers ?? []),
       loadDefaultHandler(paths.handlers ?? []),

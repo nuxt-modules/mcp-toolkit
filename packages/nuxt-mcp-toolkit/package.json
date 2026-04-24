@@ -21,6 +21,10 @@
     "./server": {
       "types": "./dist/runtime/server/mcp/definitions/index.d.ts",
       "import": "./dist/runtime/server/mcp/definitions/index.js"
+    },
+    "./app": {
+      "types": "./dist/runtime/app/use-mcp-app.d.ts",
+      "import": "./dist/runtime/app/use-mcp-app.js"
     }
   },
   "main": "./dist/module.mjs",
@@ -31,6 +35,9 @@
       ],
       "server": [
         "./dist/runtime/server/mcp/definitions/index.d.ts"
+      ],
+      "app": [
+        "./dist/runtime/app/use-mcp-app.d.ts"
       ]
     }
   },
@@ -54,10 +61,15 @@
     "tinyglobby": "^0.2.16"
   },
   "peerDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0 || ^6.0.0",
+    "@vue/compiler-sfc": "^3.4.0",
     "agents": ">=0.11.4",
     "evlog": "^2.13.0",
     "h3": ">=1.15.11",
     "secure-exec": ">=0.2.1",
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0",
+    "vite-plugin-singlefile": "^2.0.0",
+    "vue": "^3.4.0",
     "zod": "^4.1.13"
   },
   "peerDependenciesMeta": {
@@ -66,6 +78,21 @@
     },
     "zod": {
       "optional": false
+    },
+    "@vitejs/plugin-vue": {
+      "optional": true
+    },
+    "@vue/compiler-sfc": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    },
+    "vite-plugin-singlefile": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
     },
     "agents": {
       "optional": true
@@ -84,11 +111,16 @@
     "@nuxt/schema": "^4.4.2",
     "@nuxt/test-utils": "^4.0.2",
     "@types/node": "latest",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/compiler-sfc": "^3.5.0",
     "eslint": "^9.39.4",
     "evlog": "^2.13.0",
     "nuxt": "^4.4.2",
     "typescript": "~6.0.3",
+    "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.4",
+    "vue": "^3.5.0",
     "vue-tsc": "^3.2.7"
   },
   "publishConfig": {

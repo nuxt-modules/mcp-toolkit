@@ -52,6 +52,14 @@ export default defineNuxtConfig({
     db: 'postgresql',
   },
 
+  vite: {
+    server: {
+      // Allow tunneling the dev server through ngrok / cloudflared / localtunnel.
+      // Strings allow exact hosts, `.tld` allows every subdomain on that TLD.
+      allowedHosts: ['.ngrok-free.dev', '.ngrok.app', '.trycloudflare.com', '.loca.lt'],
+    },
+  },
+
   mcp: {
     name: 'Playground MCP',
     description: 'A demo MCP server showcasing authentication, todos, and user management.',

@@ -1,4 +1,4 @@
-import { addComponent, addServerImports } from '@nuxt/kit'
+import { addComponent, addImports, addServerImports } from '@nuxt/kit'
 import type { Resolver } from '@nuxt/kit'
 
 const DEFINITION_HELPERS = [
@@ -22,14 +22,13 @@ const DEFINITION_TYPES = [
   'McpResourceExtra',
 ] as const
 
-/**
- * Register all auto-imports exposed by the module — definition helpers,
- * MCP-specific types, server composables and the Vue `<InstallButton>`.
- *
- * Skipped entirely when `autoImports: false` so users can opt into
- * explicit `@nuxtjs/mcp-toolkit/server` imports.
- */
-export function setupAutoImports(resolver: Resolver): void {
+export interface AutoImportsConfig {
+  /** Register `defineMcpApp` (server) + `useMcpApp` (client). Skipped when no `app/mcp/*.vue` exists. */
+  hasApps?: boolean
+}
+
+/** Register module auto-imports — definition helpers, types, and the `<InstallButton>` component. */
+export function setupAutoImports(resolver: Resolver, config: AutoImportsConfig = {}): void {
   const definitionsPath = resolver.resolve('runtime/server/mcp/definitions')
   const sessionPath = resolver.resolve('runtime/server/mcp/session')
   const serverPath = resolver.resolve('runtime/server/mcp/server')
@@ -51,4 +50,11 @@ export function setupAutoImports(resolver: Resolver): void {
     { name: 'useMcpElicitation', from: elicitationPath },
     { name: 'useMcpLogger', from: loggerPath },
   ])
+
+  // Registered only when at least one `app/mcp/*.vue` exists, so projects
+  // without MCP Apps keep a clean Nuxt namespace.
+  if (config.hasApps) {
+    addServerImports([{ name: 'defineMcpApp', from: definitionsPath }])
+    addImports({ name: 'useMcpApp', from: resolver.resolve('runtime/app/use-mcp-app') })
+  }
 }

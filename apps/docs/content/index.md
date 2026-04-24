@@ -35,6 +35,8 @@ Use the Model Context Protocol to standardize how LLMs interact with your Nuxt a
 
 :landing-feature-item{description="Built on the official MCP SDK, ensuring compatibility with all MCP clients like Claude, Cursor, ChatGPT and more." icon="i-lucide-check-circle-2" title="Standard Compatible" to="/getting-started/connection"}
 
+:landing-feature-item{description="Ship interactive UI widgets to AI hosts. Author Vue SFCs in app/mcp/ — bundled, sandboxed, and rendered inline by Cursor, ChatGPT and Claude." icon="i-lucide-app-window" title="MCP Apps" to="/core-concepts/apps"}
+
 :landing-feature-item{description="Let LLMs write JavaScript that orchestrates tools in a secure V8 sandbox. Cut token overhead by up to 82%." icon="i-lucide-terminal" title="Code Mode" to="/advanced/code-mode"}
 
 :landing-feature-item{description="Intercept requests to add authentication, logging and rate limiting. Access event context from your tools." icon="i-lucide-shield" title="Middleware" to="/advanced/middleware"}

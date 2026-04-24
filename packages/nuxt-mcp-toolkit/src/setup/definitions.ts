@@ -4,8 +4,11 @@ import type { Nuxt } from '@nuxt/schema'
 import type { ConsolaInstance } from 'consola'
 import { loadAllDefinitions } from '../runtime/server/mcp/loaders'
 import { ROUTES } from '../runtime/server/mcp/constants'
+import { probeAppsDir } from './mcp-apps/discover'
 import { detectIDE, findInstalledMCPConfig, generateDeeplinkUrl, IDE_CONFIGS, terminalLink } from '../utils/ide'
 import type { ModuleOptions } from '../module'
+
+const DEFAULT_APPS_DIR = 'mcp'
 
 export interface DefinitionsPaths {
   tools: string[]
@@ -14,11 +17,12 @@ export interface DefinitionsPaths {
   handlers: string[]
 }
 
-/**
- * Build the default scan paths from the resolved MCP `dir`. The hook
- * `mcp:definitions:paths` lets users append additional directories
- * before discovery runs.
- */
+export interface DefinitionsLoaderConfig {
+  /** Sub-directory under the app dir where SFC MCP Apps live. Defaults to `mcp` (i.e. `app/mcp/*.vue`). */
+  appsDir?: string
+}
+
+/** Build default scan paths from the resolved MCP `dir`. */
 export function buildDefaultPaths(mcpDir: string): DefinitionsPaths {
   return {
     tools: [`${mcpDir}/tools`],
@@ -28,27 +32,33 @@ export function buildDefaultPaths(mcpDir: string): DefinitionsPaths {
   }
 }
 
-/**
- * Run definition discovery once Nuxt is done loading modules and report
- * a one-line summary on dev-server `listen`. Both hooks share the
- * `mcpSummary` closure so the listener can stay silent when no
- * definitions were found.
- */
+/** Run definition discovery on `modules:done` and report a summary on dev `listen`. */
 export function setupDefinitionsLoader(
   nuxt: Nuxt,
   paths: DefinitionsPaths,
   options: ModuleOptions,
   resolver: Resolver,
   log: ConsolaInstance,
+  config: DefinitionsLoaderConfig,
 ): void {
   let mcpSummary: string | null = null
+  const appsDir = config.appsDir ?? DEFAULT_APPS_DIR
 
   nuxt.hook('modules:done', async () => {
     try {
       const callCustomHook = nuxt.callHook as (name: string, ...args: unknown[]) => Promise<void>
       await callCustomHook('mcp:definitions:paths', paths)
 
-      const result = await loadAllDefinitions(paths)
+      // Lazy-load the apps pipeline only when at least one layer carries the dir.
+      // Users without `app/mcp/*.vue` pay zero setup/runtime cost.
+      const appsResult = probeAppsDir(appsDir)
+        ? await (await import('./mcp-apps')).setupMcpApps(nuxt, appsDir, resolver, log)
+        : { apps: [], toolFiles: [], resourceFiles: [] }
+
+      const result = await loadAllDefinitions(paths, {
+        toolFiles: appsResult.toolFiles,
+        resourceFiles: appsResult.resourceFiles,
+      })
 
       if (result.handlers && result.handlers.count > 0) {
         addServerHandler({
@@ -67,6 +77,7 @@ export function setupDefinitionsLoader(
       if (result.resources.count > 0) summary.push(`${result.resources.count} resource${result.resources.count > 1 ? 's' : ''}`)
       if (result.prompts.count > 0) summary.push(`${result.prompts.count} prompt${result.prompts.count > 1 ? 's' : ''}`)
       if (result.handlers.count > 0) summary.push(`${result.handlers.count} handler${result.handlers.count > 1 ? 's' : ''}`)
+      if (appsResult.apps.length > 0) summary.push(`${appsResult.apps.length} app${appsResult.apps.length > 1 ? 's' : ''}`)
       mcpSummary = summary.join(', ')
     }
     catch (error) {

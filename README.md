@@ -19,9 +19,10 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 
 <!-- automd:file src=".github/snippets/features.md" -->
 
-- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
+- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, prompts, and apps
 - 📦 **File-based** - Organize definitions in intuitive directory structures
 - 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single app
+- 🖼️ **MCP Apps** - Ship interactive Vue UI widgets to Cursor, ChatGPT, and Claude
 - 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
 - 📝 **TypeScript First** - Full type safety with auto-imports
 - 🔒 **Zod Validation** - Built-in input/output validation

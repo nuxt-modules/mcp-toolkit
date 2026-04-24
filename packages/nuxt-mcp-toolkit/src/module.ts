@@ -2,6 +2,7 @@ import { addServerHandler, addServerTemplate, createResolver, defineNuxtModule, 
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { setupAutoImports } from './setup/auto-imports'
 import { buildDefaultPaths, setupDefinitionsLoader } from './setup/definitions'
+import { probeAppsDir } from './setup/mcp-apps/discover'
 import { setupEvlog } from './setup/evlog'
 import { setupNitroAliases } from './setup/nitro-aliases'
 import { name, version } from '../package.json'
@@ -165,8 +166,11 @@ export default defineNuxtModule<ModuleOptions>({
 
     await setupEvlog(nuxt, options, log)
 
+    const appsDir = 'mcp'
+    const hasApps = probeAppsDir(appsDir)
+
     if (options.autoImports !== false) {
-      setupAutoImports(resolver)
+      setupAutoImports(resolver, { hasApps })
     }
 
     addServerTemplate({
@@ -174,7 +178,7 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => `export default ${JSON.stringify(mcpConfig)}`,
     })
 
-    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log)
+    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log, { appsDir })
 
     registerTypeReferences(nuxt, resolver)
 
@@ -218,4 +222,15 @@ function registerServerHandlers(route: string, resolver: ReturnType<typeof creat
   addServerHandler({ route, handler: resolver.resolve('runtime/server/mcp/handler') })
   addServerHandler({ route: `${route}/deeplink`, handler: resolver.resolve('runtime/server/mcp/deeplink') })
   addServerHandler({ route: `${route}/badge.svg`, handler: resolver.resolve('runtime/server/mcp/badge-image') })
+
+  // OAuth discovery endpoints (RFC 9728 / RFC 8414). MCP clients probe
+  // these on connect; absent a real handler Nuxt would serve an HTML 404
+  // and break clients that try to parse the body as JSON.
+  const oauthHandler = resolver.resolve('runtime/server/mcp/oauth-metadata')
+  addServerHandler({ route: '/.well-known/oauth-protected-resource', handler: oauthHandler })
+  addServerHandler({ route: '/.well-known/oauth-protected-resource/**', handler: oauthHandler })
+  addServerHandler({ route: '/.well-known/oauth-authorization-server', handler: oauthHandler })
+  addServerHandler({ route: '/.well-known/oauth-authorization-server/**', handler: oauthHandler })
+  addServerHandler({ route: '/.well-known/openid-configuration', handler: oauthHandler })
+  addServerHandler({ route: '/.well-known/openid-configuration/**', handler: oauthHandler })
 }
