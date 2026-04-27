@@ -2,7 +2,7 @@
 '@nuxtjs/mcp-toolkit': minor
 ---
 
-**MCP Apps** — author interactive UI widgets as Vue Single-File Components and ship them to any MCP UI host (Cursor, ChatGPT, Claude Desktop, Discord, MCP Inspector).
+**MCP Apps** — author interactive UI widgets as Vue Single-File Components and ship them to MCP Apps-compatible hosts such as Cursor and ChatGPT.
 
 ### Authoring
 
@@ -33,7 +33,7 @@ const { data, sendPrompt } = useMcpApp()
 Each SFC becomes:
 
 - a `defineMcpTool`-style tool registered on the handler,
-- a `text/html;profile=mcp-app` UI resource at `ui://app/<name>`,
+- a `text/html;profile=mcp-app` UI resource at `ui://mcp-app/<name>`,
 - a single-file HTML bundle (Vue runtime + your code + scoped CSS) served inline.
 
 The handler runs server-side and returns `structuredContent`, which is inlined into the bundled HTML so the iframe boots **with full data on the first paint** — no extra round-trip, no flicker.

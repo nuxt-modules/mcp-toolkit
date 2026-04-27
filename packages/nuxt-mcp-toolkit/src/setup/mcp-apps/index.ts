@@ -38,7 +38,7 @@ export async function setupMcpApps(
   log: ConsolaInstance,
 ): Promise<McpAppsResult> {
   const dir = appsDir ?? APPS_DIR_DEFAULT
-  const apps = await discoverApps(dir)
+  const apps = await discoverApps(dir, log)
 
   if (apps.length === 0) {
     return { apps: [], toolFiles: [], resourceFiles: [] }

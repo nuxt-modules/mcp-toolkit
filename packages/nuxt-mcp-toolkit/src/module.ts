@@ -74,6 +74,12 @@ export interface ModuleOptions {
    */
   dir?: string
   /**
+   * Base directory for MCP App SFCs relative to Nuxt's app directory.
+   * The module will look for `.vue` files in this directory across layers.
+   * @default 'mcp' (app/mcp)
+   */
+  appsDir?: string
+  /**
    * Auto-import MCP helpers (`defineMcpTool`, `defineMcpResource`, etc.),
    * types (`McpRequestExtra`, `McpToolExtra`, …), and the `InstallButton` component.
    *
@@ -166,7 +172,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     await setupEvlog(nuxt, options, log)
 
-    const appsDir = 'mcp'
+    const appsDir = options.appsDir ?? 'mcp'
     const hasApps = probeAppsDir(appsDir)
 
     if (options.autoImports !== false) {

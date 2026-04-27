@@ -131,7 +131,6 @@ const failedImage = ref(false)
       v-else
       class="card"
     >
-      <!-- Summary row -->
       <div class="summary">
         <div class="thumb">
           <img
@@ -174,7 +173,6 @@ const failedImage = ref(false)
         </div>
       </div>
 
-      <!-- Price breakdown -->
       <dl class="breakdown">
         <div class="row">
           <dt>{{ data.price.currency }}{{ data.price.nightly }} × {{ data.summary.nights }} {{ data.summary.nights > 1 ? 'nights' : 'night' }}</dt>
@@ -194,7 +192,6 @@ const failedImage = ref(false)
         </div>
       </dl>
 
-      <!-- Traveler / payment (read-only mock) -->
       <div
         v-if="status !== 'confirmed'"
         class="block"
@@ -224,7 +221,6 @@ const failedImage = ref(false)
         </p>
       </div>
 
-      <!-- Confirmation success card -->
       <div
         v-if="status === 'confirmed'"
         class="success"
@@ -244,7 +240,6 @@ const failedImage = ref(false)
         </div>
       </div>
 
-      <!-- CTAs -->
       <div class="actions">
         <button
           v-if="status !== 'confirmed'"
@@ -336,7 +331,6 @@ const failedImage = ref(false)
   margin: 0 auto;
 }
 
-/* --- Header --- */
 .header { display: flex; flex-direction: column; gap: 0.25rem; }
 .eyebrow {
   font-size: 0.6875rem;
@@ -367,7 +361,6 @@ const failedImage = ref(false)
   color: var(--subtle);
 }
 
-/* --- Card --- */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -378,7 +371,6 @@ const failedImage = ref(false)
   gap: 1rem;
 }
 
-/* --- Summary row --- */
 .summary { display: flex; gap: 0.875rem; align-items: center; }
 .thumb {
   flex: 0 0 64px;
@@ -425,7 +417,6 @@ const failedImage = ref(false)
 }
 .dates { font-size: 0.75rem; color: var(--muted); margin: 0.125rem 0 0; }
 
-/* --- Breakdown --- */
 .breakdown {
   display: flex;
   flex-direction: column;
@@ -452,7 +443,6 @@ const failedImage = ref(false)
 }
 .row.total dt, .row.total dd { color: var(--fg); font-size: 0.9375rem; }
 
-/* --- Blocks (traveler / payment) --- */
 .block { display: flex; flex-direction: column; gap: 0.125rem; }
 .block-label {
   font-size: 0.6875rem;
@@ -475,7 +465,6 @@ const failedImage = ref(false)
   font-weight: 600;
 }
 
-/* --- Success --- */
 .success {
   display: flex;
   align-items: center;
@@ -501,7 +490,6 @@ const failedImage = ref(false)
 .success-title { margin: 0; font-weight: 600; font-size: 0.9375rem; letter-spacing: -0.015em; }
 .success-sub { margin: 0; color: var(--muted); font-size: 0.8125rem; }
 
-/* --- Actions --- */
 .actions { display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch; }
 .cta, .ghost {
   appearance: none;
@@ -538,7 +526,6 @@ const failedImage = ref(false)
 }
 .ghost:hover { color: var(--fg); }
 
-/* --- Spinner --- */
 .spinner {
   width: 12px;
   height: 12px;
@@ -550,7 +537,6 @@ const failedImage = ref(false)
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- Skeleton --- */
 .skel {
   background: linear-gradient(
     90deg,

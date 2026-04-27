@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue'
+import { version } from '../../../package.json'
 
 /**
  * Singleton transport between an MCP App iframe and its host. Three protocols
@@ -18,7 +19,7 @@ import { ref, type Ref } from 'vue'
 const DATA_SCRIPT_ID = '__mcp_app_data__'
 const MCP_APPS_PROTOCOL_VERSION = '2026-01-26'
 const HANDSHAKE_TIMEOUT_MS = 5_000
-const APP_INFO = { name: 'nuxt-mcp-toolkit', version: '0.14.0' } as const
+const APP_INFO = { name: 'nuxt-mcp-toolkit', version } as const
 
 /** Subset of the spec's `HostContext` (theme, display, dims, locale). */
 export interface HostContext {

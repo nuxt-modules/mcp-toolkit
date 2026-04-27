@@ -188,6 +188,9 @@ export async function parseSfcApp(sfcPath: string): Promise<ParsedSfcApp> {
   if (!macro) {
     return { argText: '{}', imports: [], bundleSource: absolutiseAllRelativeImports(sourceWithImports, sfcDir) }
   }
+  if (findMacroCall(scriptContent.slice(macro.end), MACRO_NAME)) {
+    throw new Error(`Multiple ${MACRO_NAME}() calls found in ${sfcPath}. MCP App SFCs support exactly one app definition.`)
+  }
 
   const imports = absolutiseRelativeImports(
     pickRelevantImports(allImports, macro.argText),

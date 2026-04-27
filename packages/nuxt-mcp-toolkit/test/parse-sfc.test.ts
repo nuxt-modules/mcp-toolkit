@@ -1,5 +1,8 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { absolutiseRelativeImports } from '../src/setup/mcp-apps/parse-sfc'
+import { absolutiseRelativeImports, parseSfcApp } from '../src/setup/mcp-apps/parse-sfc'
 
 describe('absolutiseRelativeImports', () => {
   // Regression for "Could not resolve './stay-finder.data' from
@@ -31,5 +34,25 @@ describe('absolutiseRelativeImports', () => {
       `import { resolve } from 'node:path'`,
       `import { Foo } from '@nuxtjs/mcp-toolkit/server'`,
     ])
+  })
+})
+
+describe('parseSfcApp', () => {
+  it('rejects SFCs with multiple defineMcpApp calls', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mcp-app-'))
+    try {
+      const file = join(dir, 'double.vue')
+      await writeFile(file, `<script setup lang="ts">
+defineMcpApp({ description: 'first' })
+defineMcpApp({ description: 'second' })
+</script>
+<template><div /></template>
+`, 'utf-8')
+
+      await expect(parseSfcApp(file)).rejects.toThrow(/Multiple defineMcpApp\(\) calls/)
+    }
+    finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })
