@@ -58,17 +58,17 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nuxt/kit": "^4.4.2",
-    "tinyglobby": "^0.2.16"
+    "@vitejs/plugin-vue": "^6.0.6",
+    "tinyglobby": "^0.2.16",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "peerDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0 || ^6.0.0",
     "@vue/compiler-sfc": "^3.4.0",
     "agents": ">=0.11.4",
     "evlog": "^2.13.0",
     "h3": ">=1.15.11",
     "secure-exec": ">=0.2.1",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
-    "vite-plugin-singlefile": "^2.0.0",
     "vue": "^3.4.0",
     "zod": "^4.1.13"
   },
@@ -79,16 +79,10 @@
     "zod": {
       "optional": false
     },
-    "@vitejs/plugin-vue": {
-      "optional": true
-    },
     "@vue/compiler-sfc": {
       "optional": true
     },
     "vite": {
-      "optional": true
-    },
-    "vite-plugin-singlefile": {
       "optional": true
     },
     "vue": {

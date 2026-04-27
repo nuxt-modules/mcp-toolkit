@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
 import {
   defineMcpApp,
   buildAppResourceUri,
@@ -72,6 +72,13 @@ describe('MCP App — security', () => {
 })
 
 describe('MCP App — spec metadata', () => {
+  const originalEnv = process.env.NUXT_PUBLIC_APP_URL
+
+  afterEach(() => {
+    if (originalEnv === undefined) delete process.env.NUXT_PUBLIC_APP_URL
+    else process.env.NUXT_PUBLIC_APP_URL = originalEnv
+  })
+
   it('serves the spec MIME and exposes ui.resourceUri + ui.csp on tool and resource _meta', async () => {
     expect(MCP_APP_MIME_TYPE).toBe('text/html;profile=mcp-app')
 
@@ -95,6 +102,19 @@ describe('MCP App — spec metadata', () => {
     const resourceUi = c?._meta?.ui as Record<string, unknown> | undefined
     expect(resourceUi?.resourceUri).toBe('ui://mcp-app/demo')
     expect(resourceUi?.csp).toMatchObject({ resourceDomains: ['https://images.example.com'] })
+  })
+
+  it('auto-detects ui.domain and lets app metadata override it', async () => {
+    process.env.NUXT_PUBLIC_APP_URL = 'demo.example.com'
+    const detected = _createAppTool(defineMcpApp(), ctx)
+    const detectedResult = await callTool(detected, {}) as { _meta?: Record<string, unknown> }
+    expect((detectedResult._meta?.ui as Record<string, unknown>).domain).toBe('https://demo.example.com')
+
+    const overridden = _createAppTool(defineMcpApp({
+      _meta: { ui: { domain: 'https://custom.example.com' } },
+    }), ctx)
+    const overriddenResult = await callTool(overridden, {}) as { _meta?: Record<string, unknown> }
+    expect((overriddenResult._meta?.ui as Record<string, unknown>).domain).toBe('https://custom.example.com')
   })
 })
 
