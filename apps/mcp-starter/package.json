@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Minimal Nuxt app with @nuxtjs/mcp-toolkit — copy, run, extend with tools, resources, and prompts",
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@10.33.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git",

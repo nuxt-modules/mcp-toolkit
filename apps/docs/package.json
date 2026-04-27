@@ -27,13 +27,13 @@
     "minimark": "^1.0.0",
     "motion-v": "^2.2.1",
     "nuxt": "^4.4.2",
-    "nuxt-studio": "^1.6.0",
-    "shaders": "^2.5.104"
+    "nuxt-studio": "^1.6.1",
+    "shaders": "^2.5.109"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.2",
     "eslint": "^9.39.4",
     "evalite": "^1.0.0-beta.16",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   }
 }
