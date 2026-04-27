@@ -1,7 +1,7 @@
 import type { ZodRawShape } from 'zod'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import type { McpRequestExtra } from './sdk-extra'
-import type { McpToolDefinition, McpToolCallback } from './tools'
+import type { McpToolDefinition, McpToolCallback, McpToolAnnotations } from './tools'
 import type { StandardMcpResourceDefinition } from './resources'
 import { normalizeToolResult, type McpToolCallbackResult } from './results'
 
@@ -113,6 +113,27 @@ function cspToMeta(csp: McpAppCsp | false | undefined): McpAppCsp | undefined {
   }
 }
 
+function normalizeOrigin(value: string): string {
+  return value.startsWith('http://') || value.startsWith('https://')
+    ? value
+    : `https://${value}`
+}
+
+function detectAppDomain(): string | undefined {
+  const env = typeof process !== 'undefined' ? process.env : {}
+  const value = env.NUXT_PUBLIC_APP_URL
+    ?? env.VERCEL_PROJECT_PRODUCTION_URL
+    ?? env.VERCEL_URL
+    ?? env.URL
+    ?? env.RENDER_EXTERNAL_URL
+    ?? env.RAILWAY_PUBLIC_DOMAIN
+    ?? env.FLY_APP_NAME
+
+  if (!value) return undefined
+  if (value === env.FLY_APP_NAME) return `https://${value}.fly.dev`
+  return normalizeOrigin(value)
+}
+
 /**
  * Build the `_meta` shared by tool definition, every tool-call result, and the
  * `ui://` resource. The `openai/*` keys are a compat layer for ChatGPT.
@@ -125,10 +146,12 @@ export function buildAppMeta(
   const userMeta = app._meta ?? {}
   const userUi = (userMeta.ui as Record<string, unknown> | undefined) ?? {}
   const cspMeta = cspToMeta(app.csp)
+  const domain = typeof userUi.domain === 'string' ? userUi.domain : detectAppDomain()
 
   return {
     'ui': {
       ...userUi,
+      ...(domain ? { domain } : {}),
       resourceUri,
       ...(cspMeta ? { csp: cspMeta } : {}),
     },
@@ -159,6 +182,8 @@ export interface McpAppOptions<
   inputSchema?: InputSchema
   /** Server-side handler. Defaults to `(args) => ({ structuredContent: args })`. */
   handler?: McpToolCallback<InputSchema>
+  /** Behavioral hints forwarded to the generated MCP tool descriptor. */
+  annotations?: McpToolAnnotations
   /** CSP applied to the iframe HTML and mirrored into `_meta.ui.csp`. Pass `false` to disable. */
   csp?: McpAppCsp | false
   /** Free-form `_meta`. `ui.resourceUri` and `ui.csp` are auto-injected. */
@@ -254,6 +279,7 @@ export function _createAppTool(
     title: app.title,
     description: app.description,
     inputSchema: app.inputSchema,
+    annotations: app.annotations,
     handler: wrapped,
     _meta: { ...userMeta, ...sharedMeta },
   }
