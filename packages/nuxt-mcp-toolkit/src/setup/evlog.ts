@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { join } from 'node:path'
 import type { Nuxt } from '@nuxt/schema'
 import type { ConsolaInstance } from 'consola'
 import type { NitroModule } from 'nitropack'
@@ -16,14 +18,14 @@ export type LoggingMode
 
 /**
  * Resolve the user's `mcp.logging` option into a single discriminated
- * union and report whether evlog is installed.
+ * union and report whether `evlog` can be loaded from the Nuxt project root.
  */
-export function resolveLoggingMode(options: ModuleOptions): LoggingMode {
+export function resolveLoggingMode(options: ModuleOptions, rootDir: string): LoggingMode {
   if (options.logging === false) {
     return { kind: 'off', explicit: true }
   }
 
-  const evlogAvailable = isEvlogAvailable()
+  const evlogAvailable = isEvlogResolvableFromProject(rootDir)
 
   if (options.logging === true) {
     return { kind: 'forced', options: {}, evlogAvailable }
@@ -40,11 +42,33 @@ export function resolveLoggingMode(options: ModuleOptions): LoggingMode {
   return { kind: 'auto-detect', evlogAvailable }
 }
 
-function isEvlogAvailable(): boolean {
+function isEvlogResolvableFromProject(rootDir: string): boolean {
   try {
-    const moduleRequire = createRequire(import.meta.url)
+    const moduleRequire = createRequire(join(rootDir, 'package.json'))
     moduleRequire.resolve('evlog/nitro')
     return true
+  }
+  catch {
+    return false
+  }
+}
+
+/** True when the app declares `evlog` — avoids hoisted-deps false positives in monorepos. */
+function isEvlogDeclaredInProject(rootDir: string): boolean {
+  try {
+    const raw = readFileSync(join(rootDir, 'package.json'), 'utf8')
+    const pkg = JSON.parse(raw) as {
+      dependencies?: Record<string, string>
+      devDependencies?: Record<string, string>
+      optionalDependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
+    }
+    return Boolean(
+      pkg.dependencies?.evlog
+      || pkg.devDependencies?.evlog
+      || pkg.optionalDependencies?.evlog
+      || pkg.peerDependencies?.evlog,
+    )
   }
   catch {
     return false
@@ -84,32 +108,38 @@ function wrapEvlogModule(evlogModule: NitroModule): NitroModule {
 }
 
 /**
- * Wire evlog into the user's Nitro app, log a status line for the dev
- * server, and bail loudly if `logging` was forced on without the
- * peer dep installed.
+ * Wire evlog into the user's Nitro app when observability is on and evlog is
+ * resolvable from the project. Otherwise silent; warns when the app declares
+ * `evlog` but `mcp.logging: false`; throws when logging is forced on without a
+ * resolvable `evlog`.
  */
 export async function setupEvlog(
   nuxt: Nuxt,
   options: ModuleOptions,
   log: ConsolaInstance,
 ): Promise<void> {
-  const mode = resolveLoggingMode(options)
+  const rootDir = nuxt.options.rootDir
+  const mode = resolveLoggingMode(options, rootDir)
 
   if (mode.kind === 'forced' && !mode.evlogAvailable) {
     throw new Error(
-      '[@nuxtjs/mcp-toolkit] `mcp.logging` is enabled but the optional `evlog` peer dependency is not installed. '
-      + 'Run `pnpm add evlog` (or `npm install evlog` / `yarn add evlog` / `bun add evlog`) to enable server-side observability, '
+      '[@nuxtjs/mcp-toolkit] `mcp.logging` is enabled but `evlog` is not installed (or not resolvable from your app). '
+      + 'Run `pnpm add evlog` (or `npm install evlog` / `yarn add evlog` / `bun add evlog`), '
       + 'or set `mcp.logging: false` to opt out.',
     )
   }
 
   if (mode.kind === 'off') {
-    log.info('Observability disabled (`mcp.logging: false`) · `useMcpLogger().notify` still active')
+    if (isEvlogDeclaredInProject(rootDir)) {
+      log.warn(
+        '[@nuxtjs/mcp-toolkit] `evlog` is listed in package.json but MCP observability is off (`mcp.logging: false`). '
+        + 'Remove `mcp.logging` or set it to `true` / an options object to enable wide-event tracing on your MCP route.',
+      )
+    }
     return
   }
 
   if (!mode.evlogAvailable) {
-    log.info('Observability inactive · install `evlog` to enable wide-event tracing — `useMcpLogger().notify` still works')
     return
   }
 
