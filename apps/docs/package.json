@@ -1,6 +1,7 @@
 {
   "name": "@nuxtjs/mcp-toolkit-docs",
   "private": true,
+  "type": "module",
   "description": "Documentation for Nuxt MCP Toolkit",
   "repository": {
     "type": "git",
@@ -22,6 +23,7 @@
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "@nuxt/ui": "^4.7.0",
     "better-sqlite3": "^12.9.0",
     "docus": "^5.10.0",
     "minimark": "^1.0.0",

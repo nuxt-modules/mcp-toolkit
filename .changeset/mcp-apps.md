@@ -71,5 +71,5 @@ The MCP Apps pipeline is fully optional: when no `app/mcp/` directory exists, no
 
 ### Docs
 
-- [Apps guide](https://mcp-toolkit.nuxt.dev/core-concepts/apps) — full authoring walkthrough, host context, follow-ups, host compatibility matrix.
+- [Apps guide](https://mcp-toolkit.nuxt.dev/apps/overview) — full authoring walkthrough, host context, follow-ups, host compatibility matrix.
 - [MCP Apps internals](https://mcp-toolkit.nuxt.dev/advanced/mcp-apps-internals) — build pipeline, host bridge protocol, security model, advanced patterns.

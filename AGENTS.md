@@ -233,9 +233,9 @@ describe('my feature', () => {
 
 - **Full Documentation**: https://mcp-toolkit.nuxt.dev
 - **Installation Guide**: https://mcp-toolkit.nuxt.dev/getting-started/installation
-- **Tools Guide**: https://mcp-toolkit.nuxt.dev/core-concepts/tools
-- **Resources Guide**: https://mcp-toolkit.nuxt.dev/core-concepts/resources
-- **Prompts Guide**: https://mcp-toolkit.nuxt.dev/core-concepts/prompts
+- **Tools Guide**: https://mcp-toolkit.nuxt.dev/tools/overview
+- **Resources Guide**: https://mcp-toolkit.nuxt.dev/resources/overview
+- **Prompts Guide**: https://mcp-toolkit.nuxt.dev/prompts/overview
 
 ### MCP Core Concepts
 

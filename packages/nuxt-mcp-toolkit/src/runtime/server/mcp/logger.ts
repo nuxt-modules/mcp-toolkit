@@ -90,7 +90,7 @@ export interface McpLogger {
 
 const OBSERVABILITY_HINT
   = 'Server-side observability is not active on this request. '
-    + 'Install the optional `evlog` peer dependency (`pnpm add evlog`) '
+    + 'Install the optional `evlog` peer dependency (`pnpm add evlog` or `npm install evlog` / `yarn add evlog` / `bun add evlog`) '
     + 'and make sure `mcp.logging` is not set to `false` in nuxt.config. '
     + '`log.notify.*` (client channel) keeps working without evlog.'
 

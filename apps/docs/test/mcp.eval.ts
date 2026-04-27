@@ -65,11 +65,11 @@ evalite('Documentation Tools - Get Page', {
     },
     {
       input: 'Read the tools documentation',
-      expected: [{ toolName: 'get-page', input: { path: '/core-concepts/tools' } }],
+      expected: [{ toolName: 'get-page', input: { path: '/tools/overview' } }],
     },
     {
       input: 'Show me how to create resources',
-      expected: [{ toolName: 'get-page', input: { path: '/core-concepts/resources' } }],
+      expected: [{ toolName: 'get-page', input: { path: '/resources/overview' } }],
     },
   ],
   task: async (input) => {

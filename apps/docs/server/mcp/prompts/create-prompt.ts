@@ -54,7 +54,7 @@ export default defineMcpPrompt({
 ## Documentation
 
 - **Official Documentation**: https://mcp-toolkit.nuxt.dev/
-- **Prompts Guide**: https://mcp-toolkit.nuxt.dev/raw/core-concepts/prompts.md
+- **Prompts Guide**: https://mcp-toolkit.nuxt.dev/raw/prompts/overview.md
 - **Prompt Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/prompt-examples.md
 
 **IMPORTANT**: Before generating code, always:
@@ -154,7 +154,7 @@ handler: async ({ topic }) => {
 ## Learn More
 
 For more details and advanced patterns, visit the official documentation:
-- Full prompts reference: https://mcp-toolkit.nuxt.dev/raw/core-concepts/prompts.md
+- Full prompts reference: https://mcp-toolkit.nuxt.dev/raw/prompts/overview.md
 - Real-world examples: https://mcp-toolkit.nuxt.dev/raw/examples/prompt-examples.md`,
           },
         },

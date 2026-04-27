@@ -240,7 +240,7 @@ export function registerResourceFromDefinition(
  *
  * `name` and `title` are auto-generated from filename if not provided.
  *
- * @see https://mcp-toolkit.nuxt.dev/core-concepts/resources
+ * @see https://mcp-toolkit.nuxt.dev/resources/overview
  *
  * @example
  * ```ts

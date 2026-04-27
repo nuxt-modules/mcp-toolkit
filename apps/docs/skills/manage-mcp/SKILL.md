@@ -393,7 +393,7 @@ See [elicitation docs →](https://mcp-toolkit.nuxt.dev/advanced/elicitation)
 
 ### `useMcpLogger()`
 
-Split-channel logger: notify the connected client and capture structured wide events (powered by [evlog](https://evlog.dev), an **optional peer dependency** — install with `pnpm add evlog` to enable wide events).
+Split-channel logger: notify the connected client and capture structured wide events (powered by [evlog](https://evlog.dev), an **optional peer dependency** — install with your package manager; see the [Logging](https://mcp-toolkit.nuxt.dev/advanced/logging) guide).
 
 ```typescript
 export default defineMcpTool({
@@ -670,7 +670,7 @@ export default defineNuxtConfig({
 ## Learn More
 
 - [Documentation](https://mcp-toolkit.nuxt.dev/)
-- [Tools Guide](https://mcp-toolkit.nuxt.dev/core-concepts/tools)
-- [Resources Guide](https://mcp-toolkit.nuxt.dev/core-concepts/resources)
-- [Prompts Guide](https://mcp-toolkit.nuxt.dev/core-concepts/prompts)
+- [Tools Guide](https://mcp-toolkit.nuxt.dev/tools/overview)
+- [Resources Guide](https://mcp-toolkit.nuxt.dev/resources/overview)
+- [Prompts Guide](https://mcp-toolkit.nuxt.dev/prompts/overview)
 - [MCP Protocol](https://modelcontextprotocol.io/)

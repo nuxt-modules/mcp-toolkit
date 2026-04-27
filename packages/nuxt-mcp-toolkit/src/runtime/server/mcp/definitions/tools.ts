@@ -40,7 +40,7 @@ export type McpToolCallback<Args extends ZodRawShape | undefined = ZodRawShape> 
 
 /**
  * MCP tool definition structure
- * @see https://mcp-toolkit.nuxt.dev/core-concepts/tools
+ * @see https://mcp-toolkit.nuxt.dev/tools/overview
  */
 export interface McpToolDefinition<
   InputSchema extends ZodRawShape | undefined = ZodRawShape,
@@ -194,7 +194,7 @@ export function registerToolFromDefinition(
  * Thrown errors are caught and converted to MCP `isError` results.
  * H3 errors (`createError()`) include the status code in the response.
  *
- * @see https://mcp-toolkit.nuxt.dev/core-concepts/tools
+ * @see https://mcp-toolkit.nuxt.dev/tools/overview
  *
  * @example
  * ```ts

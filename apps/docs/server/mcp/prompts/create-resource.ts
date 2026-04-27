@@ -94,7 +94,7 @@ export default defineMcpResource({
 ## Documentation
 
 - **Official Documentation**: https://mcp-toolkit.nuxt.dev/
-- **Resources Guide**: https://mcp-toolkit.nuxt.dev/raw/core-concepts/resources.md
+- **Resources Guide**: https://mcp-toolkit.nuxt.dev/raw/resources/overview.md
 - **File Operations Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/file-operations.md
 
 **IMPORTANT**: Before generating code, always:
@@ -182,7 +182,7 @@ return {
 ## Learn More
 
 For more details and advanced patterns, visit the official documentation:
-- Full resources reference: https://mcp-toolkit.nuxt.dev/raw/core-concepts/resources.md
+- Full resources reference: https://mcp-toolkit.nuxt.dev/raw/resources/overview.md
 - File operations examples: https://mcp-toolkit.nuxt.dev/raw/examples/file-operations.md`,
           },
         },

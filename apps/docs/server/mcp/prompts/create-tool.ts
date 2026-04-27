@@ -17,7 +17,7 @@ export default defineMcpPrompt({
 ## Documentation
 
 - **Official Documentation**: https://mcp-toolkit.nuxt.dev/
-- **Tools Guide**: https://mcp-toolkit.nuxt.dev/raw/core-concepts/tools.md
+- **Tools Guide**: https://mcp-toolkit.nuxt.dev/raw/tools/overview.md
 - **API Integration Examples**: https://mcp-toolkit.nuxt.dev/raw/examples/api-integration.md
 - **Common Patterns**: https://mcp-toolkit.nuxt.dev/raw/examples/common-patterns.md
 
@@ -117,7 +117,7 @@ inputSchema: {
 ## Learn More
 
 For more details and advanced patterns, visit the official documentation:
-- Full tools reference: https://mcp-toolkit.nuxt.dev/raw/core-concepts/tools.md
+- Full tools reference: https://mcp-toolkit.nuxt.dev/raw/tools/overview.md
 - Real-world examples: https://mcp-toolkit.nuxt.dev/raw/examples/common-patterns.md`,
           },
         },

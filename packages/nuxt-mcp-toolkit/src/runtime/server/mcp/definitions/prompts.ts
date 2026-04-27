@@ -133,7 +133,7 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
  * Handlers can return a full `GetPromptResult` or a simple string
  * which is automatically wrapped into a single user message.
  *
- * @see https://mcp-toolkit.nuxt.dev/core-concepts/prompts
+ * @see https://mcp-toolkit.nuxt.dev/prompts/overview
  *
  * @example
  * ```ts

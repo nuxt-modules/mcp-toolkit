@@ -52,7 +52,7 @@ export type McpMiddleware = (
 
 /**
  * Options for defining a custom MCP handler
- * @see https://mcp-toolkit.nuxt.dev/core-concepts/handlers
+ * @see https://mcp-toolkit.nuxt.dev/handlers/overview
  */
 export interface McpHandlerOptions {
   /**
@@ -151,7 +151,7 @@ export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, '
 /**
  * Define a custom MCP handler with specific tools, resources, and prompts.
  *
- * @see https://mcp-toolkit.nuxt.dev/core-concepts/handlers
+ * @see https://mcp-toolkit.nuxt.dev/handlers/overview
  *
  * @example Custom handler (accessible via /mcp/:handler)
  * ```ts
