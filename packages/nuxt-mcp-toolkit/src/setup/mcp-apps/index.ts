@@ -45,8 +45,7 @@ export async function setupMcpApps(
   }
 
   const buildRoot = resolvePath(nuxt.options.buildDir, APPS_OUT_DIR)
-  const outDir = resolvePath(buildRoot, 'gen')
-  await mkdir(outDir, { recursive: true })
+  await mkdir(buildRoot, { recursive: true })
 
   const built: BuiltApp[] = []
 
@@ -54,7 +53,7 @@ export async function setupMcpApps(
     try {
       const parsed = await parseSfcApp(app.sfc)
       const html = await bundleAppHtml(app, parsed.bundleSource, buildRoot, resolver, log)
-      const { toolFile, resourceFile } = await emitAppModules(app, parsed, html, outDir, resolver)
+      const { toolFile, resourceFile } = emitAppModules(app, parsed, html, resolver)
       built.push({ ...app, toolFile, resourceFile })
     }
     catch (error) {

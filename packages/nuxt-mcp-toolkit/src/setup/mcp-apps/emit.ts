@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { resolve as resolvePath } from 'node:path'
+import { addServerTemplate } from '@nuxt/kit'
 import type { Resolver } from '@nuxt/kit'
 import type { DiscoveredApp } from './discover'
 import type { ParsedSfcApp } from './parse-sfc'
@@ -12,49 +11,54 @@ import type { ParsedSfcApp } from './parse-sfc'
  *
  * HTML is base64-embedded so the modules survive any deployment target.
  */
-export async function emitAppModules(
+export function emitAppModules(
   app: DiscoveredApp,
   parsed: ParsedSfcApp,
   bundledHtml: string,
-  outDir: string,
   resolver: Resolver,
-): Promise<{ toolFile: string, resourceFile: string }> {
-  await mkdir(outDir, { recursive: true })
-
+): { toolFile: string, resourceFile: string } {
   // Absolute paths sidestep the `@nuxtjs/mcp-toolkit/server` subpath import:
   // in dev the toolkit is only stub-built so bare specifiers would break.
   const appsModule = JSON.stringify(resolver.resolve('runtime/server/mcp/definitions/apps'))
-  const importsBlock = parsed.imports.length ? `${parsed.imports.join('\n')}\n\n` : ''
+  const runtimeImports = parsed.imports.filter(text => !/^\s*import\s+type\b/.test(text))
+  const importsBlock = runtimeImports.length ? `${runtimeImports.join('\n')}\n\n` : ''
   const html64 = JSON.stringify(Buffer.from(bundledHtml, 'utf-8').toString('base64'))
+  const argText = stripTypeScriptFromMacroArg(parsed.argText)
 
   const appFileBody = `import { defineMcpApp } from ${appsModule}
 ${importsBlock}
-export default defineMcpApp(${parsed.argText})
+export default defineMcpApp(${argText})
 `
 
-  const toolFileBody = `import _app from './${app.name}.app'
-import { _createAppTool } from ${appsModule}
+  const toolFileBody = `import { defineMcpApp, _createAppTool } from ${appsModule}
+${importsBlock}
 
 const __HTML = Buffer.from(${html64}, 'base64').toString('utf-8')
+const _app = defineMcpApp(${argText})
 
 export default _createAppTool(_app, { name: ${JSON.stringify(app.name)}, html: __HTML })
 `
 
-  const resourceFileBody = `import _app from './${app.name}.app'
-import { _createAppResource } from ${appsModule}
+  const resourceFileBody = `import { defineMcpApp, _createAppResource } from ${appsModule}
+${importsBlock}
 
 const __HTML = Buffer.from(${html64}, 'base64').toString('utf-8')
+const _app = defineMcpApp(${argText})
 
 export default _createAppResource(_app, { name: ${JSON.stringify(app.name)}, html: __HTML })
 `
 
-  const appFile = resolvePath(outDir, `${app.name}.app.ts`)
-  const toolFile = resolvePath(outDir, `${app.name}.tool.ts`)
-  const resourceFile = resolvePath(outDir, `${app.name}.resource.ts`)
+  const appFile = `#nuxt-mcp-toolkit/mcp-apps/${app.name}.app.mjs`
+  const toolFile = `#nuxt-mcp-toolkit/mcp-apps/${app.name}.tool.mjs`
+  const resourceFile = `#nuxt-mcp-toolkit/mcp-apps/${app.name}.resource.mjs`
 
-  await writeFile(appFile, appFileBody, 'utf-8')
-  await writeFile(toolFile, toolFileBody, 'utf-8')
-  await writeFile(resourceFile, resourceFileBody, 'utf-8')
+  addServerTemplate({ filename: appFile, getContents: () => appFileBody })
+  addServerTemplate({ filename: toolFile, getContents: () => toolFileBody })
+  addServerTemplate({ filename: resourceFile, getContents: () => resourceFileBody })
 
   return { toolFile, resourceFile }
+}
+
+function stripTypeScriptFromMacroArg(argText: string): string {
+  return argText.replace(/\):[^=\n]*=>/g, ') =>')
 }
