@@ -13,6 +13,10 @@ const DEFINITION_HELPERS = [
   'audioResult',
   'completable',
   'extractToolNames',
+  'listMcpTools',
+  'listMcpResources',
+  'listMcpPrompts',
+  'listMcpDefinitions',
 ] as const
 
 const DEFINITION_TYPES = [
