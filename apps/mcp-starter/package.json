@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@nuxtjs/mcp-toolkit": "^0.15.0",
-    "nuxt": "^4.4.2",
+    "nuxt": "^4.4.4",
     "zod": "^4.1.13"
   },
   "devDependencies": {
