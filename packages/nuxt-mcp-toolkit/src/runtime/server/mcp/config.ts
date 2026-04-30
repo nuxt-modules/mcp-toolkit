@@ -16,6 +16,17 @@ export interface McpSecurityConfig {
   allowedOrigins?: string[] | '*'
 }
 
+/**
+ * Strategy used by the default `/mcp` handler when named handlers exist.
+ *
+ * - `'orphans'` (default): the default handler only exposes definitions that
+ *   are **not** attached to any named handler — so each definition shows up in
+ *   exactly one place. When no named handlers exist, behaves like `'all'`.
+ * - `'all'`: the default handler exposes every discovered definition, including
+ *   those attributed to named handlers. Matches the pre-multi-handler behaviour.
+ */
+export type McpDefaultHandlerStrategy = 'orphans' | 'all'
+
 export interface McpConfig {
   enabled: boolean
   route: string
@@ -26,6 +37,14 @@ export interface McpConfig {
   instructions?: string
   icons?: McpIcon[]
   dir: string
+  /**
+   * How the default `/mcp` handler should pick up auto-discovered definitions.
+   * Has no effect on named handlers (`/mcp/<name>`).
+   *
+   * @see McpDefaultHandlerStrategy
+   * @default 'orphans'
+   */
+  defaultHandlerStrategy: McpDefaultHandlerStrategy
   sessions: McpSessionsConfig
   security: McpSecurityConfig
 }
@@ -37,6 +56,7 @@ export const defaultMcpConfig: McpConfig = {
   name: '',
   version: '1.0.0',
   dir: 'mcp',
+  defaultHandlerStrategy: 'orphans',
   sessions: {
     enabled: false,
     maxDuration: 30 * 60 * 1000, // 30 minutes
@@ -63,6 +83,7 @@ export function getMcpConfig(partial?: Partial<McpConfig>): McpConfig {
     instructions: partial.instructions,
     icons: partial.icons,
     dir: partial.dir ?? defaultMcpConfig.dir,
+    defaultHandlerStrategy: partial.defaultHandlerStrategy ?? defaultMcpConfig.defaultHandlerStrategy,
     sessions,
     security,
   }

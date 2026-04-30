@@ -132,9 +132,28 @@ export interface McpHandlerOptions {
    * ```
    */
   experimental_codeMode?: boolean | CodeModeOptions
-  tools?: McpToolDefinitionListItem[] | ((event: H3Event) => McpToolDefinitionListItem[] | Promise<McpToolDefinitionListItem[]>)
-  resources?: McpResourceDefinition[] | ((event: H3Event) => McpResourceDefinition[] | Promise<McpResourceDefinition[]>)
-  prompts?: McpPromptDefinition[] | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
+  /**
+   * Tools exposed by this handler. Accepts:
+   * - **`undefined`** (default): for a named handler, auto-resolve to every tool
+   *   attributed to it via folder convention (`server/mcp/handlers/<name>/tools/`).
+   *   For the default handler, controlled by `mcp.defaultHandlerStrategy`.
+   * - **Array**: explicit list of tool definitions.
+   * - **Function**: dynamic resolver `(event) => tools`. Combine with
+   *   `getMcpTools({ event, ...filter })` for ad-hoc filtering by tag/group.
+   *
+   * @see https://mcp-toolkit.nuxt.dev/handlers/organization
+   */
+  tools?:
+    | McpToolDefinitionListItem[]
+    | ((event: H3Event) => McpToolDefinitionListItem[] | Promise<McpToolDefinitionListItem[]>)
+  /** See {@link McpHandlerOptions.tools}. */
+  resources?:
+    | McpResourceDefinition[]
+    | ((event: H3Event) => McpResourceDefinition[] | Promise<McpResourceDefinition[]>)
+  /** See {@link McpHandlerOptions.tools}. */
+  prompts?:
+    | McpPromptDefinition[]
+    | ((event: H3Event) => McpPromptDefinition[] | Promise<McpPromptDefinition[]>)
 }
 
 export interface McpHandlerDefinition extends Required<Omit<McpHandlerOptions, 'tools' | 'resources' | 'prompts' | 'middleware' | 'description' | 'instructions' | 'icons' | 'experimental_codeMode'>> {

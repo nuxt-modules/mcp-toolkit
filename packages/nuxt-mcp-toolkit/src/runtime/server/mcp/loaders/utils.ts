@@ -2,9 +2,20 @@ import { resolve as resolvePath, relative as relativePath, sep } from 'node:path
 import { getLayerDirectories } from '@nuxt/kit'
 import { glob } from 'tinyglobby'
 
+/**
+ * A discovered MCP definition file with optional context picked up from its
+ * scan root: `group` (subdirectory under the base scan path) and `handler`
+ * (the named handler this file is folder-attributed to, if any).
+ */
 export interface LoadedFile {
   path: string
   group?: string
+  /**
+   * Named handler this file belongs to (folder convention).
+   * Set when the file lives under `<mcpDir>/handlers/<name>/{tools|resources|prompts}/`.
+   * Surfaces on registered definitions as `_meta.handler`.
+   */
+  handler?: string
 }
 
 export interface LoadResult {
@@ -13,72 +24,27 @@ export interface LoadResult {
   overriddenCount: number
 }
 
+/**
+ * One scan root for `loadDefinitionFiles`. Pass `handler` to auto-attribute
+ * every file found under `path` to the named handler.
+ */
+export interface ScanRoot {
+  path: string
+  handler?: string
+}
+
 const RESERVED_KEYWORDS = new Set([
-  'break',
-  'case',
-  'catch',
-  'class',
-  'const',
-  'continue',
-  'debugger',
-  'default',
-  'delete',
-  'do',
-  'else',
-  'export',
-  'extends',
-  'finally',
-  'for',
-  'function',
-  'if',
-  'import',
-  'in',
-  'instanceof',
-  'new',
-  'return',
-  'super',
-  'switch',
-  'this',
-  'throw',
-  'try',
-  'typeof',
-  'var',
-  'void',
-  'while',
-  'with',
-  'yield',
-  'enum',
-  'implements',
-  'interface',
-  'let',
-  'package',
-  'private',
-  'protected',
-  'public',
-  'static',
-  'await',
-  'abstract',
-  'boolean',
-  'byte',
-  'char',
-  'double',
-  'final',
-  'float',
-  'goto',
-  'int',
-  'long',
-  'native',
-  'short',
-  'synchronized',
-  'transient',
-  'volatile',
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+  'delete', 'do', 'else', 'export', 'extends', 'finally', 'for', 'function',
+  'if', 'import', 'in', 'instanceof', 'new', 'return', 'super', 'switch',
+  'this', 'throw', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+  'enum', 'implements', 'interface', 'let', 'package', 'private', 'protected',
+  'public', 'static', 'await', 'abstract', 'boolean', 'byte', 'char', 'double',
+  'final', 'float', 'goto', 'int', 'long', 'native', 'short', 'synchronized',
+  'transient', 'volatile',
 ])
 
-/**
- * Normalize a path to always use forward slashes (for cross-platform consistency).
- * `tinyglobby` returns forward-slash paths, but `path.resolve()` uses the platform
- * separator, so we normalize everything to `/`.
- */
+/** Cross-platform forward-slash normalization (tinyglobby always returns `/`). */
 function normalizePath(p: string): string {
   return sep === '/' ? p : p.split(sep).join('/')
 }
@@ -93,10 +59,7 @@ export function createFilePatterns(paths: string[], extensions = ['ts', 'js', 'm
   )
 }
 
-/**
- * Create file patterns for a specific layer
- */
-export function createLayerFilePatterns(
+function createLayerFilePatterns(
   layerServer: string,
   paths: string[],
   extensions = ['ts', 'js', 'mts', 'mjs'],
@@ -119,152 +82,201 @@ export function createExcludePatterns(paths: string[], subdirs: string[]): strin
 
 export function toIdentifier(filename: string): string {
   const id = filename.replace(/\.(ts|js|mts|mjs)$/, '').replace(/\W/g, '_')
-  if (RESERVED_KEYWORDS.has(id)) {
-    return `_${id}`
-  }
-  return id
+  return RESERVED_KEYWORDS.has(id) ? `_${id}` : id
 }
 
 export interface TemplateEntry {
   identifier: string
   path: string
   group?: string
+  handler?: string
 }
 
-export function createTemplateContent(
-  type: string,
-  entries: TemplateEntry[],
-): string {
-  const imports = entries.map(({ identifier, path }) =>
-    `import ${identifier.replace(/-/g, '_')} from '${path}'`,
-  ).join('\n')
+export interface CreateTemplateOptions {
+  /**
+   * When provided, the rendered IIFE will spread `{ name: nameOverride(entry), ...def }`
+   * so the user-provided `name` (if any) is overridden by the convention.
+   * Used by the handlers template to force `name = <dirName>` for folder handlers.
+   */
+  nameOverride?: (entry: TemplateEntry) => string | undefined
+}
 
-  // Store filename and group in _meta for enrichment in register functions
-  const enrichedExports = entries.map(({ identifier, path, group }) => {
-    const safeId = identifier.replace(/-/g, '_')
-    const filename = path.split('/').pop()!
-    const groupMeta = group ? `,\n      group: ${JSON.stringify(group)}` : ''
-
-    return `(function() {
+/** Render the IIFE that imports a definition and enriches its `_meta`. */
+function renderEntry(entry: TemplateEntry, options: CreateTemplateOptions = {}): string {
+  const safeId = entry.identifier.replace(/-/g, '_')
+  const filename = entry.path.split('/').pop()!
+  const name = options.nameOverride?.(entry)
+  const namePrefix = name ? `name: ${JSON.stringify(name)}, ` : ''
+  const groupMeta = entry.group ? `,\n      group: ${JSON.stringify(entry.group)}` : ''
+  const handlerMeta = entry.handler ? `,\n      handler: ${JSON.stringify(entry.handler)}` : ''
+  return `(function() {
   const def = ${safeId}
   return {
-    ...def,
+    ${namePrefix}...def,
     _meta: {
       ...def._meta,
-      filename: ${JSON.stringify(filename)}${groupMeta}
+      filename: ${JSON.stringify(filename)}${groupMeta}${handlerMeta}
     }
   }
 })()`
-  }).join(',\n  ')
-
-  return `${imports}\n\nexport const ${type} = [\n  ${enrichedExports}\n]\n`
 }
 
 /**
- * Find index files (index.ts, index.js, etc.) in the given paths
- * Returns the file path from the highest priority layer (app overrides extended layers)
+ * Render a virtual server module that exports an array of enriched definitions
+ * (every entry imported, then wrapped in an IIFE that injects `_meta.filename`,
+ * `_meta.group` and `_meta.handler` while preserving any user-provided `_meta`).
+ */
+export function createTemplateContent(
+  exportName: string,
+  entries: TemplateEntry[],
+  options: CreateTemplateOptions = {},
+): string {
+  if (entries.length === 0) {
+    return `export const ${exportName} = []\n`
+  }
+  const imports = entries.map(({ identifier, path }) =>
+    `import ${identifier.replace(/-/g, '_')} from '${path}'`,
+  ).join('\n')
+  const items = entries.map(entry => renderEntry(entry, options)).join(',\n  ')
+  return `${imports}\n\nexport const ${exportName} = [\n  ${items}\n]\n`
+}
+
+/**
+ * A discovered named-handler directory (`<mcpDir>/handlers/<name>/`).
+ * Carries enough info to scan its `tools/`, `resources/`, `prompts/` subtrees
+ * and tag every file with `handler: name`.
+ */
+export interface DiscoveredHandlerDir {
+  /** Handler name, derived from the directory name. */
+  name: string
+  /** Path relative to the layer's server dir (e.g. `mcp/handlers/admin`). */
+  basePath: string
+  /** Layer this handler dir belongs to. */
+  layerServer: string
+}
+
+/**
+ * Glob `<layer.server>/<mcpBasePath>/handlers/*` across every layer and return
+ * the discovered named-handler directories. Used to wire up folder-convention
+ * attribution: any tool/resource/prompt placed under
+ * `mcp/handlers/<name>/{tools,resources,prompts}/` is auto-tagged with
+ * `_meta.handler = '<name>'` and the matching `index.ts` (if any) is loaded
+ * as the handler config.
+ */
+export async function discoverHandlerDirs(mcpBasePaths: string[]): Promise<DiscoveredHandlerDir[]> {
+  if (mcpBasePaths.length === 0) return []
+  const layerDirectories = getLayerDirectories()
+  const discovered: DiscoveredHandlerDir[] = []
+  const seen = new Set<string>()
+
+  for (const layer of layerDirectories) {
+    for (const basePath of mcpBasePaths) {
+      const pattern = normalizePath(resolvePath(layer.server, `${basePath}/handlers/*`))
+      const dirs = await glob(pattern, { absolute: true, onlyDirectories: true })
+      for (const absolutePath of dirs) {
+        // tinyglobby may include a trailing slash on directory matches.
+        const name = absolutePath.replace(/\\/g, '/').replace(/\/$/, '').split('/').pop()
+        if (!name) continue
+        const key = `${layer.server}::${name}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        discovered.push({
+          name,
+          basePath: `${basePath}/handlers/${name}`,
+          layerServer: layer.server,
+        })
+      }
+    }
+  }
+  return discovered
+}
+
+/**
+ * Find the highest-priority `index.{ts,js,mts,mjs}` for the given paths
+ * (main app overrides extended layers).
  */
 export async function findIndexFile(paths: string[], extensions = ['ts', 'js', 'mts', 'mjs']): Promise<string | null> {
-  if (paths.length === 0) {
-    return null
-  }
-
-  // Get layer directories - first one is the main app (highest priority)
+  if (paths.length === 0) return null
   const layerDirectories = getLayerDirectories()
-
-  // Check each layer in order (main app first)
   for (const layer of layerDirectories) {
     const indexPatterns = paths.flatMap(pathPattern =>
       extensions.map(ext => normalizePath(resolvePath(layer.server, `${pathPattern}/index.${ext}`))),
     )
-
-    const indexFiles = await glob(indexPatterns, {
-      absolute: true,
-      onlyFiles: true,
-    })
-
-    if (indexFiles.length > 0) {
-      // Return the first found index file in this layer
-      return indexFiles[0]!
-    }
+    const indexFiles = await glob(indexPatterns, { absolute: true, onlyFiles: true })
+    if (indexFiles.length > 0) return indexFiles[0]!
   }
-
   return null
 }
 
-/**
- * Compute the relative path of a file within its base directory,
- * and extract the group (subdirectory) if present.
- */
-function computeRelativeInfo(
-  filePath: string,
-  layerServer: string,
-  paths: string[],
-): { relativePath: string, group?: string } {
-  for (const pathPattern of paths) {
-    const baseDir = normalizePath(resolvePath(layerServer, pathPattern))
-    const rel = normalizePath(relativePath(baseDir, filePath))
-
-    if (!rel.startsWith('..')) {
-      const parts = rel.split('/')
-      if (parts.length > 1) {
-        const group = parts.slice(0, -1).join('/')
-        return { relativePath: rel, group }
-      }
-      return { relativePath: rel }
-    }
+/** Compute relative path inside a base dir, extracting the subdirectory as `group`. */
+function computeRelativeInfo(filePath: string, layerServer: string, basePath: string): { relativePath: string, group?: string } {
+  const baseDir = normalizePath(resolvePath(layerServer, basePath))
+  const rel = normalizePath(relativePath(baseDir, filePath))
+  if (rel.startsWith('..')) {
+    return { relativePath: normalizePath(filePath).split('/').pop()! }
   }
-  const filename = normalizePath(filePath).split('/').pop()!
-  return { relativePath: filename }
+  const parts = rel.split('/')
+  if (parts.length > 1) {
+    return { relativePath: rel, group: parts.slice(0, -1).join('/') }
+  }
+  return { relativePath: rel }
 }
 
+/**
+ * Scan one or more roots for definition files across every Nuxt layer. Files
+ * found under a root tagged with `handler` are auto-attributed (their loaded
+ * representation gets `handler` set, which surfaces as `_meta.handler` later).
+ *
+ * Layers are processed in reverse order (extended layers first, app last) so
+ * the main app can override definitions from extended layers based on the
+ * generated identifier.
+ */
 export async function loadDefinitionFiles(
-  paths: string[],
+  roots: ScanRoot[],
   options: {
     excludePatterns?: string[]
     filter?: (filePath: string) => boolean
     recursive?: boolean
   } = {},
 ): Promise<LoadResult> {
-  if (paths.length === 0) {
-    return { count: 0, files: [], overriddenCount: 0 }
-  }
+  if (roots.length === 0) return { count: 0, files: [], overriddenCount: 0 }
 
-  // Get layer directories and reverse the order so that:
-  // - Extended layers are processed first
-  // - The main app (first in getLayerDirectories) is processed last
-  // This allows the app to override definitions from extended layers
   const layerDirectories = getLayerDirectories()
   const reversedLayers = [...layerDirectories].reverse()
 
   const definitionsMap = new Map<string, LoadedFile>()
   let overriddenCount = 0
 
-  // Process each layer separately to ensure correct override order
   for (const layer of reversedLayers) {
-    const layerPatterns = createLayerFilePatterns(layer.server, paths, undefined, options.recursive)
-    const layerFiles = await glob(layerPatterns, {
-      absolute: true,
-      onlyFiles: true,
-      ignore: [...(options.excludePatterns || []), '**/*.d.ts'],
-    })
+    for (const root of roots) {
+      const patterns = createLayerFilePatterns(layer.server, [root.path], undefined, options.recursive)
+      const files = await glob(patterns, {
+        absolute: true,
+        onlyFiles: true,
+        ignore: [...(options.excludePatterns || []), '**/*.d.ts'],
+      })
+      const filtered = options.filter ? files.filter(options.filter) : files
 
-    const filteredFiles = options.filter ? layerFiles.filter(options.filter) : layerFiles
-
-    for (const filePath of filteredFiles) {
-      const { relativePath, group } = computeRelativeInfo(filePath, layer.server, paths)
-      const identifier = toIdentifier(relativePath)
-      if (definitionsMap.has(identifier)) {
-        overriddenCount++
+      for (const filePath of filtered) {
+        const { relativePath, group } = computeRelativeInfo(filePath, layer.server, root.path)
+        // Prefix the identifier when this entry is attributed to a named
+        // handler so identical basenames across handlers don't collide.
+        const baseId = toIdentifier(relativePath)
+        const identifier = root.handler
+          ? toIdentifier(`handlers/${root.handler}/${relativePath}`)
+          : baseId
+        if (definitionsMap.has(identifier)) overriddenCount++
+        definitionsMap.set(identifier, {
+          path: filePath,
+          group,
+          ...(root.handler ? { handler: root.handler } : {}),
+        })
       }
-      definitionsMap.set(identifier, { path: filePath, group })
     }
   }
 
-  const total = definitionsMap.size
-
   return {
-    count: total,
+    count: definitionsMap.size,
     files: Array.from(definitionsMap.values()),
     overriddenCount,
   }

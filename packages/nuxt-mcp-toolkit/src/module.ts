@@ -7,7 +7,7 @@ import { setupEvlog } from './setup/evlog'
 import { setupNitroAliases } from './setup/nitro-aliases'
 import { name, version } from '../package.json'
 import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
-import type { McpConfig, McpSecurityConfig } from './runtime/server/mcp/config'
+import type { McpConfig, McpDefaultHandlerStrategy, McpSecurityConfig } from './runtime/server/mcp/config'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
@@ -79,6 +79,21 @@ export interface ModuleOptions {
    * @default 'mcp' (app/mcp)
    */
   appsDir?: string
+  /**
+   * How the default `/mcp` handler picks up auto-discovered definitions when
+   * named handlers exist (`server/mcp/handlers/<name>/` or `handlers: 'name'` field).
+   *
+   * - `'orphans'` (default): the default handler only sees definitions that
+   *   aren't attached to a named handler. Each definition lives in exactly
+   *   one place. When no named handlers exist, behaves like `'all'`.
+   * - `'all'`: pre-multi-handler behaviour — the default handler sees every
+   *   discovered definition. Useful when you want a "kitchen sink" route in
+   *   addition to specialized ones.
+   *
+   * @default 'orphans'
+   * @see https://mcp-toolkit.nuxt.dev/handlers/organization
+   */
+  defaultHandlerStrategy?: McpDefaultHandlerStrategy
   /**
    * Auto-import MCP helpers (`defineMcpTool`, `defineMcpResource`, etc.),
    * types (`McpRequestExtra`, `McpToolExtra`, …), and the `InstallButton` component.

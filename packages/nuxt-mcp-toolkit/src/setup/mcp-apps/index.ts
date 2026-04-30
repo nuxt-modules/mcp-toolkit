@@ -65,8 +65,11 @@ export async function setupMcpApps(
 
   log.success(`Built ${built.length} MCP app${built.length === 1 ? '' : 's'} from .vue SFCs`)
 
-  const toolFiles: LoadedFile[] = built.map(a => ({ path: a.toolFile, group: 'apps' }))
-  const resourceFiles: LoadedFile[] = built.map(a => ({ path: a.resourceFile, group: 'apps' }))
+  // Attribute every app-derived tool and resource to the implicit `apps` handler
+  // (folder convention equivalent). With `defaultHandlerStrategy: 'orphans'` this
+  // automatically excludes them from `/mcp` so they only surface on `/mcp/apps`.
+  const toolFiles: LoadedFile[] = built.map(a => ({ path: a.toolFile, group: 'apps', handler: 'apps' }))
+  const resourceFiles: LoadedFile[] = built.map(a => ({ path: a.resourceFile, group: 'apps', handler: 'apps' }))
 
   return { apps: built, toolFiles, resourceFiles }
 }
