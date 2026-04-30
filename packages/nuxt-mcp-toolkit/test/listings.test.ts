@@ -20,18 +20,18 @@ vi.mock('#nuxt-mcp-toolkit/tools.mjs', () => ({
     {
       description: 'Inferred group from subdirectory',
       tags: ['destructive'],
-      _meta: { filename: 'delete-user.ts', group: 'admin' },
+      _meta: { filename: 'delete-user.ts', group: 'admin', handler: 'admin' },
       handler: async () => 'ok',
       enabled: (event: { context?: { role?: string } }) => event.context?.role === 'admin',
     },
     {
       description: 'Another admin tool',
-      _meta: { filename: 'reset-cache.ts', group: 'admin' },
+      _meta: { filename: 'reset-cache.ts', group: 'admin', handler: 'admin' },
       handler: async () => 'ok',
     },
     {
       description: 'A content tool',
-      _meta: { filename: 'list-pages.ts', group: 'content' },
+      _meta: { filename: 'list-pages.ts', group: 'content', handler: 'public' },
       handler: async () => 'ok',
     },
   ],
@@ -64,11 +64,19 @@ vi.mock('#nuxt-mcp-toolkit/prompts.mjs', () => ({
   ],
 }))
 
-const { listMcpTools, listMcpResources, listMcpPrompts, listMcpDefinitions } = await import('../src/runtime/server/mcp/definitions/listings')
+const {
+  listMcpTools,
+  listMcpResources,
+  listMcpPrompts,
+  listMcpDefinitions,
+  getMcpTools,
+  getMcpResources,
+  getMcpPrompts,
+} = await import('../src/runtime/server/mcp/definitions/listings')
 
 describe('listings helpers', () => {
   describe('listMcpTools', () => {
-    it('returns explicit and auto-generated names with titles, descriptions, and tags', async () => {
+    it('returns explicit and auto-generated names with titles, descriptions, tags, and handler attribution', async () => {
       const tools = await listMcpTools()
       expect(tools).toEqual([
         {
@@ -89,18 +97,21 @@ describe('listings helpers', () => {
           description: 'Inferred group from subdirectory',
           group: 'admin',
           tags: ['destructive'],
+          handler: 'admin',
         },
         {
           name: 'reset-cache',
           title: 'Reset Cache',
           description: 'Another admin tool',
           group: 'admin',
+          handler: 'admin',
         },
         {
           name: 'list-pages',
           title: 'List Pages',
           description: 'A content tool',
           group: 'content',
+          handler: 'public',
         },
       ])
     })
@@ -165,6 +176,26 @@ describe('listings helpers', () => {
       const tools = await listMcpTools({ group: 'unknown-group' })
       expect(tools).toEqual([])
     })
+
+    it('filters by a single handler attribution', async () => {
+      const tools = await listMcpTools({ handler: 'admin' })
+      expect(tools.map(t => t.name)).toEqual(['delete-user', 'reset-cache'])
+    })
+
+    it('filters by multiple handlers (OR-match)', async () => {
+      const tools = await listMcpTools({ handler: ['admin', 'public'] })
+      expect(tools.map(t => t.name)).toEqual(['delete-user', 'reset-cache', 'list-pages'])
+    })
+
+    it('returns only orphan tools with `orphansOnly`', async () => {
+      const tools = await listMcpTools({ orphansOnly: true })
+      expect(tools.map(t => t.name)).toEqual(['explicit-tool', 'list-documentation'])
+    })
+
+    it('combines handler attribution with tag/group filters', async () => {
+      const tools = await listMcpTools({ handler: 'admin', tags: 'destructive' })
+      expect(tools.map(t => t.name)).toEqual(['delete-user'])
+    })
   })
 
   describe('listMcpResources', () => {
@@ -201,6 +232,29 @@ describe('listings helpers', () => {
           description: 'A greeting prompt',
         },
       ])
+    })
+  })
+
+  describe('getMcp* (raw definitions)', () => {
+    it('getMcpTools returns the raw definition objects, including handlers', async () => {
+      const tools = await getMcpTools({ handler: 'admin' })
+      expect(tools).toHaveLength(2)
+      for (const tool of tools) {
+        expect(typeof tool.handler).toBe('function')
+      }
+    })
+
+    it('getMcpTools applies enabled() guards when an event is passed', async () => {
+      const event = { context: { role: 'guest' } } as never
+      const tools = await getMcpTools({ event })
+      expect(tools.find(t => t._meta?.filename === 'delete-user.ts')).toBeUndefined()
+    })
+
+    it('getMcpResources and getMcpPrompts mirror the listing helpers', async () => {
+      const resources = await getMcpResources()
+      const prompts = await getMcpPrompts()
+      expect(resources).toHaveLength(2)
+      expect(prompts).toHaveLength(1)
     })
   })
 
