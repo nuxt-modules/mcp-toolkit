@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@nuxtjs/mcp-toolkit": "^0.15.0",
+    "@nuxtjs/mcp-toolkit": "^0.16.0",
     "nuxt": "^4.4.4",
     "zod": "^4.1.13"
   },

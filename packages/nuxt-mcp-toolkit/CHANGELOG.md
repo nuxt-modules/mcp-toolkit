@@ -1,5 +1,157 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.16.0
+
+### Minor Changes
+
+- [#241](https://github.com/nuxt-modules/mcp-toolkit/pull/241) [`1833fa6`](https://github.com/nuxt-modules/mcp-toolkit/commit/1833fa6094a59285bd3829cca64395618b8e72c7) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Defer evlog setup to `evlog/nuxt`, and auto-tag MCP wide events with sensible defaults.
+
+  The toolkit no longer registers an evlog Nitro module — install `evlog`, add `'evlog/nuxt'` to `modules`, and configure observability from the top-level `evlog: { … }` key in `nuxt.config.ts`. In return, the integration gets dramatically more value out-of-the-box:
+
+  - **Auto `service` for MCP traffic.** When `evlog/nuxt` is registered, the toolkit injects `evlog.routes['/mcp/**'] = { service: '<evlog.env.service>/mcp' }` (or slugified `mcp.name`) unless you've pinned the route yourself.
+  - **Auto `user.*` / `session.*` tagging.** After your MCP middleware runs, the toolkit reads `event.context.user` (`id`, `email`, `name`), `event.context.userId`, and `event.context.session.id` and tags the wide event with the canonical schema every drain understands. Works with better-auth, custom API key handlers, anything that follows the Nuxt context convention.
+  - **`setUser` / `setSession` helpers** on `useMcpLogger()` for tools that want to enrich beyond what middleware sets.
+
+  ### Migration
+
+  ```ts
+  // Before
+  export default defineNuxtConfig({
+    modules: ["@nuxtjs/mcp-toolkit"],
+    mcp: {
+      logging: {
+        env: { service: "my-app" },
+        sampling: { rates: { info: 30 } },
+      },
+    },
+  });
+
+  // After
+  export default defineNuxtConfig({
+    modules: ["evlog/nuxt", "@nuxtjs/mcp-toolkit"],
+    evlog: {
+      env: { service: "my-app" },
+      sampling: { rates: { info: 30 } },
+      // No need to pin `routes['/mcp/**']` — auto-tagged with `my-app/mcp`.
+    },
+  });
+  ```
+
+  ### `mcp.logging` modes
+
+  | Value                 | Behavior                                                      |
+  | --------------------- | ------------------------------------------------------------- |
+  | `undefined` (default) | On if `evlog/nuxt` is registered, off otherwise.              |
+  | `true`                | Asserts `evlog/nuxt` is registered. Build throws if it isn't. |
+  | `false`               | Opt out. `log.notify(...)` keeps working.                     |
+
+  The object form of `mcp.logging` is removed — pass options under the top-level `evlog: { … }` key instead.
+
+- [#238](https://github.com/nuxt-modules/mcp-toolkit/pull/238) [`2258de8`](https://github.com/nuxt-modules/mcp-toolkit/commit/2258de8be03433d396d31eb444fe52a35352714f) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add `listMcpTools`, `listMcpResources`, `listMcpPrompts`, and `listMcpDefinitions` helpers to read the toolkit's discovered tools, resources, and prompts from your own server routes — without duplicating their names and descriptions.
+
+  ### Usage
+
+  ```ts
+  // server/routes/.well-known/mcp/server-card.json.get.ts
+  import { listMcpDefinitions } from "@nuxtjs/mcp-toolkit/server";
+
+  export default defineEventHandler(async (event) => {
+    const { tools, resources, prompts } = await listMcpDefinitions({ event });
+    return {
+      name: "My MCP Server",
+      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      resources: resources.map((r) => ({
+        name: r.name,
+        uri: r.uri,
+        description: r.description,
+      })),
+      prompts: prompts.map((p) => ({
+        name: p.name,
+        description: p.description,
+      })),
+    };
+  });
+  ```
+
+  Each helper returns JSON-friendly summaries (`name`, `title`, `description`, `group`, `tags` — plus `uri` for resources). Names auto-generated from filenames are already resolved, so what you get matches exactly what an MCP client sees in `tools/list`.
+
+  ### Filtering
+
+  Every helper accepts a `ListMcpDefinitionsOptions` object — filters compose with AND semantics:
+
+  - `event` — apply per-definition `enabled()` guards using the request context.
+  - `group` (`string | string[]`) — only include definitions in one of these groups (OR-match).
+  - `tags` (`string | string[]`) — only include definitions with at least one of these tags (OR-match).
+
+  ```ts
+  const adminDestructive = await listMcpTools({
+    event,
+    group: "admin",
+    tags: "destructive",
+  });
+  ```
+
+  The new helpers are also auto-imported on the server (when `autoImports` is enabled), so you can use them without importing.
+
+- [#240](https://github.com/nuxt-modules/mcp-toolkit/pull/240) [`4b00084`](https://github.com/nuxt-modules/mcp-toolkit/commit/4b00084ec8da8f839db6260750f487b4a3d86eba) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add multi-handler organization: every auto-discovered tool, resource, or prompt can now be attributed to a named handler without manual filtering. One folder convention, one function-based escape hatch.
+
+  ### Folder convention (the way to attribute)
+
+  Drop a definition under `server/mcp/handlers/<name>/{tools,resources,prompts}/` and it's auto-attached to the named handler `<name>` (mounted at `/mcp/<name>`). The handler `index.ts` is required, even as a one-liner — it's what registers the route:
+
+  ```
+  server/mcp/handlers/admin/
+  ├── index.ts              # export default defineMcpHandler({ middleware: requireAdmin })
+  ├── tools/delete-user.ts  # → /mcp/admin (auto)
+  └── prompts/help.ts       # → /mcp/admin (auto)
+  ```
+
+  ### `getMcp*` raw helpers (the escape hatch)
+
+  For cross-cutting cases — "every tool tagged X", "every orphan", "everything except this group" — pass a function that calls one of the new raw helpers. They return full definition objects (with handlers and Zod schemas), exactly what `defineMcpHandler` expects:
+
+  ```ts
+  import { defineMcpHandler, getMcpTools } from "@nuxtjs/mcp-toolkit/server";
+
+  export default defineMcpHandler({
+    tools: (event) => getMcpTools({ event, tags: ["searchable"] }),
+  });
+  ```
+
+  `getMcpTools`, `getMcpResources`, and `getMcpPrompts` accept the same options as `listMcp*`.
+
+  ### Default handler strategy
+
+  New `mcp.defaultHandlerStrategy` config (default `'orphans'`) controls which definitions land on `/mcp` when named handlers exist. With `'orphans'`, each definition shows up in exactly one place. Set to `'all'` to keep the pre-multi-handler behaviour.
+
+  ### `listMcp*` filters + summary `handler`
+
+  The listing helpers gain two new options:
+
+  - `handler` (`string | string[]`) — keep only definitions attributed to one of these named handlers.
+  - `orphansOnly` (`boolean`) — keep only orphan definitions.
+
+  Each summary now exposes a `handler?: string` field with the attributed handler name (or undefined for orphans).
+
+  ### Back-compat
+
+  100% additive when you don't use the new convention — apps without `server/mcp/handlers/` see no behaviour change. Top-level handler files (`server/mcp/<name>.ts`) keep their pre-feature behaviour: when `tools` is omitted, the full pool is exposed (so code-mode-style wrappers continue to work without any change). Existing `tools: [...]` and `tools: ev => ...` patterns also keep working.
+
+  ```ts
+  // Before — manual filtering
+  export default defineMcpHandler({
+    name: "apps",
+    tools: allTools.filter((t) => t._meta?.group === "apps"),
+  });
+
+  // After — folder convention (move to server/mcp/handlers/apps/, drop the filter)
+  export default defineMcpHandler({
+    description: "Apps handler",
+  });
+  ```
+
+  See [`/handlers/organization`](https://mcp-toolkit.nuxt.dev/handlers/organization) for the full guide.
+
 ## 0.15.0
 
 ### Minor Changes
