@@ -201,14 +201,7 @@ function pickOne<T>(values: T[]): T | T[] | undefined {
   return values
 }
 
-/**
- * Tag the request-scoped evlog wide event with MCP-specific context.
- *
- * Captures session, transport, route, and (when the body is a JSON-RPC
- * payload) the method, request id, and tool/resource/prompt names. Runs
- * from the handler so it executes after evlog's `request` plugin has
- * populated `event.context.log`, regardless of plugin ordering.
- */
+/** Tag the wide event with `mcp.*` from the JSON-RPC body and transport headers. */
 async function tagEvlogContext(event: H3Event, route: string) {
   const log = getEvlogLogger(event)
   if (!log) return
@@ -247,6 +240,36 @@ async function tagEvlogContext(event: H3Event, route: string) {
   log.set({ mcp })
 }
 
+function asString(value: unknown): string | undefined {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return undefined
+}
+
+/** Tag `user` / `session` from `event.context` (whatever auth middleware set). */
+function tagAuthContext(event: H3Event) {
+  const log = getEvlogLogger(event)
+  if (!log) return
+
+  const ctx = event.context as Record<string, unknown>
+  const userObj = (ctx.user && typeof ctx.user === 'object') ? ctx.user as Record<string, unknown> : undefined
+  const userId = asString(ctx.userId) ?? asString(userObj?.id)
+
+  if (userObj || userId) {
+    const user: Record<string, unknown> = {}
+    if (userId) user.id = userId
+    const email = asString(userObj?.email)
+    if (email) user.email = email
+    const name = asString(userObj?.name)
+    if (name) user.name = name
+    if (Object.keys(user).length > 0) log.set({ user })
+  }
+
+  const sessionObj = (ctx.session && typeof ctx.session === 'object') ? ctx.session as Record<string, unknown> : undefined
+  const sessionId = asString(sessionObj?.id) ?? asString(ctx.sessionId)
+  if (sessionId) log.set({ session: { id: sessionId } })
+}
+
 export function createMcpHandler(config: CreateMcpHandlerConfig) {
   return eventHandler(async (event: H3Event) => {
     const resolvedConfig = resolveConfig(config, event)
@@ -257,6 +280,7 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
     }
 
     const handler = async () => {
+      tagAuthContext(event)
       const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
       const server = await createMcpServer(staticConfig)
       return handleMcpRequest(() => server, event)

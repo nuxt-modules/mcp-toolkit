@@ -18,7 +18,7 @@ interface CapturedNotification {
   logger?: string
 }
 
-async function createLoggingClient(): Promise<{
+async function createLoggingClient(headers?: Record<string, string>): Promise<{
   client: Client
   notifications: CapturedNotification[]
 }> {
@@ -29,7 +29,11 @@ async function createLoggingClient(): Promise<{
     notifications.push(notification.params as CapturedNotification)
   })
 
-  await client.connect(new StreamableHTTPClientTransport(createMcpUrl()))
+  const transport = headers
+    ? new StreamableHTTPClientTransport(createMcpUrl(), { requestInit: { headers } })
+    : new StreamableHTTPClientTransport(createMcpUrl())
+
+  await client.connect(transport)
   return { client, notifications }
 }
 
@@ -105,5 +109,43 @@ describe('useMcpLogger', async () => {
 
     expect(ctx.user).toEqual({ id: 'user-42' })
     expect(ctx.feature).toBe('logger-test')
+  })
+
+  it('auto-tags `user` and `session` from event.context after middleware', async () => {
+    const { client } = await createLoggingClient({ 'x-test-auth': '1' })
+    opened.push(client)
+
+    const result = await client.callTool({ name: 'auto_tag', arguments: {} })
+    const content = result.content as Array<{ type: string, text?: string }>
+    const ctx = JSON.parse(content[0]!.text!)
+
+    expect(ctx.user).toEqual({ id: 'user-99', email: 'op@example.com', name: 'Op' })
+    expect(ctx.session).toEqual({ id: 'sess-77' })
+    expect(ctx.mcpTool).toBe('auto_tag')
+  })
+
+  it('skips user/session tagging when middleware does not set context', async () => {
+    const { client } = await createLoggingClient()
+    opened.push(client)
+
+    const result = await client.callTool({ name: 'auto_tag', arguments: {} })
+    const content = result.content as Array<{ type: string, text?: string }>
+    const ctx = JSON.parse(content[0]!.text!)
+
+    expect(ctx.user).toBeUndefined()
+    expect(ctx.session).toBeUndefined()
+    expect(ctx.mcpTool).toBe('auto_tag')
+  })
+
+  it('auto-injects `/mcp` and `/mcp/**` routes derived from evlog.env.service', async () => {
+    const { client } = await createLoggingClient()
+    opened.push(client)
+
+    const result = await client.callTool({ name: 'inspect_routes', arguments: {} })
+    const content = result.content as Array<{ type: string, text?: string }>
+    const routes = JSON.parse(content[0]!.text!) as Record<string, { service?: string }>
+
+    expect(routes['/mcp']?.service).toBe('logger-fixture/mcp')
+    expect(routes['/mcp/**']?.service).toBe('logger-fixture/mcp')
   })
 })

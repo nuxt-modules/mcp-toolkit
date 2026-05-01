@@ -178,7 +178,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     const resolver = createResolver(import.meta.url)
 
-    setupEvlog(nuxt, options, log)
+    setupEvlog(nuxt, options)
 
     const appsDir = options.appsDir ?? 'mcp'
     const hasApps = probeAppsDir(appsDir)

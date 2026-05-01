@@ -6,32 +6,21 @@ import { useMcpServer } from './server'
 import { getEvlogLogger, getSdkServerFromHelper } from './internals'
 
 /**
- * Methods that send `notifications/message` to the connected MCP client
- * (Cursor, Claude Desktop, MCP Inspector, ...). They respect the level
- * the client opted into via `logging/setLevel` and are silently dropped
- * when the transport is gone.
- *
- * **These never appear in your terminal** — they go over the wire to
- * whoever is connected. Use `log.set()` / `log.event()` for server-side
- * observability.
+ * Sends `notifications/message` to the connected MCP client. Honours the
+ * client's `logging/setLevel` per session and never throws — disconnects
+ * and filtered levels are silently dropped.
  */
 export interface McpClientNotifier {
-  /** Send a `notifications/message` at an arbitrary level. */
   (level: LoggingLevel, data: unknown, logger?: string): Promise<void>
-  /** Shortcut for `notify('debug', ...)`. */
   debug: (data: unknown, logger?: string) => Promise<void>
-  /** Shortcut for `notify('info', ...)`. */
   info: (data: unknown, logger?: string) => Promise<void>
-  /** Shortcut for `notify('warning', ...)`. */
   warning: (data: unknown, logger?: string) => Promise<void>
-  /** Shortcut for `notify('error', ...)`. */
   error: (data: unknown, logger?: string) => Promise<void>
 }
 
 /**
- * Minimal shape of evlog's per-request logger. Kept structural so the
- * toolkit doesn't pull `evlog` into its public types — users get the
- * full type signature only when they install `evlog` themselves.
+ * Structural shape of evlog's per-request logger — kept narrow so the
+ * toolkit doesn't pull `evlog` into its public types.
  */
 export interface McpRequestLogger {
   set: (fields: Record<string, unknown>) => void
@@ -44,45 +33,30 @@ export interface McpRequestLogger {
 }
 
 /**
- * Split-channel logger for MCP servers.
- *
- * Two clearly separated channels:
- *
- * - `log.notify(...)` (and `.notify.info`, `.notify.warning`, ...): **client
- *   notifications** sent over the MCP transport. Visible in the MCP
- *   Inspector "Server Notifications" panel and to AI clients. Honours the
- *   per-session `logging/setLevel`. Always available, even without evlog.
- * - `log.set(...)` / `log.event(...)`: **server-side wide event** fed to
- *   evlog. Pretty-printed in the dev terminal at the end of each request,
- *   shipped to drains (Axiom, Sentry, OTLP, ...) in production. Operator
- *   facing. Requires the `evlog/nuxt` module.
+ * Split-channel logger. `notify` goes to the connected client (Cursor,
+ * Claude, Inspector). `set` / `event` / `setUser` / `setSession` / `evlog`
+ * feed the request's wide event (dev terminal + drains). The server channel
+ * throws `McpObservabilityNotEnabledError` when `evlog/nuxt` is not registered.
  */
 export interface McpLogger {
-  /**
-   * Send a `notifications/message` to the connected MCP client.
-   * Use `log.notify.info(...)` (and friends) for the common levels.
-   */
   notify: McpClientNotifier
-
-  /**
-   * Accumulate context onto the current request's evlog wide event.
-   *
-   * @throws when observability is not active — register `evlog/nuxt`.
-   */
   set: (fields: Record<string, unknown>) => void
-  /**
-   * Append a discrete entry to the wide event's `requestLogs` and merge
-   * any extra fields. Equivalent to `evlog.info(name, fields)`.
-   *
-   * @throws when observability is not active on this request — see `set`.
-   */
   event: (name: string, fields?: Record<string, unknown>) => void
-  /**
-   * Underlying evlog request logger for advanced use (`fork`, `error`, …).
-   *
-   * @throws when observability is not active on this request — see `set`.
-   */
+  setUser: (user: McpUserFields) => void
+  setSession: (session: McpSessionFields) => void
   evlog: McpRequestLogger
+}
+
+export interface McpUserFields {
+  id?: string | number
+  email?: string
+  name?: string
+  [key: string]: unknown
+}
+
+export interface McpSessionFields {
+  id?: string | number
+  [key: string]: unknown
 }
 
 const OBSERVABILITY_HINT
@@ -107,25 +81,9 @@ function safeEvent(): H3Event | null {
 }
 
 /**
- * Composable returning a split-channel logger bound to the current request.
- *
- * Must be called inside an MCP tool, resource, or prompt handler. Requires
- * `nitro.experimental.asyncContext: true`.
- *
- * The optional `prefix` becomes the default `logger` field on every
- * `notifications/message` so the client can group related log lines.
- *
- * @example
- * ```ts
- * const log = useMcpLogger('billing')
- *
- * // → MCP client (Inspector, Cursor, …) — always works
- * await log.notify.info({ msg: 'starting charge', amount: 1000 })
- *
- * // → server terminal / evlog drains — requires `evlog` installed
- * log.set({ user: { id: ctx.userId } })
- * log.event('charge_started', { amount: 1000 })
- * ```
+ * Request-scoped logger for tools / resources / prompts. Requires
+ * `nitro.experimental.asyncContext: true`. The optional `prefix` becomes
+ * the default `logger` field on every `notifications/message`.
  */
 export function useMcpLogger(prefix?: string): McpLogger {
   const helper = useMcpServer()
@@ -134,8 +92,8 @@ export function useMcpLogger(prefix?: string): McpLogger {
   const event = safeEvent()
   const requestLogger = getEvlogLogger(event)
 
-  // The SDK tracks `logging/setLevel` per session id, so we must forward the
-  // current MCP session header to `sendLoggingMessage` for filtering to apply.
+  // The SDK applies `logging/setLevel` per session id, so we forward the
+  // current MCP session header to `sendLoggingMessage`.
   const sessionId = event ? (getHeader(event, 'mcp-session-id') ?? undefined) : undefined
 
   const sendNotify = async (level: LoggingLevel, data: unknown, logger?: string): Promise<void> => {
@@ -147,7 +105,6 @@ export function useMcpLogger(prefix?: string): McpLogger {
       }, sessionId)
     }
     catch (err) {
-      // Disconnected client / unsubscribed level / no transport — never throw.
       if (requestLogger) {
         try {
           requestLogger.warn('mcp logger notify failed', {
@@ -175,12 +132,10 @@ export function useMcpLogger(prefix?: string): McpLogger {
 
   return {
     notify,
-    set: (fields) => {
-      requireRequestLogger().set(fields)
-    },
-    event: (name, fields) => {
-      requireRequestLogger().info(name, fields)
-    },
+    set: fields => requireRequestLogger().set(fields),
+    event: (name, fields) => requireRequestLogger().info(name, fields),
+    setUser: user => requireRequestLogger().set({ user }),
+    setSession: session => requireRequestLogger().set({ session }),
     get evlog() {
       return requireRequestLogger()
     },

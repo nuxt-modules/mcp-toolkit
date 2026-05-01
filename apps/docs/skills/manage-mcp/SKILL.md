@@ -393,7 +393,7 @@ See [elicitation docs →](https://mcp-toolkit.nuxt.dev/advanced/elicitation)
 
 ### `useMcpLogger()`
 
-Split-channel logger: notify the connected client and capture structured wide events (powered by [evlog](https://evlog.dev) when installed — add it with your package manager; see the [Logging](https://mcp-toolkit.nuxt.dev/advanced/logging) guide).
+Split-channel logger. `notify` goes to the connected client; `set` / `event` / `setUser` / `setSession` / `evlog` feed the request's wide event when [evlog](https://evlog.dev) is installed.
 
 ```typescript
 export default defineMcpTool({
@@ -401,36 +401,26 @@ export default defineMcpTool({
   inputSchema: { userId: z.string(), amount: z.number().int() },
   handler: async ({ userId, amount }) => {
     const log = useMcpLogger('billing')
-
-    // → server-side wide event (dev terminal + drains)
-    log.set({ user: { id: userId }, billing: { amount } })
-    log.event('charge_started', { amount })
-
-    // → MCP client (Inspector / Cursor / Claude)
+    log.set({ billing: { amount } })
     await log.notify.info({ msg: 'starting charge', amount })
-
-    const receipt = await charge(userId, amount)
     return `Charged ${amount}.`
   },
 })
 ```
 
-- **Client channel** (`log.notify`): `notify(level, data, logger?)` plus `notify.debug` / `notify.info` / `notify.warning` / `notify.error` shortcuts. Always resolves, never throws — respects the client's `logging/setLevel` per session. Works with or without `evlog`.
-- **Server channel** (requires `evlog/nuxt`): `set(fields)` accumulates context onto the request's wide event; `event(name, fields?)` captures a discrete event; `evlog` exposes the full request logger. These throw `McpObservabilityNotEnabledError` when observability is off.
-- Wide events are auto-tagged with `mcp.transport`, `mcp.route`, `mcp.session_id`, `mcp.method`, `mcp.request_id`, and `mcp.tool` / `mcp.resource` / `mcp.prompt` based on the JSON-RPC payload (no user code required).
-- Setup: `pnpm add evlog`, then register `evlog/nuxt` and configure from the top-level `evlog: { … }` key:
+- **Client** (`log.notify`): `notify(level, data, logger?)` + `.debug` / `.info` / `.warning` / `.error`. Always resolves, never throws. Works with or without `evlog`.
+- **Server** (requires `evlog/nuxt`): `set` / `event` / `setUser({ id, email, name })` / `setSession({ id })` / `evlog`. Throws `McpObservabilityNotEnabledError` when off.
+- Wide events are auto-tagged: `mcp.*` from the JSON-RPC body, `user.*` / `session.*` from `event.context.user` / `event.context.session` (so any auth middleware that follows the Nuxt convention — better-auth, API key, … — flows through), and `service: '<evlog.env.service>/mcp'` on the MCP route.
+- Setup: install evlog, register `'evlog/nuxt'` in `modules`, configure from the top-level `evlog: { … }` key:
 
   ```typescript [nuxt.config.ts]
   export default defineNuxtConfig({
     modules: ['evlog/nuxt', '@nuxtjs/mcp-toolkit'],
-    evlog: {
-      env: { service: 'my-app' },
-      routes: { '/mcp/**': { service: 'my-app/mcp' } },
-    },
+    evlog: { env: { service: 'my-app' } },
   })
   ```
 
-- `mcp.logging` modes: omit (auto — on if `evlog/nuxt` is registered), `true` (assert it is, throw at build otherwise), `false` (opt out).
+- `mcp.logging`: omit (auto), `true` (assert `evlog/nuxt` is registered), `false` (opt out).
 
 #### Ship to a backend (drains)
 

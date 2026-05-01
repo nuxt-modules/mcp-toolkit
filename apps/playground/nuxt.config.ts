@@ -61,10 +61,7 @@ export default defineNuxtConfig({
   },
 
   evlog: {
-    env: { environment: 'development' },
-    routes: {
-      '/mcp/**': { service: 'playground/mcp' },
-    },
+    env: { environment: 'development', service: 'playground' },
   },
 
   mcp: {
