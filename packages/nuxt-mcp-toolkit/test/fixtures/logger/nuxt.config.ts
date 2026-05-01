@@ -2,6 +2,7 @@ import MyModule from '../../../src/module'
 
 export default defineNuxtConfig({
   modules: [
+    'evlog/nuxt',
     MyModule,
   ],
   nitro: {
@@ -9,10 +10,13 @@ export default defineNuxtConfig({
       asyncContext: true,
     },
   },
+  ...({
+    evlog: {
+      silent: true,
+      env: { service: 'logger-fixture' },
+    },
+  } as Record<string, unknown>),
   mcp: {
     sessions: true,
-    logging: {
-      silent: true,
-    },
   },
 })

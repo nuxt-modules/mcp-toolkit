@@ -416,9 +416,21 @@ export default defineMcpTool({
 ```
 
 - **Client channel** (`log.notify`): `notify(level, data, logger?)` plus `notify.debug` / `notify.info` / `notify.warning` / `notify.error` shortcuts. Always resolves, never throws — respects the client's `logging/setLevel` per session. Works with or without `evlog`.
-- **Server channel** (requires `evlog` installed): `set(fields)` accumulates context onto the request's wide event; `event(name, fields?)` captures a discrete event; `evlog` exposes the full request logger. These throw `McpObservabilityNotEnabledError` when observability is off.
+- **Server channel** (requires `evlog/nuxt`): `set(fields)` accumulates context onto the request's wide event; `event(name, fields?)` captures a discrete event; `evlog` exposes the full request logger. These throw `McpObservabilityNotEnabledError` when observability is off.
 - Wide events are auto-tagged with `mcp.transport`, `mcp.route`, `mcp.session_id`, `mcp.method`, `mcp.request_id`, and `mcp.tool` / `mcp.resource` / `mcp.prompt` based on the JSON-RPC payload (no user code required).
-- `mcp.logging` modes: omit (auto-detect — on if `evlog` installed), `true` / object (force on, throws at build if missing), `false` (force off — `notify` keeps working).
+- Setup: `pnpm add evlog`, then register `evlog/nuxt` and configure from the top-level `evlog: { … }` key:
+
+  ```typescript [nuxt.config.ts]
+  export default defineNuxtConfig({
+    modules: ['evlog/nuxt', '@nuxtjs/mcp-toolkit'],
+    evlog: {
+      env: { service: 'my-app' },
+      routes: { '/mcp/**': { service: 'my-app/mcp' } },
+    },
+  })
+  ```
+
+- `mcp.logging` modes: omit (auto — on if `evlog/nuxt` is registered), `true` (assert it is, throw at build otherwise), `false` (opt out).
 
 #### Ship to a backend (drains)
 

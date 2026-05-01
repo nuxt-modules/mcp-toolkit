@@ -1,5 +1,5 @@
 export default defineNuxtConfig({
-  modules: ['@nuxtjs/mcp-toolkit', '@nuxt/ui', '@nuxthub/core'],
+  modules: ['evlog/nuxt', '@nuxtjs/mcp-toolkit', '@nuxt/ui', '@nuxthub/core'],
 
   $development: {
     nitro: {
@@ -60,13 +60,17 @@ export default defineNuxtConfig({
     },
   },
 
+  evlog: {
+    env: { environment: 'development' },
+    routes: {
+      '/mcp/**': { service: 'playground/mcp' },
+    },
+  },
+
   mcp: {
     name: 'Playground MCP',
     description: 'A demo MCP server showcasing authentication, todos, and user management.',
     instructions: 'Authenticate with an API key before calling protected tools. Use list-todos before create-todo to avoid duplicates.',
     sessions: true,
-    logging: {
-      env: { environment: 'development' },
-    },
   },
 })

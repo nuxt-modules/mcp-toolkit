@@ -131,26 +131,19 @@ export interface ModuleOptions {
    */
   security?: McpSecurityConfig
   /**
-   * Server-side observability via optional [evlog](https://evlog.dev) — add it to your app when needed (not a peer dep, to avoid npm pulling unrelated framework peers).
+   * Server-side observability for MCP requests via [evlog](https://evlog.dev).
    *
-   * Behavior:
-   * - `undefined` (default): **auto-detect**. If `evlog` is installed, it is
-   *   wired into Nitro automatically and `useMcpLogger().set()` / `.event()` /
-   *   `.evlog` start feeding the request-scoped wide event. Otherwise it stays
-   *   off — only `useMcpLogger().notify(...)` (the client channel) works.
-   * - `true`: force on. If `evlog` is not installed, the build throws with
-   *   install instructions.
-   * - object: force on with options forwarded to the evlog Nitro module.
-   *   Same install requirement as `true`.
-   * - `false`: force off. `set()` / `event()` / `evlog` throw on use.
+   * Install `evlog` and register the `evlog/nuxt` module to enable wide
+   * events on every MCP request — configure everything from the top-level
+   * `evlog: { … }` key in nuxt.config.
+   *
+   * - `undefined` (default): on if `evlog/nuxt` is registered, off otherwise.
+   * - `true`: assert `evlog/nuxt` is registered; throw at build otherwise.
+   * - `false`: opt out.
    *
    * @see https://evlog.dev
    */
-  logging?: boolean | ({
-    /** Service name advertised on every wide event. Defaults to `options.name || 'mcp-server'`. */
-    service?: string
-    [key: string]: unknown
-  })
+  logging?: boolean
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -185,7 +178,7 @@ export default defineNuxtModule<ModuleOptions>({
 
     const resolver = createResolver(import.meta.url)
 
-    await setupEvlog(nuxt, options, log)
+    setupEvlog(nuxt, options, log)
 
     const appsDir = options.appsDir ?? 'mcp'
     const hasApps = probeAppsDir(appsDir)
