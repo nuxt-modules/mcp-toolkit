@@ -64,7 +64,7 @@
   },
   "peerDependencies": {
     "@vue/compiler-sfc": "^3.5.33",
-    "agents": ">=0.11.6",
+    "agents": ">=0.12.3",
     "h3": ">=1.15.11",
     "secure-exec": ">=0.2.1",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
@@ -104,7 +104,7 @@
     "@vitejs/plugin-vue": "^6.0.6",
     "@vue/compiler-sfc": "^3.5.33",
     "eslint": "^9.39.4",
-    "evlog": "^2.14.0",
+    "evlog": "^2.14.1",
     "nuxt": "^4.4.4",
     "typescript": "~6.0.3",
     "vite": "^8.0.10",
