@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.16.1
+
+### Patch Changes
+
+- [#246](https://github.com/nuxt-modules/mcp-toolkit/pull/246) [`a918138`](https://github.com/nuxt-modules/mcp-toolkit/commit/a9181385dece334957d81fe353a1db03df8d8fed) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Default `swr` to `false` for cached tools and resources. Nitro's underlying default (`swr: true`) returned stale entries immediately and refreshed the handler in a background task that ran after the MCP request had been answered, silently dropping any request-scoped writes (e.g. `useLogger(event).set()`). Pass `cache: { maxAge: '1h', swr: true }` to opt back in.
+
 ## 0.16.0
 
 ### Minor Changes
