@@ -27,10 +27,10 @@
     "@nuxt/ui": "^4.7.1",
     "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "ai": "^6.0.174",
+    "ai": "^6.0.175",
     "better-auth": "^1.6.9",
     "drizzle-orm": "^0.45.2",
-    "evlog": "^2.14.1",
+    "evlog": "^2.15.0",
     "nuxt": "^4.4.4",
     "secure-exec": ">=0.2.1",
     "zod": "^4.1.13"
