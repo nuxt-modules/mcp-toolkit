@@ -60,6 +60,8 @@ export default defineMcpTool({
 
 `cache: '10m'` keys on the input arguments. Pass a full Nitro cache options object for `swr`, custom `getKey`, etc. ([Nitro caching →](https://nitro.build/guide/cache#options))
 
+`swr` defaults to `false` here (Nitro defaults to `true`). With `swr: true`, the handler refreshes after the response is sent, so request-scoped logs/traces may be dropped — opt in only when you accept that.
+
 ## Database Mutation (DB + soft auth + observability)
 
 ```typescript [server/mcp/tools/create-todo.ts]

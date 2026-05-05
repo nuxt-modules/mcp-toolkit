@@ -66,7 +66,12 @@ export interface McpCacheOptions<Args = unknown> {
   getKey?: (args: Args) => string
   /** Cache group (default: 'mcp') */
   group?: string
-  /** Enable stale-while-revalidate behavior */
+  /**
+   * Enable stale-while-revalidate (default: `false`).
+   * When `true`, the handler refreshes in the background after the request
+   * has been answered, so request-scoped writes (loggers, traces) may be
+   * dropped.
+   */
   swr?: boolean
 }
 
@@ -91,7 +96,8 @@ export function parseCacheDuration(duration: MsCacheDuration | number): number {
 }
 
 /**
- * Create cache options from McpCache config
+ * Create cache options from McpCache config.
+ * Forces `swr: false` by default — see {@link McpCacheOptions.swr}.
  */
 export function createCacheOptions<Args>(
   cache: McpCache<Args>,
@@ -101,6 +107,7 @@ export function createCacheOptions<Args>(
   if (typeof cache === 'object') {
     return {
       getKey: defaultGetKey,
+      swr: false,
       ...cache,
       maxAge: parseCacheDuration(cache.maxAge),
       name: cache.name ?? name,
@@ -113,6 +120,7 @@ export function createCacheOptions<Args>(
     name,
     group: 'mcp',
     getKey: defaultGetKey,
+    swr: false,
   }
 }
 
