@@ -3,6 +3,13 @@ import type { Resolver } from '@nuxt/kit'
 import type { DiscoveredApp } from './discover'
 import type { ParsedSfcApp } from './parse-sfc'
 
+export interface ResolvedAttribution {
+  /** Final `attachTo` value (explicit override > sub-folder > `'apps'`). */
+  attachTo: string
+  /** Final `group` value (explicit override > resolved `attachTo`). */
+  group: string
+}
+
 /**
  * Emit the three TS modules backing one MCP App:
  *   `<name>.app.ts`      — `defineMcpApp({ ...args })`
@@ -15,6 +22,7 @@ export function emitAppModules(
   app: DiscoveredApp,
   parsed: ParsedSfcApp,
   bundledHtml: string,
+  attribution: ResolvedAttribution,
   resolver: Resolver,
 ): { toolFile: string, resourceFile: string } {
   // Absolute paths sidestep the `@nuxtjs/mcp-toolkit/server` subpath import:
@@ -25,16 +33,21 @@ export function emitAppModules(
   const html64 = JSON.stringify(Buffer.from(bundledHtml, 'utf-8').toString('base64'))
   const argText = stripTypeScriptFromMacroArg(parsed.argText)
 
+  // Inject resolved `attachTo` / `group` as DEFAULTS — the user's literal
+  // override (already statically extracted) wins via the spread that follows.
+  const defaultsBlock = `attachTo: ${JSON.stringify(attribution.attachTo)},\n  group: ${JSON.stringify(attribution.group)},\n  `
+  const mergedArgs = `{\n  ${defaultsBlock}...(${argText}),\n}`
+
   const appFileBody = `import { defineMcpApp } from ${appsModule}
 ${importsBlock}
-export default defineMcpApp(${argText})
+export default defineMcpApp(${mergedArgs})
 `
 
   const toolFileBody = `import { defineMcpApp, _createAppTool } from ${appsModule}
 ${importsBlock}
 
 const __HTML = Buffer.from(${html64}, 'base64').toString('utf-8')
-const _app = defineMcpApp(${argText})
+const _app = defineMcpApp(${mergedArgs})
 
 export default _createAppTool(_app, { name: ${JSON.stringify(app.name)}, html: __HTML })
 `
@@ -43,7 +56,7 @@ export default _createAppTool(_app, { name: ${JSON.stringify(app.name)}, html: _
 ${importsBlock}
 
 const __HTML = Buffer.from(${html64}, 'base64').toString('utf-8')
-const _app = defineMcpApp(${argText})
+const _app = defineMcpApp(${mergedArgs})
 
 export default _createAppResource(_app, { name: ${JSON.stringify(app.name)}, html: __HTML })
 `

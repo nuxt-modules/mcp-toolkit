@@ -188,6 +188,32 @@ export interface McpAppOptions<
   csp?: McpAppCsp | false
   /** Free-form `_meta`. `ui.resourceUri` and `ui.csp` are auto-injected. */
   _meta?: Record<string, unknown>
+  /**
+   * Named MCP handler this app is attached to. Surfaces on the generated tool
+   * and resource as `_meta.handler` so they only show up on the matching
+   * `/mcp/<name>` route (when `defaultHandlerStrategy: 'orphans'`).
+   *
+   * Defaults to the first sub-directory of the SFC under `app/mcp/`
+   * (e.g. `app/mcp/finder/stay-finder.vue` → `'finder'`), or `'apps'` if the
+   * SFC lives directly under `app/mcp/`.
+   *
+   * Must be a string literal (statically extracted at build time).
+   */
+  attachTo?: string
+  /**
+   * Functional group label forwarded to `getMcpTools({ group })` and surfaced
+   * to inspectors. Defaults to the same value as {@link attachTo}.
+   *
+   * Must be a string literal (statically extracted at build time).
+   */
+  group?: string
+  /**
+   * Free-form tags forwarded to the generated tool, used by
+   * `getMcpTools({ tags })` filters and inspector UIs.
+   *
+   * Must be an array of string literals (statically extracted at build time).
+   */
+  tags?: string[]
 }
 
 /** Output of {@link defineMcpApp}: an opaque options bag the build-time loader pairs with the bundled HTML. */
@@ -234,6 +260,7 @@ export function _createAppTool(
   const resourceUri = buildAppResourceUri(ctx.name)
   const userMeta = app._meta ?? {}
   const sharedMeta = buildAppMeta(app, resourceUri)
+  const attributionMeta = app.attachTo ? { handler: app.attachTo } : {}
 
   const wrapped: McpToolCallback = async (args, extra) => {
     const handlerArgs = (args ?? {}) as Record<string, unknown>
@@ -257,12 +284,12 @@ export function _createAppTool(
               uri: resourceUri,
               mimeType: MCP_APP_MIME_TYPE,
               text: html,
-              _meta: sharedMeta,
+              _meta: { ...sharedMeta, ...attributionMeta },
             },
           },
           ...(normalised.content ?? []),
         ],
-        _meta: { ...(normalised._meta ?? {}), ...sharedMeta },
+        _meta: { ...(normalised._meta ?? {}), ...sharedMeta, ...attributionMeta },
       }
     }
     catch (err) {
@@ -281,7 +308,9 @@ export function _createAppTool(
     inputSchema: app.inputSchema,
     annotations: app.annotations,
     handler: wrapped,
-    _meta: { ...userMeta, ...sharedMeta },
+    ...(app.group ? { group: app.group } : {}),
+    ...(app.tags ? { tags: app.tags } : {}),
+    _meta: { ...userMeta, ...sharedMeta, ...attributionMeta },
   }
 }
 
@@ -297,6 +326,7 @@ export function _createAppResource(
   const resourceUri = buildAppResourceUri(ctx.name)
   const html = prepareAppHtml(ctx.html, app)
   const sharedMeta = buildAppMeta(app, resourceUri)
+  const attributionMeta = app.attachTo ? { handler: app.attachTo } : {}
 
   return {
     name: `${ctx.name}-app`,
@@ -304,13 +334,15 @@ export function _createAppResource(
     description: app.description,
     uri: resourceUri,
     metadata: { mimeType: MCP_APP_MIME_TYPE },
-    _meta: sharedMeta,
+    ...(app.group ? { group: app.group } : {}),
+    ...(app.tags ? { tags: app.tags } : {}),
+    _meta: { ...sharedMeta, ...attributionMeta },
     handler: async (uri: URL) => ({
       contents: [{
         uri: uri.toString(),
         mimeType: MCP_APP_MIME_TYPE,
         text: html,
-        _meta: sharedMeta,
+        _meta: { ...sharedMeta, ...attributionMeta },
       }],
     }),
   }

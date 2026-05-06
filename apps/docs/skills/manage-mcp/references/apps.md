@@ -11,10 +11,14 @@ MCP Apps live in **`app/mcp/`** (not `server/mcp/`). They sit on the client side
 ```bash
 app/
 └── mcp/
-    ├── color-picker.vue   # → tool: color-picker, resource: ui://mcp-app/color-picker
-    └── admin/
-        └── audit-log.vue  # → tool: audit-log
+    ├── color-picker.vue          # → tool: color-picker, mounted on /mcp/apps
+    ├── finder/
+    │   └── stay-finder.vue       # → tool: stay-finder, mounted on /mcp/finder
+    └── checkout/
+        └── stay-checkout.vue     # → tool: stay-checkout, mounted on /mcp/checkout
 ```
+
+The first sub-directory under `app/mcp/` becomes the **named-handler attribution**. SFCs sitting directly under `app/mcp/` go to the implicit `apps` handler. Override per-app with `attachTo`.
 
 Override the directory via `mcp.appsDir` in `nuxt.config.ts`. The MCP Apps pipeline only runs when the directory exists — fully tree-shakable when unused.
 
@@ -83,11 +87,39 @@ defineMcpApp({
   inputSchema?: ZodRawShape         // Validates tool input on the server
   handler?: (args, extra) => Result // Server-side; defaults to (args) => ({ structuredContent: args })
   csp?: McpAppCsp | false           // Tighten or disable iframe CSP
+  attachTo?: string                 // Named MCP handler to mount on (default: 'apps' or sub-folder)
+  group?: string                    // Top-level group label (default: same as attachTo)
+  tags?: string[]                   // Top-level tags forwarded to the generated tool
   _meta?: Record<string, unknown>   // Extra _meta surfaced to the host
 })
 ```
 
 If `handler` is omitted, the toolkit defaults to `(args) => ({ structuredContent: args })` — useful for stateless apps that just echo the input.
+
+**`attachTo`, `group`, and `tags` must be string literals** (`'finder'`, `['a', 'b']`). The toolkit reads them statically at build time to route the generated tool and resource. Dynamic expressions (`attachTo: someVar`) fail the build with a clear error.
+
+### Routing apps to a dedicated handler
+
+```vue [app/mcp/finder/stay-finder.vue]
+<script setup lang="ts">
+defineMcpApp({
+  attachTo: 'finder',     // explicit override (sub-folder default would also be 'finder' here)
+  group: 'stays',
+  tags: ['searchable'],
+  // ...
+})
+</script>
+```
+
+Then add the handler index file:
+
+```ts [server/mcp/handlers/finder/index.ts]
+import { defineMcpHandler } from '@nuxtjs/mcp-toolkit/server'
+
+export default defineMcpHandler({})
+```
+
+The app now only surfaces on `/mcp/finder` (with `defaultHandlerStrategy: 'orphans'`). Filter further with `getMcpTools({ handler: 'finder' })`, `getMcpTools({ tags: ['searchable'] })`, etc.
 
 ## `useMcpApp<T>()` Bridge
 

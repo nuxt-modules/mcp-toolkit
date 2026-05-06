@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { resolve as resolvePath, basename, sep } from 'node:path'
+import { resolve as resolvePath, basename, sep, relative as relativePath } from 'node:path'
 import { getLayerDirectories } from '@nuxt/kit'
 import { glob } from 'tinyglobby'
 import type { ConsolaInstance } from 'consola'
@@ -9,6 +9,15 @@ export interface DiscoveredApp {
   name: string
   /** Absolute path to the source `.vue` SFC. */
   sfc: string
+  /**
+   * First sub-directory between the `app/mcp/` root and the SFC, used as the
+   * default named-handler attribution and group when the macro doesn't
+   * specify `attachTo` / `group` explicitly.
+   *
+   * `undefined` when the SFC lives directly under `app/mcp/` (default
+   * attribution `'apps'`).
+   */
+  inferredAttribution?: string
 }
 
 /** Mirrors {@link assertSafeAppName} on the runtime side — keep them in sync. */
@@ -23,6 +32,21 @@ export function sfcToAppName(sfcPath: string): string {
     .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/[_\s]+/g, '-')
     .toLowerCase()
+}
+
+/**
+ * Pull the first sub-directory between the apps root and the SFC, if any.
+ * Returns `undefined` for SFCs sitting directly under `<appsDir>/`.
+ *
+ * `app/mcp/finder/stay-finder.vue`        → `'finder'`
+ * `app/mcp/finder/admin/audit-log.vue`    → `'finder'`  (only first level)
+ * `app/mcp/color-picker.vue`              → `undefined`
+ */
+export function inferAttribution(sfcPath: string, appsRoot: string): string | undefined {
+  const rel = normalize(relativePath(appsRoot, sfcPath))
+  if (!rel || rel.startsWith('..')) return undefined
+  const segments = rel.split('/')
+  return segments.length > 1 ? segments[0] : undefined
 }
 
 /** Cheap existence check: any layer carries `<layer.app>/<appsDir>/`. */
@@ -40,6 +64,8 @@ export async function discoverApps(appsDir: string, log?: ConsolaInstance): Prom
   const skipped: string[] = []
   const candidates = new Map<string, string[]>()
 
+  const unsafeAttributions: string[] = []
+
   for (const layer of [...layers].reverse()) {
     const root = normalize(resolvePath(layer.app, appsDir))
     const pattern = `${root}/**/*.vue`
@@ -53,16 +79,26 @@ export async function discoverApps(appsDir: string, log?: ConsolaInstance): Prom
         skipped.push(`${file} → ${JSON.stringify(name)}`)
         continue
       }
+      const inferredAttribution = inferAttribution(normalised, root)
+      if (inferredAttribution !== undefined && !SAFE_APP_NAME.test(inferredAttribution)) {
+        unsafeAttributions.push(`${file} → directory ${JSON.stringify(inferredAttribution)}`)
+        continue
+      }
       const list = candidates.get(name) ?? []
       list.push(file)
       candidates.set(name, list)
-      seen.set(name, { name, sfc: file })
+      seen.set(name, { name, sfc: file, inferredAttribution })
     }
   }
 
   if (skipped.length) {
     throw new Error(
       `MCP App SFCs with unsafe names (must match ${SAFE_APP_NAME}): \n  - ${skipped.join('\n  - ')}`,
+    )
+  }
+  if (unsafeAttributions.length) {
+    throw new Error(
+      `MCP App sub-directories must match ${SAFE_APP_NAME} (used as the named handler attribution): \n  - ${unsafeAttributions.join('\n  - ')}`,
     )
   }
   for (const [name, files] of candidates) {
