@@ -467,6 +467,50 @@ See [middleware patterns →](./references/middleware.md).
 
 ---
 
+## Nitro Runtime Hooks
+
+Two per-request Nitro hooks fire during the MCP request lifecycle. Subscribe from a `server/plugins/*.ts` plugin to mutate the resolved config or reach the SDK `McpServer` instance from anywhere — no need to own a `defineMcpHandler`. Listeners that throw are logged and the request continues.
+
+```
+defineMcpHandler middleware → mcp:config:resolved → createMcpServer → mcp:server:created → transport
+```
+
+### `mcp:config:resolved` — mutate tools/resources/prompts per request
+
+Fires after dynamic resolvers and `enabled(event)` guards, before the per-request `McpServer` is built. Mutate `ctx.config` in place.
+
+```typescript [server/plugins/mcp-filter.ts]
+export default defineNitroPlugin((nitroApp) => {
+  nitroApp.hooks.hook('mcp:config:resolved', ({ config, event }) => {
+    if (!event.context.user) {
+      config.tools = config.tools.filter(t => !t.tags?.includes('admin'))
+    }
+  })
+})
+```
+
+### `mcp:server:created` — reach the SDK server
+
+Fires after every tool/resource/prompt has been registered, before the server is connected to the transport. Use the SDK API to register definitions late or call `getSdkServer(server)` for low-level handlers.
+
+```typescript [server/plugins/mcp-whoami.ts]
+export default defineNitroPlugin((nitroApp) => {
+  nitroApp.hooks.hook('mcp:server:created', ({ server, event }) => {
+    server.registerTool(
+      'whoami',
+      { description: 'Return the current user id' },
+      async () => ({
+        content: [{ type: 'text', text: String(event.context.userId ?? 'anonymous') }],
+      }),
+    )
+  })
+})
+```
+
+See the [hooks reference →](https://mcp-toolkit.nuxt.dev/advanced/hooks).
+
+---
+
 ## Sessions
 
 Stateful MCP — server assigns an `Mcp-Session-Id` and remembers data across tool calls in the same session.
@@ -929,6 +973,14 @@ export default defineNuxtConfig({
 | `useMcpApp<T>()` (in MCP App SFCs) | Reactive `data` + `callTool` / `sendPrompt` bridge. |
 | `listMcpTools` / `listMcpResources` / `listMcpPrompts` / `listMcpDefinitions` | JSON-friendly summaries (catalog endpoints). |
 | `getMcpTools` / `getMcpResources` / `getMcpPrompts` | Raw definitions (feed back into a handler). |
+| `getSdkServer` | Reach the low-level SDK `Server` from an `McpServer` (advanced). |
+
+### Nitro Hooks
+
+| Hook | Fires |
+| --- | --- |
+| `mcp:config:resolved` | Per request, after dynamic resolvers — mutate `config.tools / resources / prompts / instructions / icons / name`. |
+| `mcp:server:created` | Per request, after every definition is registered — call `server.registerTool(...)`, `getSdkServer(server).setRequestHandler(...)`, etc. |
 
 ### Debug
 
@@ -941,5 +993,5 @@ export default defineNuxtConfig({
 - [Documentation](https://mcp-toolkit.nuxt.dev)
 - [Tools](https://mcp-toolkit.nuxt.dev/tools/overview) · [Resources](https://mcp-toolkit.nuxt.dev/resources/overview) · [Prompts](https://mcp-toolkit.nuxt.dev/prompts/overview)
 - [Handlers](https://mcp-toolkit.nuxt.dev/handlers/overview) · [Apps](https://mcp-toolkit.nuxt.dev/apps/overview)
-- [Sessions](https://mcp-toolkit.nuxt.dev/advanced/sessions) · [Logging](https://mcp-toolkit.nuxt.dev/advanced/logging) · [Elicitation](https://mcp-toolkit.nuxt.dev/advanced/elicitation)
+- [Sessions](https://mcp-toolkit.nuxt.dev/advanced/sessions) · [Logging](https://mcp-toolkit.nuxt.dev/advanced/logging) · [Elicitation](https://mcp-toolkit.nuxt.dev/advanced/elicitation) · [Hooks](https://mcp-toolkit.nuxt.dev/advanced/hooks)
 - [MCP Specification](https://modelcontextprotocol.io)

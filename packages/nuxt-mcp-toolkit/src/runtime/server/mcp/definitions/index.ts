@@ -29,6 +29,9 @@ export type {
 export { useMcpLogger, McpObservabilityNotEnabledError } from '../logger'
 export type { McpClientNotifier, McpLogger, McpRequestLogger, McpUserFields, McpSessionFields } from '../logger'
 
+export { getSdkServer } from '../internals'
+export type { McpResolvedConfig } from '../utils'
+
 /** Commonly used MCP protocol types from `@modelcontextprotocol/sdk` (single import path with the toolkit). */
 export type {
   Annotations,

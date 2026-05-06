@@ -1,6 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { eventHandler, readBody, sendRedirect } from 'h3'
 import type { H3Event } from 'h3'
+import { useNitroApp } from 'nitropack/runtime'
+import { consola } from 'consola'
 import type { McpMiddleware, McpIcon } from './definitions/handlers'
 import type { McpPromptDefinition } from './definitions/prompts'
 import { registerPromptFromDefinition } from './definitions/prompts'
@@ -34,7 +36,14 @@ export interface ResolvedMcpConfig {
   experimental_codeMode?: boolean | CodeModeOptions
 }
 
-interface StaticMcpConfig {
+/**
+ * Fully-resolved MCP server config — `tools` / `resources` / `prompts` are
+ * concrete arrays (no functions), filtered by `enabled(event)` guards.
+ *
+ * This is the shape passed to `mcp:config:resolved` Nitro hook listeners.
+ * Mutating it in place affects what the per-request `McpServer` registers.
+ */
+export interface McpResolvedConfig {
   name: string
   version: string
   description?: string
@@ -68,7 +77,7 @@ async function filterByEnabled<T extends { enabled?: (event: H3Event) => boolean
 async function resolveDynamicDefinitions(
   config: ResolvedMcpConfig,
   event: H3Event,
-): Promise<StaticMcpConfig> {
+): Promise<McpResolvedConfig> {
   const tools = typeof config.tools === 'function'
     ? await config.tools(event)
     : (config.tools || [])
@@ -92,7 +101,7 @@ async function resolveDynamicDefinitions(
   }
 }
 
-function registerEmptyDefinitionFallbacks(server: McpServer, config: StaticMcpConfig) {
+function registerEmptyDefinitionFallbacks(server: McpServer, config: McpResolvedConfig) {
   if (!config.tools.length) {
     server.registerTool('__init__', {}, async () => ({ content: [] })).remove()
   }
@@ -106,7 +115,7 @@ function registerEmptyDefinitionFallbacks(server: McpServer, config: StaticMcpCo
   }
 }
 
-export async function createMcpServer(config: StaticMcpConfig): Promise<McpServer> {
+export async function createMcpServer(config: McpResolvedConfig): Promise<McpServer> {
   const server = new McpServer({
     name: config.name,
     version: config.version,
@@ -246,6 +255,27 @@ function asString(value: unknown): string | undefined {
   return undefined
 }
 
+const hookLog = consola.withTag('mcp-toolkit')
+
+/** Fire a Nitro runtime hook, swallowing listener errors so the request continues. */
+async function callMcpHook(
+  name: 'mcp:config:resolved',
+  ctx: { config: McpResolvedConfig, event: H3Event },
+): Promise<void>
+async function callMcpHook(
+  name: 'mcp:server:created',
+  ctx: { server: McpServer, event: H3Event },
+): Promise<void>
+async function callMcpHook(name: string, ctx: unknown): Promise<void> {
+  try {
+    const hooks = useNitroApp().hooks as { callHook: (name: string, ctx: unknown) => Promise<void> }
+    await hooks.callHook(name, ctx)
+  }
+  catch (error) {
+    hookLog.error(`Hook "${name}" threw — request continues`, error)
+  }
+}
+
 /** Tag `user` / `session` from `event.context` (whatever auth middleware set). */
 function tagAuthContext(event: H3Event) {
   const log = getEvlogLogger(event)
@@ -282,7 +312,9 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
     const handler = async () => {
       tagAuthContext(event)
       const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
+      await callMcpHook('mcp:config:resolved', { config: staticConfig, event })
       const server = await createMcpServer(staticConfig)
+      await callMcpHook('mcp:server:created', { server, event })
       return handleMcpRequest(() => server, event)
     }
 
