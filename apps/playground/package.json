@@ -20,7 +20,7 @@
     "db:migrate": "nuxt db migrate"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.41",
+    "@ai-sdk/mcp": "^1.0.42",
     "@better-auth/api-key": "^1.6.10",
     "@electric-sql/pglite": "^0.4.5",
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -36,8 +36,8 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.106",
-    "@iconify-json/simple-icons": "^1.2.81",
+    "@iconify-json/lucide": "^1.2.107",
+    "@iconify-json/simple-icons": "^1.2.82",
     "@nuxt/eslint-config": "^1.15.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4"
