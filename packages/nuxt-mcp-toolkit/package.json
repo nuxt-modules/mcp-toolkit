@@ -58,13 +58,13 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nuxt/kit": "^4.4.5",
-    "@vitejs/plugin-vue": "^6.0.6",
+    "@vitejs/plugin-vue": "^6.0.7",
     "tinyglobby": "^0.2.16",
     "vite-plugin-singlefile": "^2.3.3"
   },
   "peerDependencies": {
     "@vue/compiler-sfc": "^3.5.34",
-    "agents": ">=0.12.3",
+    "agents": ">=0.12.4",
     "h3": ">=1.15.11",
     "secure-exec": ">=0.2.1",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
@@ -101,17 +101,17 @@
     "@nuxt/schema": "^4.4.5",
     "@nuxt/test-utils": "^4.0.3",
     "@types/node": "latest",
-    "@vitejs/plugin-vue": "^6.0.6",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vue/compiler-sfc": "^3.5.34",
     "eslint": "^9.39.4",
     "evlog": "^2.17.0",
     "nuxt": "^4.4.5",
     "typescript": "~6.0.3",
-    "vite": "^8.0.12",
+    "vite": "^8.0.13",
     "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.6",
     "vue": "^3.5.34",
-    "vue-tsc": "^3.2.8"
+    "vue-tsc": "^3.3.0"
   },
   "publishConfig": {
     "access": "public"

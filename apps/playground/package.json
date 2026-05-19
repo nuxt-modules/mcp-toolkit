@@ -21,14 +21,14 @@
   },
   "dependencies": {
     "@ai-sdk/mcp": "^1.0.42",
-    "@better-auth/api-key": "^1.6.10",
+    "@better-auth/api-key": "^1.6.11",
     "@electric-sql/pglite": "^0.4.5",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nuxt/ui": "^4.7.1",
     "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "ai": "^6.0.177",
-    "better-auth": "^1.6.10",
+    "ai": "^6.0.185",
+    "better-auth": "^1.6.11",
     "drizzle-orm": "^0.45.2",
     "evlog": "^2.17.0",
     "nuxt": "^4.4.5",
@@ -36,8 +36,8 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.107",
-    "@iconify-json/simple-icons": "^1.2.82",
+    "@iconify-json/lucide": "^1.2.108",
+    "@iconify-json/simple-icons": "^1.2.83",
     "@nuxt/eslint-config": "^1.15.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4"
