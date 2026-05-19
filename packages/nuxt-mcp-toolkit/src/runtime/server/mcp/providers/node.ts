@@ -84,7 +84,16 @@ export default createMcpTransportHandler(async (createServer, event) => {
 
     const server = createServer()
     event.context._mcpServer = server
-    const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      // In stateless mode, use JSON responses instead of SSE so that H3 can
+      // fully await the response and afterResponse fires only after the tool
+      // handler completes. With SSE the response stream is returned immediately
+      // (before the handler runs), which causes serverless runtimes to fire
+      // afterResponse too early and drops any log.set() calls made after async
+      // work inside the handler.
+      enableJsonResponse: true,
+    })
     onResponseClose(event, () => {
       transport.close()
       server.close()
