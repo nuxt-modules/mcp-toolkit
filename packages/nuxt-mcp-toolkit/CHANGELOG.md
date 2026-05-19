@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.17.2
+
+### Patch Changes
+
+- [#263](https://github.com/nuxt-modules/mcp-toolkit/pull/263) [`08369d4`](https://github.com/nuxt-modules/mcp-toolkit/commit/08369d4f6f0a2e86f7da0b904f0dc4371de95849) Thanks [@HugoRCD](https://github.com/HugoRCD)! - fix(transport): use JSON response mode for stateless Node transport
+
 ## 0.17.1
 
 ### Patch Changes
