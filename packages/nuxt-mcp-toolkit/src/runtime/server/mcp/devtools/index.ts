@@ -193,6 +193,7 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env,
+      shell: globalThis.process.platform === 'win32',
     })
 
     const childProcess = inspectorProcess
