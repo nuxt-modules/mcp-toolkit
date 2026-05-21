@@ -10,6 +10,8 @@ allowBuilds:
   esbuild: false
   unrs-resolver: false
   vue-demi: false
+  cbor-extract: false
+  core-js-pure: false
   better-sqlite3: true
   isolated-vm: true
   sharp: true
