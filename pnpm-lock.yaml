@@ -33,10 +33,10 @@ importers:
   apps/docs:
     dependencies:
       '@ai-sdk/mcp':
-        specifier: ^1.0.42
+        specifier: ^1.0.43
         version: 1.0.43(zod@4.4.3)
       '@nuxt/ui':
-        specifier: ^4.7.1
+        specifier: ^4.8.0
         version: 4.8.0(c6a8d4e52bc75c98ee9b15bc0d6d2ea5)
       '@nuxtjs/mcp-toolkit':
         specifier: workspace:*
@@ -66,8 +66,8 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0(db0@0.3.4(@electric-sql/pglite@0.4.5)(better-sqlite3@12.10.0)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260521.1)(@electric-sql/pglite@0.4.5)(@opentelemetry/api@1.9.1)(better-sqlite3@12.10.0)(kysely@0.28.17)))(ioredis@5.10.1)(magicast@0.5.3)(srvx@0.11.15)(vue@3.5.34(typescript@6.0.3))
       shaders:
-        specifier: ^2.5.124
-        version: 2.5.124(react@19.2.6)(vue@3.5.34(typescript@6.0.3))
+        specifier: ^2.5.128
+        version: 2.5.128(react@19.2.6)(vue@3.5.34(typescript@6.0.3))
     devDependencies:
       '@nuxt/eslint-config':
         specifier: ^1.15.2
@@ -79,7 +79,7 @@ importers:
         specifier: ^1.0.0-beta.16
         version: 1.0.0-beta.16(ai@6.0.191(zod@4.4.3))(better-sqlite3@12.10.0)
       vitest:
-        specifier: ^4.1.6
+        specifier: ^4.1.7
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))
 
   apps/mcp-starter:
@@ -104,7 +104,7 @@ importers:
   apps/playground:
     dependencies:
       '@ai-sdk/mcp':
-        specifier: ^1.0.42
+        specifier: ^1.0.43
         version: 1.0.43(zod@4.4.3)
       '@better-auth/api-key':
         specifier: ^1.6.11
@@ -116,7 +116,7 @@ importers:
         specifier: ^1.29.0
         version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3)
       '@nuxt/ui':
-        specifier: ^4.7.1
+        specifier: ^4.8.0
         version: 4.8.0(c6a8d4e52bc75c98ee9b15bc0d6d2ea5)
       '@nuxthub/core':
         specifier: ^0.10.7
@@ -125,7 +125,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/nuxt-mcp-toolkit
       ai:
-        specifier: ^6.0.185
+        specifier: ^6.0.191
         version: 6.0.191(zod@4.4.3)
       better-auth:
         specifier: ^1.6.11
@@ -147,7 +147,7 @@ importers:
         version: 4.4.3
     devDependencies:
       '@iconify-json/lucide':
-        specifier: ^1.2.108
+        specifier: ^1.2.109
         version: 1.2.109
       '@iconify-json/simple-icons':
         specifier: ^1.2.83
@@ -174,7 +174,7 @@ importers:
         specifier: ^6.0.7
         version: 6.0.7(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))(vue@3.5.34(typescript@6.0.3))
       agents:
-        specifier: '>=0.12.4'
+        specifier: '>=0.13.2'
         version: 0.13.2(@babel/core@7.29.0)(@babel/runtime@7.29.2)(@cloudflare/workers-types@4.20260521.1)(ai@6.0.191(zod@4.4.3))(react@19.2.6)(rolldown@1.0.2)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))(zod@4.4.3)
       h3:
         specifier: '>=1.15.11'
@@ -226,16 +226,16 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
       vite:
-        specifier: ^8.0.13
+        specifier: ^8.0.14
         version: 8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.6
+        specifier: ^4.1.7
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(tsx@4.22.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.34
         version: 3.5.34(typescript@6.0.3)
       vue-tsc:
-        specifier: ^3.3.0
+        specifier: ^3.3.1
         version: 3.3.1(typescript@6.0.3)
 
 packages:
@@ -8723,8 +8723,8 @@ packages:
     engines: {node: '>= 0.10'}
     hasBin: true
 
-  shaders@2.5.124:
-    resolution: {integrity: sha512-Q5I4U+uYrg/wU7OEBq3OG/WAkL571Qbh90Ejb6SEXj9pdAhjX6SrS8wW3Zfu7NCqpENKwLsePIfWzymwaHZW+w==}
+  shaders@2.5.128:
+    resolution: {integrity: sha512-1aPW2jqR+DCkzomx8LEqEmeUeMWoLvNChCDgWKeT6qR9sQWNfO6ihbB6E8lwfC2XhjtslKawm/gxO2O4kumyUg==}
     peerDependencies:
       pixi.js: ^8.0.0
       react: ^18.0.0 || ^19.0.0
@@ -20375,7 +20375,7 @@ snapshots:
       safe-buffer: 5.2.1
       to-buffer: 1.2.2
 
-  shaders@2.5.124(react@19.2.6)(vue@3.5.34(typescript@6.0.3)):
+  shaders@2.5.128(react@19.2.6)(vue@3.5.34(typescript@6.0.3)):
     dependencies:
       three: 0.184.0
     optionalDependencies:
