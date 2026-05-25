@@ -31,3 +31,4 @@ minimumReleaseAgeExclude:
   - '@vercel/*'
   - '@ai-sdk/*'
   - 'ai'
+  - shaders@2.5.128
