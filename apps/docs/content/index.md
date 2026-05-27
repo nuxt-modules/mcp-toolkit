@@ -8,7 +8,7 @@ seo:
 ::landing-hero
 ---
 command: npx skills add https://mcp-toolkit.nuxt.dev
-installCommand: npx nuxt module add mcp-toolkit
+installCommand: npx nuxt add mcp
 linkLabel: Get Started
 linkTo: /getting-started/installation
 ---

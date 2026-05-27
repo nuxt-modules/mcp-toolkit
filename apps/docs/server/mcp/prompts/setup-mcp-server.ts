@@ -21,7 +21,7 @@ export default defineMcpPrompt({
 Run this command to install the module:
 
 \`\`\`bash
-npx nuxt module add mcp-toolkit
+npx nuxt add mcp
 \`\`\`
 
 Or manually install:

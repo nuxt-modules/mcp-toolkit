@@ -43,7 +43,7 @@ bun add @nuxtjs/mcp-toolkit zod
 Or in one go via the Nuxt CLI:
 
 ```bash
-npx nuxt module add mcp-toolkit
+npx nuxt add mcp
 ```
 
 Add to `nuxt.config.ts`:
