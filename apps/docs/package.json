@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.15.2",
-    "eslint": "^9.39.4",
+    "eslint": "^10.4.1",
     "evalite": "^1.0.0-beta.16",
     "vitest": "^4.1.7"
   }
