@@ -54,7 +54,8 @@ export default defineNuxtConfig({
 
   nitro: {
     externals: {
-      inline: ['minimark'],
+      // Vercel serverless bundles externalize unhead but fail to trace dist/server.mjs.
+      inline: ['minimark', 'unhead', '@unhead/vue', '@unhead/dom', '@unhead/schema'],
     },
   },
 

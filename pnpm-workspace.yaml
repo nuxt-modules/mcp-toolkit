@@ -29,6 +29,7 @@ minimumReleaseAgeExclude:
   - '@nuxtjs/*'
   - 'nuxt'
   - 'nuxt-*'
+  - 'docus'
   # Vercel
   - '@vercel/*'
   - '@ai-sdk/*'
