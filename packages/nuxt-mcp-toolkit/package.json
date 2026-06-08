@@ -59,16 +59,16 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nuxt/kit": "^4.4.7",
     "@vitejs/plugin-vue": "^6.0.7",
-    "tinyglobby": "^0.2.16",
+    "tinyglobby": "^0.2.17",
     "vite-plugin-singlefile": "^2.3.3"
   },
   "peerDependencies": {
-    "@vue/compiler-sfc": "^3.5.34",
-    "agents": ">=0.13.2",
+    "@vue/compiler-sfc": "^3.5.35",
+    "agents": ">=0.14.4",
     "h3": ">=1.15.11",
     "secure-exec": ">=0.2.1",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
-    "vue": "^3.5.34",
+    "vue": "^3.5.35",
     "zod": "^4.1.13"
   },
   "peerDependenciesMeta": {
@@ -102,16 +102,16 @@
     "@nuxt/test-utils": "^4.0.3",
     "@types/node": "latest",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vue/compiler-sfc": "^3.5.34",
+    "@vue/compiler-sfc": "^3.5.35",
     "eslint": "^10.4.1",
-    "evlog": "^2.17.0",
+    "evlog": "^2.18.1",
     "nuxt": "^4.4.7",
     "typescript": "~6.0.3",
-    "vite": "^8.0.14",
+    "vite": "^8.0.16",
     "vite-plugin-singlefile": "^2.3.3",
-    "vitest": "^4.1.7",
-    "vue": "^3.5.34",
-    "vue-tsc": "^3.3.1"
+    "vitest": "^4.1.8",
+    "vue": "^3.5.35",
+    "vue-tsc": "^3.3.3"
   },
   "publishConfig": {
     "access": "public"
