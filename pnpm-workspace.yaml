@@ -15,8 +15,8 @@ allowBuilds:
   better-sqlite3: true
   isolated-vm: true
   sharp: true
-  '@mongodb-js/zstd': set this to true or false
-  node-liblzma: set this to true or false
+  '@mongodb-js/zstd': true
+  node-liblzma: true
 
 overrides:
   '@nuxtjs/mcp-toolkit': workspace:*
