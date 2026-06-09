@@ -35,8 +35,7 @@ minimumReleaseAgeExclude:
   - '@ai-sdk/*'
   - 'ai'
   - shaders@2.5.128
-  - agents@0.14.4
+  - agents
   - '@iconify-json/simple-icons@1.2.86'
-  - '@vue/language-core@3.3.4'
-  - agents@0.14.5
-  - vue-tsc@3.3.4
+  - '@vue/language-core'
+  - vue-tsc
