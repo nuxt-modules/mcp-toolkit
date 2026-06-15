@@ -39,3 +39,4 @@ minimumReleaseAgeExclude:
   - '@iconify-json/simple-icons@1.2.86'
   - '@vue/language-core'
   - vue-tsc
+  - better-sqlite3@12.10.1
