@@ -217,7 +217,7 @@ export function walkTopLevelObjectFields(argText: string): TopLevelField[] {
       continue
     }
 
-    let key = ''
+    let key: string
     if (text[i] === '"' || text[i] === '\'') {
       const quote = text[i]!
       let j = i + 1

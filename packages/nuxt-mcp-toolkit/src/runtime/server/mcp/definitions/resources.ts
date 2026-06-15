@@ -192,7 +192,7 @@ export function registerResourceFromDefinition(
           }
         }
         catch (error) {
-          throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`)
+          throw new Error(`Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
         }
       }
     }

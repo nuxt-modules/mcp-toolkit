@@ -33,6 +33,7 @@ async function loadSecureExec(): Promise<SecureExecModule> {
     console.error('[nuxt-mcp-toolkit] Failed to load secure-exec:', error)
     throw new Error(
       '[nuxt-mcp-toolkit] Code Mode requires `secure-exec`. Install it with: npm install secure-exec',
+      { cause: error },
     )
   }
 }
