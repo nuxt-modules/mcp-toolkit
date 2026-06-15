@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "description": "Minimal Nuxt app with @nuxtjs/mcp-toolkit — copy, run, extend with tools, resources, and prompts",
-  "packageManager": "pnpm@10.34.1",
+  "packageManager": "pnpm@10.34.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git",
@@ -22,7 +22,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@nuxt/eslint-config": "^1.15.2",
-    "eslint": "^10.4.1"
+    "@nuxt/eslint-config": "^1.16.0",
+    "eslint": "^10.5.0"
   }
 }
