@@ -46,9 +46,9 @@ interface RpcDispatchPayload {
   execId: string
 }
 
-type RpcDispatchResult =
-  | { kind: 'ok', result: unknown }
-  | { kind: 'error', status: number, message: string }
+type RpcDispatchResult
+  = | { kind: 'ok', result: unknown }
+    | { kind: 'error', status: number, message: string }
 
 async function dispatchRpcCall(
   payload: RpcDispatchPayload,
