@@ -2,6 +2,7 @@ import { addServerTemplate } from '@nuxt/kit'
 import type { Resolver } from '@nuxt/kit'
 import type { DiscoveredApp } from './discover'
 import type { ParsedSfcApp } from './parse-sfc'
+import { stripTypeScriptFromMacroArg } from './strip-typescript'
 
 export interface ResolvedAttribution {
   /** Final `attachTo` value (explicit override > sub-folder > `'apps'`). */
@@ -70,8 +71,4 @@ export default _createAppResource(_app, { name: ${JSON.stringify(app.name)}, htm
   addServerTemplate({ filename: resourceFile, getContents: () => resourceFileBody })
 
   return { toolFile, resourceFile }
-}
-
-function stripTypeScriptFromMacroArg(argText: string): string {
-  return argText.replace(/\):[^=\n]*=>/g, ') =>')
 }
