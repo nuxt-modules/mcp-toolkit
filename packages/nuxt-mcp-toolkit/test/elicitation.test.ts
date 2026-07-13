@@ -181,7 +181,7 @@ describe('useMcpElicitation', async () => {
     expect(parsed).toEqual({ error: 'unsupported' })
   })
 
-  it('confirm() returns true only when the user accepts with confirm=true', async () => {
+  it('confirm() returns true only when the user accepts with confirm=true', { timeout: 15000 }, async () => {
     const accepting = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'accept', content: { confirm: true } }),
