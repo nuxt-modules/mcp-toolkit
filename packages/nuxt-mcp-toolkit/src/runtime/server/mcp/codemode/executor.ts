@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { randomBytes } from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { NodeRuntime as SecureExecRuntime } from 'secure-exec'
+import type { NodeRuntime } from 'secure-exec'
 import type { CodeModeOptions, ExecuteResult } from './types'
 import { normalizeCode } from './normalize-code'
 
@@ -19,7 +19,9 @@ const DEFAULT_MAX_TOOL_RESPONSE_SIZE = 1_048_576 // 1MB
 const DEFAULT_WALL_TIME_LIMIT_MS = 60_000 // 60s
 const DEFAULT_MAX_TOOL_CALLS = 200
 const MAX_LOG_ENTRIES = 200
+const MCP_BINDING = 'mcp-rpc'
 const RETURN_TOOL = '__return__'
+const textDecoder = new TextDecoder()
 
 let secureExecModule: SecureExecModule | null = null
 
@@ -38,48 +40,88 @@ async function loadSecureExec(): Promise<SecureExecModule> {
   }
 }
 
-function createRpcOnlyAdapter(allowedPort: number) {
-  return {
-    async fetch(url: string, options: { method?: string, headers?: Record<string, string>, body?: string | null }) {
-      const parsed = new URL(url)
-      if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost') {
-        throw new Error(`Network access restricted to RPC server (blocked host: ${parsed.hostname})`)
-      }
-      if (Number(parsed.port) !== allowedPort) {
-        throw new Error(`Network access restricted to RPC server (blocked port: ${parsed.port})`)
-      }
+interface RpcDispatchPayload {
+  tool: string
+  args: unknown
+  execId: string
+}
 
-      const resp = await globalThis.fetch(url, {
-        method: options?.method || 'GET',
-        headers: options?.headers,
-        body: options?.body,
-        redirect: 'error',
-      })
-      const body = await resp.text()
-      const headers: Record<string, string> = {}
-      resp.headers.forEach((v, k) => {
-        headers[k] = v
-      })
+type RpcDispatchResult =
+  | { kind: 'ok', result: unknown }
+  | { kind: 'error', status: number, message: string }
 
-      return {
-        ok: resp.ok,
-        status: resp.status,
-        statusText: resp.statusText,
-        headers,
-        body,
-        url,
-        redirected: false,
-      }
-    },
-
-    async dnsLookup() {
-      return { error: 'DNS not available in code mode', code: 'ENOSYS' }
-    },
-
-    async httpRequest() {
-      throw new Error('Raw HTTP not available in code mode')
-    },
+async function dispatchRpcCall(
+  payload: RpcDispatchPayload,
+  state: Pick<RpcState, 'token' | 'executions'>,
+  token: string,
+): Promise<RpcDispatchResult> {
+  if (token !== state.token) {
+    return { kind: 'error', status: 403, message: 'Forbidden' }
   }
+
+  const { tool: name, args, execId } = payload
+
+  if (typeof execId !== 'string' || execId.length === 0) {
+    return { kind: 'error', status: 400, message: 'Missing execution id' }
+  }
+
+  const exec = state.executions.get(execId)
+  if (!exec) {
+    return { kind: 'error', status: 400, message: `Unknown execution: ${execId}` }
+  }
+
+  if (Date.now() > exec.deadlineMs) {
+    return { kind: 'error', status: 408, message: 'Execution wall-clock timeout exceeded' }
+  }
+
+  if (name === RETURN_TOOL) {
+    if (!exec.onReturn) {
+      return { kind: 'error', status: 400, message: `Execution cannot accept return value: ${execId}` }
+    }
+    if (exec.returned) {
+      return { kind: 'error', status: 400, message: 'Return value already received for this execution' }
+    }
+
+    exec.restoreContext(exec.onReturn, args)
+    exec.returned = true
+    return { kind: 'ok', result: { ok: true } }
+  }
+
+  const fn = exec.fns[name]
+  if (!fn) {
+    return { kind: 'error', status: 400, message: `Unknown tool: ${name}` }
+  }
+
+  exec.rpcCallCount++
+  if (exec.rpcCallCount > exec.maxToolCalls) {
+    return { kind: 'error', status: 429, message: `Tool call limit exceeded (max ${exec.maxToolCalls})` }
+  }
+
+  const result = await exec.restoreContext(fn, args)
+  const serialized = JSON.stringify(result)
+  if (serialized.length > exec.maxToolResponseSize) {
+    return { kind: 'ok', result: truncateResult(result, serialized.length, exec.maxToolResponseSize) }
+  }
+
+  return { kind: 'ok', result }
+}
+
+async function handleBindingRpc(input: RpcDispatchPayload & { token: string }): Promise<unknown> {
+  if (!rpcState) {
+    throw new Error('Code mode RPC bridge is not ready')
+  }
+
+  const outcome = await dispatchRpcCall(
+    { tool: input.tool, args: input.args, execId: input.execId },
+    rpcState,
+    input.token,
+  )
+
+  if (outcome.kind === 'error') {
+    throw new Error(outcome.message)
+  }
+
+  return outcome.result
 }
 
 interface ExecutionContext {
@@ -185,64 +227,15 @@ async function handleRpcRequest(
       body += str
     }
 
-    const { tool: name, args, execId } = JSON.parse(body) as {
-      tool: string
-      args: unknown
-      execId: string
-    }
+    const { tool: name, args, execId } = JSON.parse(body) as RpcDispatchPayload
 
-    if (typeof execId !== 'string' || execId.length === 0) {
-      sendJson(res, 400, { error: 'Missing execution id' })
+    const outcome = await dispatchRpcCall({ tool: name, args, execId }, state, state.token)
+    if (outcome.kind === 'error') {
+      sendJson(res, outcome.status, { error: outcome.message })
       return
     }
 
-    const exec = state.executions.get(execId)
-    if (!exec) {
-      sendJson(res, 400, { error: `Unknown execution: ${execId}` })
-      return
-    }
-
-    if (Date.now() > exec.deadlineMs) {
-      sendJson(res, 408, { error: 'Execution wall-clock timeout exceeded' })
-      return
-    }
-
-    if (name === RETURN_TOOL) {
-      if (!exec.onReturn) {
-        sendJson(res, 400, { error: `Execution cannot accept return value: ${execId}` })
-        return
-      }
-      if (exec.returned) {
-        sendJson(res, 400, { error: 'Return value already received for this execution' })
-        return
-      }
-
-      exec.restoreContext(exec.onReturn, args)
-      exec.returned = true
-      sendJson(res, 200, { result: { ok: true } })
-      return
-    }
-
-    const fn = exec.fns[name]
-    if (!fn) {
-      sendJson(res, 400, { error: `Unknown tool: ${name}` })
-      return
-    }
-
-    exec.rpcCallCount++
-    if (exec.rpcCallCount > exec.maxToolCalls) {
-      sendJson(res, 429, { error: `Tool call limit exceeded (max ${exec.maxToolCalls})` })
-      return
-    }
-
-    const result = await exec.restoreContext(fn, args)
-    const serialized = JSON.stringify(result)
-    if (serialized.length > exec.maxToolResponseSize) {
-      sendJson(res, 200, { result: truncateResult(result, serialized.length, exec.maxToolResponseSize) })
-    }
-    else {
-      sendJson(res, 200, { result })
-    }
+    sendJson(res, 200, { result: outcome.result })
   }
   catch (error) {
     console.error('[nuxt-mcp-toolkit] RPC dispatch error:', error)
@@ -303,8 +296,8 @@ let cachedProxyCode = ''
 
 const SAFE_IDENTIFIER = /^[\w$]+$/
 
-function getProxyBoilerplate(toolNames: string[], port: number, token: string): string {
-  const key = `${port}:${token}:${toolNames.join(',')}`
+function getProxyBoilerplate(toolNames: string[], token: string): string {
+  const key = `${token}:${toolNames.join(',')}`
   if (key === cachedProxyKey) return cachedProxyCode
 
   for (const name of toolNames) {
@@ -318,22 +311,26 @@ function getProxyBoilerplate(toolNames: string[], port: number, token: string): 
     .join(',\n')
 
   cachedProxyCode = `
+import { execFileSync } from 'node:child_process';
+
 async function rpc(toolName, args) {
-  const res = await fetch('http://127.0.0.1:${port}', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-rpc-token': '${token}' },
-    body: JSON.stringify({ tool: toolName, args, execId: __execId }),
-  });
-  const data = JSON.parse(typeof res.text === 'function' ? await res.text() : res.body);
-  if (data.error) throw new Error(data.error);
-  if (data.result && data.result.__toolError) {
-    const err = new Error(data.result.message);
-    err.tool = data.result.tool;
+  const raw = execFileSync('${MCP_BINDING}', ['${MCP_BINDING}', '--json', JSON.stringify({
+    token: '${token}',
+    tool: toolName,
+    args,
+    execId: __execId,
+  })]);
+  const data = JSON.parse(String(raw));
+  if (!data.ok) throw new Error(data.error || 'RPC failed');
+  const result = data.result;
+  if (result && result.__toolError) {
+    const err = new Error(result.message);
+    err.tool = result.tool;
     err.isToolError = true;
-    err.details = data.result.details;
+    err.details = result.details;
     throw err;
   }
-  return data.result;
+  return result;
 }
 
 const codemode = {
@@ -346,11 +343,10 @@ ${proxyMethods}
 function buildSandboxCode(
   userCode: string,
   toolNames: string[],
-  port: number,
   token: string,
   execId: string,
 ): string {
-  const boilerplate = getProxyBoilerplate(toolNames, port, token)
+  const boilerplate = getProxyBoilerplate(toolNames, token)
   const cleaned = normalizeCode(userCode)
 
   return `const __execId = ${JSON.stringify(execId)};
@@ -368,7 +364,47 @@ __fn().then(
 `
 }
 
-let runtimeInstance: SecureExecRuntime | null = null
+let runtimeInstance: NodeRuntime | null = null
+
+async function ensureRuntime(): Promise<NodeRuntime> {
+  if (runtimeInstance) return runtimeInstance
+
+  const secureExec = await loadSecureExec()
+  runtimeInstance = await secureExec.NodeRuntime.create({
+    permissions: {
+      binding: 'allow',
+    },
+    bindings: {
+      [MCP_BINDING]: {
+        description: 'Bridge sandboxed code mode calls back to the host MCP tool dispatcher',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            token: { type: 'string' },
+            tool: { type: 'string' },
+            args: {},
+            execId: { type: 'string' },
+          },
+          required: ['token', 'tool', 'execId'],
+        },
+        handler: input => handleBindingRpc(input as RpcDispatchPayload & { token: string }),
+      },
+    },
+  })
+
+  return runtimeInstance
+}
+
+function appendLog(logs: string[], channel: 'stdout' | 'stderr', message: string): void {
+  if (logs.length < MAX_LOG_ENTRIES) {
+    logs.push(`[${channel}] ${message}`)
+    return
+  }
+
+  if (logs.length === MAX_LOG_ENTRIES) {
+    logs.push(`... log output truncated at ${MAX_LOG_ENTRIES} entries`)
+  }
+}
 
 function truncateResult(value: unknown, totalSize: number, maxSize: number): Record<string, unknown> {
   if (Array.isArray(value)) {
@@ -424,8 +460,8 @@ export async function execute(
   let returnedResult: { value: unknown, received: boolean } = { value: undefined, received: false }
 
   try {
-    const secureExec = await loadSecureExec()
     rpc = await ensureRpcServer(options?.maxRequestBodyBytes ?? DEFAULT_MAX_REQUEST_BODY_BYTES)
+    const runtime = await ensureRuntime()
 
     execId = randomBytes(8).toString('hex')
     const restoreContext = AsyncLocalStorage.snapshot()
@@ -445,43 +481,30 @@ export async function execute(
     })
 
     const toolNames = Object.keys(fns)
-    const sandboxCode = buildSandboxCode(code, toolNames, rpc.port, rpc.token, execId)
+    const sandboxCode = buildSandboxCode(code, toolNames, rpc.token, execId)
 
-    // Runtime is a singleton — memoryLimit and cpuTimeLimitMs are locked
+    // Runtime is a singleton — network permissions and exec timeout are locked
     // from the first call. Call dispose() and re-execute to change them.
-    if (!runtimeInstance) {
-      runtimeInstance = new secureExec.NodeRuntime({
-        systemDriver: secureExec.createNodeDriver({
-          networkAdapter: createRpcOnlyAdapter(rpc.port),
-          permissions: {
-            network: () => ({ allow: true }),
-          },
-        }),
-        runtimeDriverFactory: secureExec.createNodeRuntimeDriverFactory(),
-        memoryLimit: options?.memoryLimit ?? 64,
-        cpuTimeLimitMs: options?.cpuTimeLimitMs ?? 10_000,
-      })
-    }
-
     let errorMsg: string | undefined
-    const execResult = await runtimeInstance.exec(sandboxCode, {
-      onStdio: ({ channel, message }) => {
-        if (channel === 'stderr' && message.startsWith(ERROR_PREFIX)) {
+    const execResult = await runtime.exec(sandboxCode, {
+      timeout: options?.cpuTimeLimitMs ?? 10_000,
+      onStdout: (chunk) => {
+        appendLog(logs, 'stdout', textDecoder.decode(chunk))
+      },
+      onStderr: (chunk) => {
+        const message = textDecoder.decode(chunk)
+        if (message.startsWith(ERROR_PREFIX)) {
           errorMsg = message.slice(ERROR_PREFIX.length)
+          return
         }
-        else if (logs.length < MAX_LOG_ENTRIES) {
-          logs.push(`[${channel}] ${message}`)
-        }
-        else if (logs.length === MAX_LOG_ENTRIES) {
-          logs.push(`... log output truncated at ${MAX_LOG_ENTRIES} entries`)
-        }
+        appendLog(logs, 'stderr', message)
       },
     })
 
-    if (execResult.code !== 0 || errorMsg) {
+    if (execResult.exitCode !== 0 || errorMsg) {
       return {
         result: undefined,
-        error: errorMsg ?? execResult.errorMessage ?? `Exit code ${execResult.code}`,
+        error: errorMsg ?? (execResult.stderr.trim() || `Exit code ${execResult.exitCode}`),
         logs,
       }
     }
@@ -516,14 +539,14 @@ export async function execute(
   }
 }
 
-export function dispose(): void {
+export async function dispose(): Promise<void> {
   const state = rpcState
   rpcState = null
   rpcStatePromise = null
 
   if (runtimeInstance) {
     try {
-      runtimeInstance.dispose()
+      await runtimeInstance.dispose()
     }
     catch (error) {
       console.warn('[nuxt-mcp-toolkit] Error disposing runtime:', getErrorMessage(error))

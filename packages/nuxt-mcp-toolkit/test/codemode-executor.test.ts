@@ -4,11 +4,11 @@ import { execute, dispose } from '../src/runtime/server/mcp/codemode/executor'
 
 const mockDisposers: Array<() => void> = []
 
-afterEach(() => {
+afterEach(async () => {
   for (const disposeMock of mockDisposers.splice(0)) {
-    disposeMock()
+    await disposeMock()
   }
-  dispose()
+  await dispose()
   vi.restoreAllMocks()
   vi.resetModules()
   vi.doUnmock('node:http')
@@ -74,7 +74,7 @@ function createMockResponse() {
 }
 
 function extractExecMetadata(sandboxCode: string) {
-  const token = sandboxCode.match(/'x-rpc-token': '([^']+)'/)?.[1]
+  const token = sandboxCode.match(/token: '([^']+)'/)?.[1]
   const execId = sandboxCode.match(/const __execId = "([^"]+)";/)?.[1]
 
   if (!token || !execId) {
@@ -85,23 +85,19 @@ function extractExecMetadata(sandboxCode: string) {
 }
 
 function createSecureExecMock(
-  execImpl: (sandboxCode: string, options?: { onStdio?: (event: { channel: string, message: string }) => void }) => Promise<{ code: number, errorMessage?: string }> | { code: number, errorMessage?: string },
+  execImpl: (sandboxCode: string, options?: { onStdout?: (chunk: Uint8Array) => void, onStderr?: (chunk: Uint8Array) => void, timeout?: number }) => Promise<{ exitCode: number, stderr?: string }> | { exitCode: number, stderr?: string },
 ) {
-  const runtimeDispose = vi.fn()
+  const runtimeDispose = vi.fn(async () => {})
   const runtimeExec = vi.fn(execImpl)
-  const NodeRuntime = vi.fn(function MockNodeRuntime() {
-    return {
+  const NodeRuntime = {
+    create: vi.fn(async () => ({
       exec: runtimeExec,
       dispose: runtimeDispose,
-    }
-  })
+    })),
+  }
 
   return {
-    module: {
-      NodeRuntime,
-      createNodeDriver: vi.fn(() => ({})),
-      createNodeRuntimeDriverFactory: vi.fn(() => ({})),
-    },
+    module: { NodeRuntime },
     runtimeDispose,
     runtimeExec,
     NodeRuntime,
@@ -125,7 +121,7 @@ async function importExecutorWithMocks(options: {
   }
 
   const mod = await import('../src/runtime/server/mcp/codemode/executor')
-  mockDisposers.push(() => mod.dispose())
+  mockDisposers.push(async () => mod.dispose())
   return mod
 }
 
@@ -257,7 +253,7 @@ describe('executor hardening', () => {
       address: vi.fn(() => ({ port: 4311 })),
     }
     const createServer = vi.fn(() => server)
-    const secureExec = createSecureExecMock(async () => ({ code: 0 }))
+    const secureExec = createSecureExecMock(async () => ({ exitCode: 0 }))
     const mod = await importExecutorWithMocks({
       createServer,
       secureExecModule: secureExec.module,
@@ -297,7 +293,7 @@ describe('executor hardening', () => {
       }
       return server
     })
-    const secureExec = createSecureExecMock(async () => ({ code: 0 }))
+    const secureExec = createSecureExecMock(async () => ({ exitCode: 0 }))
     const mod = await importExecutorWithMocks({
       createServer,
       secureExecModule: secureExec.module,
@@ -330,7 +326,7 @@ describe('executor hardening', () => {
     let sandboxCode = ''
     const secureExec = createSecureExecMock(async (code: string) => {
       sandboxCode = code
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -394,7 +390,7 @@ describe('executor hardening', () => {
       const { token, execId } = extractExecMetadata(sandboxCode)
       await invokeHandler(requestHandler!, createJsonRequest({ tool: '__return__', args: 'first', execId }, token), firstReturn.res)
       await invokeHandler(requestHandler!, createJsonRequest({ tool: '__return__', args: 'second', execId }, token), duplicateReturn.res)
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -425,18 +421,18 @@ describe('executor hardening', () => {
       servers.push(server)
       return server
     })
-    const secureExec = createSecureExecMock(async () => ({ code: 0 }))
+    const secureExec = createSecureExecMock(async () => ({ exitCode: 0 }))
     const mod = await importExecutorWithMocks({
       createServer,
       secureExecModule: secureExec.module,
     })
 
     await mod.execute('return 1;', {})
-    mod.dispose()
+    await mod.dispose()
     await mod.execute('return 2;', {})
 
     expect(createServer).toHaveBeenCalledTimes(2)
-    expect(secureExec.NodeRuntime).toHaveBeenCalledTimes(2)
+    expect(secureExec.NodeRuntime.create).toHaveBeenCalledTimes(2)
     expect(servers[0]!.close).toHaveBeenCalledTimes(1)
   })
 
@@ -459,7 +455,7 @@ describe('executor hardening', () => {
     let sandboxCode = ''
     const secureExec = createSecureExecMock(async (code: string) => {
       sandboxCode = code
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -495,7 +491,7 @@ describe('executor hardening', () => {
     let sandboxCode = ''
     const secureExec = createSecureExecMock(async (code: string) => {
       sandboxCode = code
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -532,7 +528,7 @@ describe('executor hardening', () => {
     let sandboxCode = ''
     const secureExec = createSecureExecMock(async (code: string) => {
       sandboxCode = code
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -568,7 +564,7 @@ describe('executor hardening', () => {
     let sandboxCode = ''
     const secureExec = createSecureExecMock(async (code: string) => {
       sandboxCode = code
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -611,7 +607,7 @@ describe('executor hardening', () => {
       const toolResponse = createMockResponse()
       await invokeHandler(requestHandler!, createJsonRequest({ tool: 'slow_tool', args: null, execId }, token), toolResponse.res)
       expect(toolResponse.statusCode).toBe(408)
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -657,7 +653,7 @@ describe('executor hardening', () => {
       expect(r3.statusCode).toBe(429)
       expect(r3.json?.error).toContain('Tool call limit exceeded')
 
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -691,7 +687,7 @@ describe('executor hardening', () => {
       expect(response.statusCode).toBe(200)
       expect(response.json?.result).toHaveProperty('_truncated', true)
 
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -728,7 +724,7 @@ describe('executor hardening', () => {
       expect(response.json?.error).toContain('[path]')
       expect(response.json?.error).not.toContain('/Users/dev/project/src/secret.ts')
 
-      return { code: 0 }
+      return { exitCode: 0 }
     })
     const mod = await importExecutorWithMocks({
       createServer,
@@ -751,7 +747,7 @@ describe('executor hardening', () => {
       close: vi.fn(),
       address: vi.fn(() => ({ port: 4316 })),
     }))
-    const secureExec = createSecureExecMock(async () => ({ code: 0 }))
+    const secureExec = createSecureExecMock(async () => ({ exitCode: 0 }))
     const mod = await importExecutorWithMocks({
       createServer,
       secureExecModule: secureExec.module,
