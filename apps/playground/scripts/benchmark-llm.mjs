@@ -18,8 +18,8 @@
  * Requires the playground to be running.
  */
 
-import { generateText, stepCountIs } from 'ai'
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp'
+import { generateText, isStepCount } from 'ai'
+import { createMCPClient } from '@ai-sdk/mcp'
 import { createLogger, initLogger } from 'evlog'
 import { createAILogger } from 'evlog/ai'
 
@@ -108,10 +108,10 @@ async function runTask(prompt, mcpClient, stepLimit, label, systemPrompt) {
 
   const result = await generateText({
     model,
-    ...(systemPrompt ? { system: systemPrompt } : {}),
+    ...(systemPrompt ? { instructions: systemPrompt } : {}),
     prompt,
     tools,
-    stopWhen: stepCountIs(stepLimit),
+    stopWhen: isStepCount(stepLimit),
   })
 
   const durationMs = Math.round(performance.now() - start)

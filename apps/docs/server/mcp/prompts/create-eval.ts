@@ -62,8 +62,8 @@ Add scripts to \`package.json\`:
 ## Eval Template
 
 \`\`\`typescript
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp'
-import { generateText } from 'ai'
+import { createMCPClient } from '@ai-sdk/mcp'
+import { generateText, isStepCount } from 'ai'
 import { evalite } from 'evalite'
 import { toolCallAccuracy } from 'evalite/scorers'
 
@@ -131,7 +131,7 @@ Verify the tool receives the correct input parameters:
 
 ### Multi-Step Workflows
 
-Test workflows that require multiple tool calls (use \`maxSteps\`):
+Test workflows that require multiple tool calls (use \`stopWhen: isStepCount(n)\`):
 
 \`\`\`typescript
 evalite('Multi-Step Workflows', {
@@ -151,7 +151,7 @@ evalite('Multi-Step Workflows', {
         model,
         prompt: input,
         tools: await mcp.tools(),
-        maxSteps: 5, // Allow multiple tool calls
+        stopWhen: isStepCount(5), // Allow multiple tool calls
       })
       return result.toolCalls ?? []
     }

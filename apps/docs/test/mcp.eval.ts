@@ -1,5 +1,5 @@
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp'
-import { generateText } from 'ai'
+import { createMCPClient } from '@ai-sdk/mcp'
+import { generateText, isStepCount } from 'ai'
 import { evalite } from 'evalite'
 import { toolCallAccuracy } from 'evalite/scorers'
 
@@ -106,7 +106,7 @@ evalite('Documentation Tools - Multi-Step Workflows', {
         model,
         prompt: input,
         tools: await mcp.tools(),
-        maxSteps: 5,
+        stopWhen: isStepCount(5),
       })
       return result.toolCalls ?? []
     }

@@ -3,9 +3,9 @@ import type { McpToolDefinition, McpToolDefinitionListItem } from '../definition
 import { enrichNameTitle } from '../definitions/utils'
 
 export interface CodeModeOptions {
-  /** V8 isolate memory limit in MB. Default: 64 */
+  /** @deprecated secure-exec 0.3+ no longer exposes a host memory limit; kept for API compatibility. */
   memoryLimit?: number
-  /** CPU time limit per execution in ms. Default: 10000 */
+  /** CPU/wall time limit per execution in ms. Default: 10000 */
   cpuTimeLimitMs?: number
   /** Max result size in bytes before truncation. Default: 102400 (100KB) */
   maxResultSize?: number
