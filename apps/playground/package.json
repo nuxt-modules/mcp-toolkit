@@ -20,19 +20,19 @@
     "db:migrate": "nuxt db migrate"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.61",
+    "@ai-sdk/mcp": "^2.0.10",
     "@better-auth/api-key": "^1.6.23",
     "@electric-sql/pglite": "^0.5.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nuxt/ui": "^4.9.0",
     "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "ai": "^6.0.224",
+    "ai": "^7.0.22",
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
     "evlog": "^2.20.0",
     "nuxt": "^4.4.8",
-    "secure-exec": "0.2.1",
+    "secure-exec": "0.3.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
