@@ -102,16 +102,16 @@
     "@nuxt/test-utils": "^4.0.3",
     "@types/node": "latest",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vue/compiler-sfc": "^3.5.38",
-    "eslint": "^10.5.0",
-    "evlog": "^2.19.1",
+    "@vue/compiler-sfc": "^3.5.39",
+    "eslint": "^10.7.0",
+    "evlog": "^2.20.0",
     "nuxt": "^4.4.8",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.4",
     "vite-plugin-singlefile": "^2.3.3",
-    "vitest": "^4.1.8",
-    "vue": "^3.5.38",
-    "vue-tsc": "^3.3.5"
+    "vitest": "^4.1.10",
+    "vue": "^3.5.39",
+    "vue-tsc": "^3.3.7"
   },
   "publishConfig": {
     "access": "public"
