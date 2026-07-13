@@ -8,6 +8,8 @@ import { useExternalLink } from './use-external-link'
 export type { HostContext } from './host-bridge'
 
 export interface UseMcpAppReturn<T = unknown> {
+  /** Snapshot of the handler's initial `structuredContent` at mount — never updated. */
+  initialData: Ref<T | null>
   /** Hydrated from the inline data-script, then refreshed via `tool-result` and `callTool`. */
   data: Ref<T | null>
   /** Last error from the host, the transport, or a malformed payload. */
@@ -33,7 +35,7 @@ export interface UseMcpAppReturn<T = unknown> {
  * Auto-imported into `app/mcp/*.vue` SFCs — usually no explicit import needed.
  */
 export function useMcpApp<T = unknown>(): UseMcpAppReturn<T> {
-  const { data, loading, error, hostContext } = useMcpAppData<T>()
+  const { initialData, data, loading, error, hostContext } = useMcpAppData<T>()
   const sendPrompt = useFollowUp()
   const openLink = useExternalLink()
   const tool = useToolCall<T>()
@@ -46,6 +48,7 @@ export function useMcpApp<T = unknown>(): UseMcpAppReturn<T> {
   }
 
   return {
+    initialData,
     data,
     error,
     loading,

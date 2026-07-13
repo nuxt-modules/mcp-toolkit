@@ -181,12 +181,14 @@ describe('useMcpApp (host bridge)', () => {
       api = useMcpApp<{ items?: number, hydrated?: boolean }>()
     })
 
+    expect(api?.initialData.value).toEqual({ hydrated: true })
     expect(api?.data.value).toEqual({ hydrated: true })
 
     const out = await api!.callTool('refilter', { type: 'Villa' })
     expect(calls[0]).toEqual(['callTool', { name: 'refilter', args: { type: 'Villa' } }])
     expect(out).toEqual({ items: 3 })
     expect(api?.data.value).toEqual({ items: 3 })
+    expect(api?.initialData.value).toEqual({ hydrated: true })
     expect(win.posted.find(p => p.method === 'tools/call')).toBeUndefined()
 
     api!.sendPrompt('hello')
@@ -197,6 +199,47 @@ describe('useMcpApp (host bridge)', () => {
     expect(calls[2]).toEqual(['openExternal', { href: 'https://example.com/path' }])
     expect(win.posted.find(p => p.method === 'ui/open-link')).toBeUndefined()
 
+    scope.stop()
+  })
+
+  it('keeps `initialData` unchanged when `data` is refreshed by callTool or tool-result', async () => {
+    ;(globalThis as { document: { getElementById: (id: string) => { textContent: string } | null, readyState: string } }).document = {
+      getElementById: (id: string) =>
+        id === '__mcp_app_data__' ? { textContent: JSON.stringify({ listId: 'abc-123' }) } : null,
+      readyState: 'complete',
+    }
+
+    const { useMcpApp } = await import('../src/runtime/app/use-mcp-app')
+    const scope = effectScope()
+    let api: ReturnType<typeof useMcpApp<{ listId: string, total?: number }>> | undefined
+    scope.run(() => {
+      api = useMcpApp<{ listId: string, total?: number }>()
+    })
+
+    expect(api?.initialData.value).toEqual({ listId: 'abc-123' })
+    expect(api?.data.value).toEqual({ listId: 'abc-123' })
+
+    dispatch({
+      jsonrpc: '2.0',
+      method: 'ui/notifications/tool-result',
+      params: { structuredContent: { total: 2 } },
+    })
+    expect(api?.data.value).toEqual({ total: 2 })
+    expect(api?.initialData.value).toEqual({ listId: 'abc-123' })
+
+    const callPromise = api!.callTool('list_todos', { listId: 'abc-123' })
+    await flush()
+    const out = win.posted.find(p => p.method === 'tools/call')
+    dispatch({
+      jsonrpc: '2.0',
+      id: out!.id,
+      // @ts-expect-error: result is JSON-RPC, not in the outgoing Posted shape
+      result: { structuredContent: { total: 5 } },
+    })
+    await callPromise
+
+    expect(api?.data.value).toEqual({ total: 5 })
+    expect(api?.initialData.value).toEqual({ listId: 'abc-123' })
     scope.stop()
   })
 

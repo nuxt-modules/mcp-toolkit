@@ -127,6 +127,7 @@ Auto-imported into every MCP App SFC. Returns the iframe ↔ host bridge:
 
 ```typescript
 const {
+  initialData,  // Ref<T | null>            — snapshot of handler payload at mount, never updated
   data,         // Ref<T | null>            — hydrated from structuredContent, refreshed by callTool
   loading,      // Ref<boolean>             — true until first payload arrives
   error,        // Ref<Error | null>        — bridge / transport / payload errors
@@ -137,6 +138,8 @@ const {
   openLink,     // (url: string) => void
 } = useMcpApp<MyPayload>()
 ```
+
+Use `initialData` for bootstrap values (IDs, query params) that must survive later `callTool` refreshes overwriting `data`.
 
 ### Adapt to host theme & layout
 
