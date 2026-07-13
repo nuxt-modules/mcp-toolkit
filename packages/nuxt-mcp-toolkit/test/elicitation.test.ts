@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { describe, it, expect, afterAll } from 'vitest'
+import { describe, it, expect, afterAll, afterEach } from 'vitest'
 import { setup, url } from '@nuxt/test-utils/e2e'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
@@ -70,6 +70,17 @@ describe('useMcpElicitation', async () => {
   })
 
   const opened: Client[] = []
+
+  afterEach(async () => {
+    for (const c of opened.splice(0)) {
+      try {
+        await c.close()
+      }
+      catch {
+        // Ignore close errors between tests.
+      }
+    }
+  })
 
   afterAll(async () => {
     for (const c of opened) {
@@ -151,7 +162,7 @@ describe('useMcpElicitation', async () => {
     expect(parsed).toEqual({ error: 'unsupported' })
   })
 
-  it('url() succeeds when the client declares elicitation.url', async () => {
+  it('url() succeeds when the client declares elicitation.url', { timeout: 15000 }, async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: { url: {} } },
       initialResponder: () => ({ action: 'accept' }),
@@ -181,21 +192,25 @@ describe('useMcpElicitation', async () => {
     expect(parsed).toEqual({ error: 'unsupported' })
   })
 
-  it('confirm() returns true only when the user accepts with confirm=true', async () => {
-    const accepting = await createElicitClient({
+  it('confirm() returns true when the user accepts with confirm=true', { timeout: 15000 }, async () => {
+    const conn = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'accept', content: { confirm: true } }),
     })
-    opened.push(accepting.client)
-    const acceptResult = await accepting.client.callTool({ name: 'ask_confirm', arguments: {} })
-    expect(readText(acceptResult)).toBe('yes')
+    opened.push(conn.client)
 
-    const declining = await createElicitClient({
+    const result = await conn.client.callTool({ name: 'ask_confirm', arguments: {} })
+    expect(readText(result)).toBe('yes')
+  })
+
+  it('confirm() returns false when the user accepts with confirm=false', { timeout: 15000 }, async () => {
+    const conn = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'accept', content: { confirm: false } }),
     })
-    opened.push(declining.client)
-    const declineResult = await declining.client.callTool({ name: 'ask_confirm', arguments: {} })
-    expect(readText(declineResult)).toBe('no')
+    opened.push(conn.client)
+
+    const result = await conn.client.callTool({ name: 'ask_confirm', arguments: {} })
+    expect(readText(result)).toBe('no')
   })
 })

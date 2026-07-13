@@ -20,26 +20,26 @@
     "db:migrate": "nuxt db migrate"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^1.0.50",
-    "@better-auth/api-key": "^1.6.18",
-    "@electric-sql/pglite": "^0.5.2",
+    "@ai-sdk/mcp": "^1.0.61",
+    "@better-auth/api-key": "^1.6.23",
+    "@electric-sql/pglite": "^0.5.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@nuxt/ui": "^4.8.2",
+    "@nuxt/ui": "^4.9.0",
     "@nuxthub/core": "^0.10.7",
     "@nuxtjs/mcp-toolkit": "workspace:*",
-    "ai": "^6.0.204",
-    "better-auth": "^1.6.18",
+    "ai": "^6.0.224",
+    "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
-    "evlog": "^2.19.1",
+    "evlog": "^2.20.0",
     "nuxt": "^4.4.8",
-    "secure-exec": ">=0.2.1",
-    "zod": "^4.1.13"
+    "secure-exec": "0.2.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.112",
-    "@iconify-json/simple-icons": "^1.2.86",
+    "@iconify-json/lucide": "^1.2.116",
+    "@iconify-json/simple-icons": "^1.2.89",
     "@nuxt/eslint-config": "^1.16.0",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10.5.0"
+    "eslint": "^10.7.0"
   }
 }
