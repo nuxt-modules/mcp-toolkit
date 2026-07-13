@@ -1,5 +1,17 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.18.0
+
+### Minor Changes
+
+- [#284](https://github.com/nuxt-modules/mcp-toolkit/pull/284) [`70f1282`](https://github.com/nuxt-modules/mcp-toolkit/commit/70f128218ba5130df42ead5739c6a14857d19c26) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Migrate Code Mode to secure-exec 0.3 (`>=0.3.3` peer dependency) and replace the removed network adapter with an `mcp-rpc` host binding so sandbox tool calls still reach the dispatcher.
+
+### Patch Changes
+
+- [#284](https://github.com/nuxt-modules/mcp-toolkit/pull/284) [`70f1282`](https://github.com/nuxt-modules/mcp-toolkit/commit/70f128218ba5130df42ead5739c6a14857d19c26) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Fix MCP App handler bundling when `defineMcpApp` handlers use TypeScript syntax (e.g. `$fetch<T>()`) by transpiling extracted macro args before emitting Nitro virtual modules. Closes [#279](https://github.com/nuxt-modules/mcp-toolkit/issues/279).
+
+- [#286](https://github.com/nuxt-modules/mcp-toolkit/pull/286) [`1ffea4c`](https://github.com/nuxt-modules/mcp-toolkit/commit/1ffea4c102095210ad6137d7cb564cdd26da99f6) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Expose `initialData` from `useMcpApp()` as an immutable snapshot of the handler's initial `structuredContent`, separate from `data` which continues to refresh on `callTool` and host `tool-result` pushes. Closes [#280](https://github.com/nuxt-modules/mcp-toolkit/issues/280).
+
 ## 0.17.2
 
 ### Patch Changes
