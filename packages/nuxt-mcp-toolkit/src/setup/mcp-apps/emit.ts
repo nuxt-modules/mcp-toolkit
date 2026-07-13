@@ -72,4 +72,3 @@ export default _createAppResource(_app, { name: ${JSON.stringify(app.name)}, htm
 
   return { toolFile, resourceFile }
 }
-
