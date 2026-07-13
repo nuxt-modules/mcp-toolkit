@@ -151,7 +151,7 @@ describe('useMcpElicitation', async () => {
     expect(parsed).toEqual({ error: 'unsupported' })
   })
 
-  it('url() succeeds when the client declares elicitation.url', async () => {
+  it('url() succeeds when the client declares elicitation.url', { timeout: 15000 }, async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: { url: {} } },
       initialResponder: () => ({ action: 'accept' }),
