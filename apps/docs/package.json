@@ -19,12 +19,12 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^2.0.10",
-    "@nuxt/ui": "^4.9.0",
+    "@ai-sdk/mcp": "^2.0.15",
+    "@nuxt/ui": "^4.10.0",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "ai": "^7.0.22",
+    "ai": "^7.0.31",
     "better-sqlite3": "^12.11.1",
     "docus": "^5.12.3",
     "minimark": "^1.0.0",
