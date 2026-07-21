@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.118",
-    "@iconify-json/simple-icons": "^1.2.90",
+    "@iconify-json/simple-icons": "^1.2.91",
     "@nuxt/eslint-config": "^1.16.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.7.0"
