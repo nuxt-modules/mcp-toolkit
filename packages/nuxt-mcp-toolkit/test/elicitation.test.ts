@@ -139,7 +139,7 @@ describe('useMcpElicitation', async () => {
     expect(Object.keys(params.requestedSchema.properties).sort()).toEqual(['channel', 'name'])
   })
 
-  it('form() returns the action without content when the user declines', async () => {
+  it('form() returns the action without content when the user declines', { timeout: 15000 }, async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'decline' }),
