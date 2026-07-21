@@ -36,7 +36,7 @@ minimumReleaseAgeExclude:
   - 'ai'
   - shaders@2.5.128
   - agents
-  - '@iconify-json/simple-icons@1.2.86'
+  - '@iconify-json/simple-icons'
   - '@vue/language-core'
   - vue-tsc
   - better-sqlite3@12.10.1
