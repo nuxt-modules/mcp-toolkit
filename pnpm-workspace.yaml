@@ -41,6 +41,8 @@ minimumReleaseAgeExclude:
   - '@iconify-json/simple-icons'
   - '@unhead/*'
   - 'unhead'
+  - '@vue-macros/*'
+  - 'undici'
   - '@vue/language-core'
   - vue-tsc
   - better-sqlite3@12.10.1
