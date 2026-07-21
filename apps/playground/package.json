@@ -31,7 +31,7 @@
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
     "evlog": "^2.22.0",
-    "nuxt": "^4.4.8",
+    "nuxt": "^4.5.0",
     "secure-exec": "0.3.3",
     "zod": "^4.4.3"
   },

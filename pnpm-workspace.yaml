@@ -20,6 +20,8 @@ allowBuilds:
 
 overrides:
   '@nuxtjs/mcp-toolkit': workspace:*
+  unhead: ^3.2.1
+  '@unhead/vue': ^3.2.1
 
 minimumReleaseAge: 2880
 
@@ -37,6 +39,10 @@ minimumReleaseAgeExclude:
   - shaders@2.5.128
   - agents
   - '@iconify-json/simple-icons'
+  - '@unhead/*'
+  - 'unhead'
+  - '@vue-macros/*'
+  - 'undici'
   - '@vue/language-core'
   - vue-tsc
   - better-sqlite3@12.10.1
