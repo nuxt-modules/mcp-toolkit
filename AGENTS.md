@@ -127,7 +127,9 @@ The two published packages release on separate tracks, because changesets' prere
 
 Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`, moved by `release:latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
 
-`release:alpha` bumps *before* it publishes, which keeps the version in git equal to the last published one. The first alpha was therefore published from the version already in the manifest, without a bump.
+`release:alpha` bumps *before* it publishes, so the version in the manifest always equals the last published one.
+
+Publish from CI, not from a laptop: the workflow points at `registry.npmjs.org` through `setup-node` and authenticates with `NPM_TOKEN`, whereas a local `npm config` may resolve to a corporate proxy that refuses the write. Keep `.npmrc` out of the repo for the same reason.
 
 The bump uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version — which would bump without publishing.
 
