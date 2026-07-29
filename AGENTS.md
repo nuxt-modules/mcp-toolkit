@@ -116,6 +116,8 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 - **ESLint** with `@nuxt/eslint-config` (stylistic rules enabled)
 - **Zod** for schema validation (use `z` from `zod`)
 - Run `pnpm lint:fix` before committing
+- **No type workarounds.** Never use `as unknown as X`, `@ts-ignore`/`@ts-expect-error`, or `any` to silence a type error. If a type genuinely can't be named (e.g. an unexported upstream type), restructure the code so it isn't needed — plain functions/objects over library helpers when the helper's return type isn't portable, explicit local types, or an issue upstream. Ask before reaching for a cast.
+- **Comments are the exception, not the default.** Don't add comments that restate what the code does, header/banner comments on every function, or long comment blocks explaining a workaround — instead avoid needing the workaround. Only comment genuinely non-obvious rationale ("why", not "what"), and keep it to one or two lines.
 
 ### MCP Definitions
 

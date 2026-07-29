@@ -12,12 +12,6 @@ export interface NitroMcpToolkitOptions {
 
 const runtimeHandler = fileURLToPath(new URL('./runtime/handler.mjs', import.meta.url))
 
-/**
- * Nitro v3 module for `nitro-mcp-toolkit`.
- *
- * Wave 0 scope: register a trivial event handler on the configured route to
- * prove the module wiring works end to end. No MCP behavior yet.
- */
 export function nitroMcpToolkit(options: NitroMcpToolkitOptions = {}): NitroModule {
   const route = options.route ?? '/mcp'
 

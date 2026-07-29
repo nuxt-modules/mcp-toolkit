@@ -20,10 +20,7 @@ describe('nitroMcpToolkit', () => {
   })
 
   it('boots a Nitro app with the module registered and serves its route', async () => {
-    // The `standard` preset exports a bare `{ fetch }` handler with no side
-    // effects (no listening socket), which keeps this test fast and
-    // in-process — matching the "trivial fixture app boots" acceptance
-    // criteria without needing to spawn a real HTTP server.
+    // `standard` preset exports a bare `{ fetch }` with no listening socket
     nitro = await createNitro({ rootDir: fixtureDir, dev: false, preset: 'standard' })
     await build(nitro)
 
