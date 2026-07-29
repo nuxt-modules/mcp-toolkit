@@ -1,7 +1,7 @@
 {
   "name": "nitro-mcp-toolkit",
   "version": "0.0.1",
-  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and MCP SDK v2 (spec 2026-07-28).",
+  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
   "type": "module",
   "license": "MIT",
   "private": true,
@@ -41,5 +41,8 @@
     "tsdown": "^0.21.4",
     "typescript": "~6.0.3",
     "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
