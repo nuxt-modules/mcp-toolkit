@@ -7,6 +7,15 @@ name: release-alpha
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump (preminor for the first alpha of a new minor)'
+        type: choice
+        options:
+          - prerelease
+          - preminor
+          - premajor
+        default: prerelease
 
 concurrency: ${{ github.workflow }}
 
@@ -43,6 +52,7 @@ jobs:
       - name: Publish
         run: pnpm run release:alpha
         env:
+          BUMP: ${{ inputs.bump }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 

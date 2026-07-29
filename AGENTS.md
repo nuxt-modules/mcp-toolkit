@@ -123,7 +123,9 @@ The two published packages release on separate tracks, because changesets' prere
 | `@nuxtjs/mcp-toolkit` | Stable, `latest` tag | Changesets. Add a changeset, merge, the `release` workflow opens a version PR |
 | `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually. Bumps the prerelease, publishes, commits the bump |
 
-`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
+`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix.
+
+**`ignore` covers versioning only.** `changeset publish` selects packages with a single filter, `!packageJson.private`, then publishes every one whose version is absent from npm. The two tracks therefore stay apart on one condition: the version of `nitro-mcp-toolkit` on `main` must always be a version that exists on npm. `release:alpha` upholds it by publishing before it commits the bump, and CI enforces it on every PR. Never bump that version by hand. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
 
 Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`, moved by `release:latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
 

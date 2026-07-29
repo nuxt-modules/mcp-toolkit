@@ -92,6 +92,19 @@ jobs:
       - name: Audit published surface
         run: pnpm run lint:package
 
+      # `changeset publish` skips private packages and nothing else — `ignore`
+      # applies to versioning only. So an unreleased version sitting on main
+      # makes the stable release workflow try to publish the alpha and fail.
+      - name: The alpha version on main must already be on npm
+        run: |
+          version=$(node -p "require('./packages/nitro-mcp-toolkit/package.json').version")
+          if npm view "nitro-mcp-toolkit@$version" version > /dev/null 2>&1; then
+            echo "nitro-mcp-toolkit@$version is on npm"
+          else
+            echo "::error::nitro-mcp-toolkit@$version is not published. Do not bump this version by hand — release it from the release-alpha workflow, which publishes before it commits the bump."
+            exit 1
+          fi
+
   publish:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
