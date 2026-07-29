@@ -4,9 +4,22 @@ name: release-alpha
 # for the whole monorepo at once. `nitro-mcp-toolkit` is being written wave by
 # wave while `@nuxtjs/mcp-toolkit` keeps shipping stable, so it releases from
 # here instead, always under the `alpha` dist-tag.
+#
+# It authenticates with NPM_TOKEN_ALPHA rather than the NPM_TOKEN the stable
+# release uses: the package is owned by a personal npm account, so the Nuxt org
+# token gets a 404 on it. Scope that token to this one package.
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump (preminor for the first alpha of a new minor)'
+        type: choice
+        options:
+          - prerelease
+          - preminor
+          - premajor
+        default: prerelease
 
 concurrency: ${{ github.workflow }}
 
@@ -40,10 +53,22 @@ jobs:
           pnpm --filter nitro-mcp-toolkit test
           pnpm --filter nitro-mcp-toolkit lint:package
 
+      # Without this the failure arrives as a bare npm 404, which reads like the
+      # package does not exist rather than like a missing credential.
+      - name: Check the release token
+        env:
+          TOKEN: ${{ secrets.NPM_TOKEN_ALPHA }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::NPM_TOKEN_ALPHA is not set. nitro-mcp-toolkit is owned by a personal npm account, so the org's NPM_TOKEN cannot publish it. Add a granular token scoped to that one package as a repository secret."
+            exit 1
+          fi
+
       - name: Publish
         run: pnpm run release:alpha
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          BUMP: ${{ inputs.bump }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_ALPHA }}
           NPM_CONFIG_PROVENANCE: true
 
       - name: Record the released version

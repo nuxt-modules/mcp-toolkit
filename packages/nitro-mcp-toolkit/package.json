@@ -1,6 +1,6 @@
 {
   "name": "nitro-mcp-toolkit",
-  "version": "0.1.0-alpha.0",
+  "version": "0.0.1",
   "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
   "keywords": [
     "ai",
@@ -48,7 +48,7 @@
     "lint:fix": "oxlint . --fix && oxfmt .",
     "lint:package": "publint && attw --pack . --profile esm-only",
     "prepack": "obuild",
-    "release:alpha": "npm --no-workspaces version prerelease --preid alpha --no-git-tag-version && pnpm publish --tag alpha --no-git-checks && pnpm run release:latest",
+    "release:alpha": "npm --no-workspaces version ${BUMP:-prerelease} --preid alpha --no-git-tag-version && pnpm publish --tag alpha --no-git-checks && pnpm run release:latest",
     "release:latest": "npm --no-workspaces dist-tag add nitro-mcp-toolkit@$npm_package_version latest",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
