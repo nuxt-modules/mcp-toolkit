@@ -3,8 +3,7 @@
 A bare Nitro v3 app — no Nuxt — for developing `nitro-mcp-toolkit` by hand.
 
 ```bash
-pnpm dev:nitro     # http://localhost:3030
-pnpm probe:nitro   # list every definition, on both protocol eras
+pnpm dev:nitro   # http://localhost:3030 — inspector UI
 ```
 
 The toolkit is a plain `workspace:*` dependency, imported by its public
@@ -12,11 +11,31 @@ specifier — no alias, so this app exercises the same resolution a user gets.
 `pnpm dev:prepare` runs `obuild --stub`, which points the package's `dist` at its
 source, and `devServer.watch` reloads the app when that source changes.
 
-## Probing
+## Inspector
+
+`http://localhost:3030` lists every definition and builds a form for it out of
+the schema the server advertises: typed inputs for tools, `enum` as a select,
+template variables for resource templates, argument lists for prompts. Results
+render as they arrive — text, images, `structuredContent`, `isError` — and a
+**Wire** panel shows the raw JSON-RPC in both directions.
+
+Two things worth knowing:
+
+- The **modern / legacy** switch re-reads the server on the chosen protocol
+  revision, so a definition can be compared across both without a restart.
+- The selected definition lives in the hash (`#tool/greet`), so a link or a
+  reload lands back on it.
+
+It speaks MCP straight from the browser instead of going through the SDK, which
+keeps it dependency-free and, more usefully, means it breaks whenever the HTTP
+surface does. `public/inspector.js` is the whole client.
+
+## Probing from the CLI
 
 `scripts/probe.ts` drives a real MCP client over HTTP. It reuses
 `nitro-mcp-toolkit/testing`, which only needs something fetch-shaped, so the
-helper the unit tests run in memory doubles as a CLI.
+helper the unit tests run in memory doubles as a CLI. Useful for scripting and
+diffing; the inspector is nicer for exploring.
 
 ```bash
 pnpm probe:nitro                                          # list

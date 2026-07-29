@@ -54,8 +54,8 @@ Run from the repository root:
 | Command | Description |
 |---------|-------------|
 | `pnpm dev` | Start the playground app |
-| `pnpm dev:nitro` | Start the bare Nitro playground on port 3030 |
-| `pnpm probe:nitro` | Drive the Nitro playground with a real MCP client |
+| `pnpm dev:nitro` | Start the Nitro playground and its inspector UI on port 3030 |
+| `pnpm probe:nitro` | Drive the Nitro playground with a real MCP client, from the CLI |
 | `pnpm dev:starter` | Start the minimal MCP starter app |
 | `pnpm dev:docs` | Start the documentation site |
 | `pnpm build` | Build all packages |
@@ -110,7 +110,7 @@ A full-featured example app demonstrating module usage with authentication, todo
 
 ### Nitro Playground (`apps/nitro-playground/`)
 
-A bare Nitro v3 app used to exercise `nitro-mcp-toolkit` (`pnpm dev:nitro`, then `pnpm probe:nitro`). It depends on the toolkit as a plain `workspace:*` dependency and imports it by its public specifier, with **no alias**, so it validates the same resolution a user gets — a broken `exports` map fails here. Source-level reloading comes from two pieces instead: `dev:prepare` runs `obuild --stub`, which points the toolkit's `dist` at its source, and the app's `devServer.watch` reloads when that source changes. Because `dev:prepare` leaves stubs in `dist`, run `pnpm build:nitro` for a real artifact before publishing or measuring bundle size.
+A bare Nitro v3 app used to exercise `nitro-mcp-toolkit`. `pnpm dev:nitro` serves an **inspector** on port 3030 that lists every definition, generates a form from its advertised schema, renders the result, and exposes the raw JSON-RPC — use it in preference to `pnpm probe:nitro`, which is the same thing as a CLI. The inspector (`apps/nitro-playground/public/inspector.js`) speaks MCP directly over `fetch` rather than through the SDK, so it stays dependency-free and fails whenever the HTTP surface regresses; it is the seed of the Wave 6 dev inspector. It depends on the toolkit as a plain `workspace:*` dependency and imports it by its public specifier, with **no alias**, so it validates the same resolution a user gets — a broken `exports` map fails here. Source-level reloading comes from two pieces instead: `dev:prepare` runs `obuild --stub`, which points the toolkit's `dist` at its source, and the app's `devServer.watch` reloads when that source changes. Because `dev:prepare` leaves stubs in `dist`, run `pnpm build:nitro` for a real artifact before publishing or measuring bundle size.
 
 Relative imports inside `packages/nitro-mcp-toolkit/src` must carry their `.ts` extension — that is what makes the source loadable by Node, and therefore what makes the stub work.
 

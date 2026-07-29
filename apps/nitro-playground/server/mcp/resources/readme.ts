@@ -10,6 +10,6 @@ export default defineMcpResource({
       '# Nitro MCP playground',
       '',
       'Every definition here exercises one feature of the toolkit.',
-      'Run `pnpm probe:nitro` from the monorepo root to list them.',
+      'Browse them in the inspector at http://localhost:3030.',
     ].join('\n'),
 })
