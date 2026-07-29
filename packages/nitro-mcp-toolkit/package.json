@@ -1,32 +1,37 @@
 {
   "name": "nitro-mcp-toolkit",
   "version": "0.0.1",
-  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
-  "type": "module",
-  "license": "MIT",
   "private": true,
+  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git",
     "directory": "packages/nitro-mcp-toolkit"
   },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     }
   },
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsdown",
-    "dev:prepare": "tsdown",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "build": "obuild",
+    "dev:prepare": "obuild",
+    "lint": "oxlint . && oxfmt --check .",
+    "lint:fix": "oxlint . --fix && oxfmt .",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
     "typecheck": "tsc --noEmit"
   },
@@ -35,14 +40,12 @@
     "zod": "^4.2.0"
   },
   "devDependencies": {
-    "@nuxt/eslint-config": "^1.16.0",
-    "eslint": "^10.8.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "nitro": "3.0.260610-beta",
-    "tsdown": "^0.21.4",
+    "obuild": "^0.4.38",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
     "typescript": "~6.0.3",
     "vitest": "^4.1.10"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
