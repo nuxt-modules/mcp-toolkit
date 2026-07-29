@@ -20,8 +20,8 @@ allowBuilds:
 
 overrides:
   '@nuxtjs/mcp-toolkit': workspace:*
-  unhead: ^3.2.1
-  '@unhead/vue': ^3.2.1
+  unhead: ^3.2.3
+  '@unhead/vue': ^3.2.3
 
 minimumReleaseAge: 2880
 
