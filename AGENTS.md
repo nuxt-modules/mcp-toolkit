@@ -131,7 +131,9 @@ Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual p
 
 `release:alpha` bumps *before* it publishes, so the version in the manifest always equals the last published one.
 
-Publish from CI, not from a laptop: the workflow points at `registry.npmjs.org` through `setup-node` and authenticates with `NPM_TOKEN`, whereas a local `npm config` may resolve to a corporate proxy that refuses the write. Keep `.npmrc` out of the repo for the same reason.
+Publish from CI, not from a laptop: the workflow points at `registry.npmjs.org` through `setup-node`, whereas a local `npm config` may resolve to a corporate proxy that refuses the write. Keep `.npmrc` out of the repo for the same reason.
+
+The two tracks authenticate differently. `@nuxtjs/mcp-toolkit` belongs to the Nuxt team and uses `NPM_TOKEN`; `nitro-mcp-toolkit` belongs to a personal account, so that same token gets a 404 on it — npm's way of saying "not authorized". It uses `NPM_TOKEN_ALPHA` instead, a granular token scoped to that single package.
 
 The bump uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version — which would bump without publishing.
 
