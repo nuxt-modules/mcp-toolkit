@@ -60,9 +60,16 @@ describe('a built Nitro app using the module', () => {
     expect(textOf(result)).toBe('Hello Ada from /mcp')
   })
 
-  it('registers definitions from a subdirectory too', async () => {
+  it('registers definitions from a subdirectory too, grouped by it', async () => {
     await expect(client.callTool({ name: 'deep' })).resolves.toMatchObject({
       content: [{ type: 'text', text: 'from a subdirectory' }],
+    })
+
+    const { tools } = await client.listTools()
+
+    expect(tools.find(({ name }) => name === 'deep')?._meta).toEqual({
+      group: 'nested',
+      tags: ['nested-tag'],
     })
   })
 

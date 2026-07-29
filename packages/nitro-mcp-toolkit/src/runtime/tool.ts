@@ -1,7 +1,7 @@
 import { isInputRequiredResult } from '@modelcontextprotocol/server'
 import { buildContext } from './context.ts'
 import { toCallToolResult, toErrorResult } from './results.ts'
-import { resolveIdentity } from './validate.ts'
+import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   CallToolResult,
   Icon,
@@ -32,6 +32,10 @@ interface McpToolMetadata {
   /** Human-readable name shown in clients. */
   title?: string
   description?: string
+  /** Inferred from the subdirectory when discovered, e.g. `tools/admin/*`. */
+  group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  tags?: string[]
   annotations?: ToolAnnotations
   icons?: Icon[]
 }
@@ -96,7 +100,7 @@ export function defineMcpTool(
     | McpToolDefinition<Schema, Schema | undefined>
     | McpToolDefinitionWithoutInput<Schema | undefined>,
 ): McpTool {
-  const { name, title, description, annotations, icons, outputSchema } = definition
+  const { name, title, description, group, tags, annotations, icons, outputSchema } = definition
   const hasOutputSchema = outputSchema !== undefined
 
   return {
@@ -104,9 +108,18 @@ export function defineMcpTool(
     name,
     title,
     description,
+    group,
+    tags,
     register(server, identity) {
       const resolved = resolveIdentity('tool', definition, identity)
-      const config = { title: resolved.title, description, outputSchema, annotations, icons }
+      const config = {
+        title: resolved.title,
+        description,
+        outputSchema,
+        annotations,
+        icons,
+        _meta: resolveMeta(resolved.group, tags),
+      }
 
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition

@@ -1,6 +1,6 @@
 import { buildContext } from './context.ts'
 import { noArguments } from './schema.ts'
-import { resolveIdentity } from './validate.ts'
+import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   GetPromptResult,
   Icon,
@@ -24,6 +24,10 @@ interface McpPromptMetadata {
   name?: string
   title?: string
   description?: string
+  /** Inferred from the subdirectory when discovered, e.g. `prompts/review/*`. */
+  group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  tags?: string[]
   icons?: Icon[]
 }
 
@@ -66,16 +70,23 @@ export function defineMcpPrompt<Input extends Schema>(
 export function defineMcpPrompt(
   definition: McpPromptDefinition<Schema> | McpPromptDefinitionWithoutInput,
 ): McpPrompt {
-  const { name, title, description, icons } = definition
+  const { name, title, description, group, tags, icons } = definition
 
   return {
     kind: 'prompt',
     name,
     title,
     description,
+    group,
+    tags,
     register(server, identity) {
       const resolved = resolveIdentity('prompt', definition, identity)
-      const config = { title: resolved.title, description, icons }
+      const config = {
+        title: resolved.title,
+        description,
+        icons,
+        _meta: resolveMeta(resolved.group, tags),
+      }
 
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition

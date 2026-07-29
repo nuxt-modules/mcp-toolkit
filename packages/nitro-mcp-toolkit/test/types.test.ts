@@ -2,7 +2,9 @@ import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import { defineMcpTool } from '../src/runtime/index.ts'
 import type { CallToolResult } from '@modelcontextprotocol/server'
-import type { McpContext, McpToolReturn } from '../src/runtime/index.ts'
+// Type-only: the module exists once a build generates it, never here.
+import type generated from '#mcp/admin-mcp/handler'
+import type { McpContext, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 
@@ -44,5 +46,13 @@ describe('tool typing', () => {
     expectTypeOf<string>().toExtend<McpToolReturn<undefined>>()
     expectTypeOf<number>().toExtend<McpToolReturn<undefined>>()
     expectTypeOf<{ anything: true }>().toExtend<McpToolReturn<undefined>>()
+  })
+})
+
+// The ambient declaration in `src/runtime/virtual.d.ts` is what spares an app
+// from mapping the id itself, whatever route it mounted.
+describe('the generated handler modules', () => {
+  it('are typed for whichever route mounted them', () => {
+    expectTypeOf<typeof generated>().toEqualTypeOf<McpHandler>()
   })
 })

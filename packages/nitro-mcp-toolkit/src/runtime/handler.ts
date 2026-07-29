@@ -1,7 +1,7 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
 import { runWithRequest, setEra } from './context.ts'
-import { resolveDefinitions } from './validate.ts'
+import { resolveDefinitions, summarize } from './validate.ts'
 import type {
   Icon,
   McpHandlerRequestOptions,
@@ -9,7 +9,7 @@ import type {
   ServerEventBus,
   ServerNotifier,
 } from '@modelcontextprotocol/server'
-import type { McpPrompt, McpResource, McpTool } from './definition.ts'
+import type { McpDefinitionSummary, McpPrompt, McpResource, McpTool } from './definition.ts'
 
 export interface McpHandlerOptions {
   /** Advertised to clients during initialization. */
@@ -61,6 +61,21 @@ export interface McpHandler {
    * `nodejs_compat` flag, which the request context depends on.
    */
   fetch: (request: Request, options?: McpHandlerRequestOptions) => Promise<Response>
+  /**
+   * Everything this endpoint serves, as plain JSON — a catalog of the same set
+   * every client sees.
+   *
+   * @example
+   * ```ts
+   * // server/routes/mcp-catalog.ts
+   * import mcp from '#mcp/mcp/handler'
+   *
+   * export default defineHandler(() =>
+   *   mcp.definitions.filter((definition) => definition.tags?.includes('public')),
+   * )
+   * ```
+   */
+  definitions: readonly McpDefinitionSummary[]
   /** Push list-changed and resource-updated events to subscribed clients. */
   notify: ServerNotifier
   bus: ServerEventBus
@@ -122,6 +137,7 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
 
   return Object.assign(handle, {
     fetch,
+    definitions: Object.freeze(summarize(registrations)),
     notify: sdk.notify,
     bus: sdk.bus,
     close: sdk.close,

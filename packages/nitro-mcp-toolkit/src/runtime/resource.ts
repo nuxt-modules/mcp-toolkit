@@ -1,5 +1,5 @@
 import { buildContext } from './context.ts'
-import { resolveIdentity } from './validate.ts'
+import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   CacheHint,
   Icon,
@@ -25,6 +25,10 @@ interface McpResourceMetadata {
   name?: string
   title?: string
   description?: string
+  /** Inferred from the subdirectory when discovered, e.g. `resources/docs/*`. */
+  group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  tags?: string[]
   mimeType?: string
   icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
@@ -72,7 +76,7 @@ export function defineMcpResource(definition: McpResourceTemplateDefinition): Mc
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, mimeType, icons, cacheHint } = definition
+  const { name, title, description, group, tags, mimeType, icons, cacheHint } = definition
   const isStaticUri = isStatic(definition)
 
   return {
@@ -80,6 +84,8 @@ export function defineMcpResource(
     name,
     title,
     description,
+    group,
+    tags,
     uri: isStaticUri ? definition.uri : definition.uri.uriTemplate.toString(),
     register(server, identity) {
       const resolved = resolveIdentity('resource', definition, identity)
@@ -89,6 +95,7 @@ export function defineMcpResource(
         mimeType,
         icons,
         cacheHint,
+        _meta: resolveMeta(resolved.group, tags),
       }
 
       if (isStaticUri) {

@@ -12,6 +12,13 @@ function readable(code: string): string {
   return code.replaceAll(fixtureDir, '<fixture>')
 }
 
+/** Reads back what the module logged, without it reaching the test output. */
+function logs(nitro: Nitro, level: 'info' | 'warn'): () => string[] {
+  const spy = vi.spyOn(nitro.logger, level).mockImplementation(() => {})
+
+  return () => spy.mock.calls.map(([message]) => String(message))
+}
+
 async function render(nitro: Nitro, id: string): Promise<string> {
   const template = nitro.options.virtual[id]
 
@@ -153,6 +160,79 @@ describe('an empty definitions directory', () => {
     `)
 
     await nitro.close()
+  })
+})
+
+// A definition nobody serves is otherwise silent: the route is still mounted,
+// and the files it never reached look exactly like the ones it did.
+describe('the report of what each endpoint serves', () => {
+  it('lists every instance, and stays quiet until the set changes', async () => {
+    const reporting = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules,
+    })
+    const info = logs(reporting, 'info')
+
+    await reporting.hooks.callHook('compiled', reporting)
+
+    expect(info()).toMatchInlineSnapshot(`
+      [
+        "[mcp] /mcp serves 3 tools, 1 resource, 1 prompt from server/mcp",
+        "[mcp] /admin/mcp serves 1 tool from server/mcp-admin",
+      ]
+    `)
+
+    await reporting.hooks.callHook('compiled', reporting)
+
+    expect(info()).toHaveLength(2)
+
+    await reporting.close()
+  })
+
+  it('warns when a route is mounted over nothing', async () => {
+    const empty = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [mcp({ route: '/empty', dir: 'server/nothing-here' })],
+    })
+    const warnings = logs(empty, 'warn')
+
+    await empty.hooks.callHook('compiled', empty)
+
+    expect(warnings()).toEqual([
+      '[mcp] /empty has no definitions: nothing under server/nothing-here/{tools,resources,prompts}. ' +
+        'The route is still mounted, and serves a server with nothing on it.',
+    ])
+
+    await empty.close()
+  })
+
+  it('warns about a directory named nearly like a scanned one', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'nitro-mcp-typo-'))
+    await mkdir(join(root, 'server/mcp/tool'), { recursive: true })
+    await mkdir(join(root, 'server/mcp/lib'), { recursive: true })
+
+    const typo = await createNitro({
+      rootDir: root,
+      dev: false,
+      preset: 'standard',
+      modules: [mcp()],
+    })
+    const warnings = logs(typo, 'warn')
+
+    await typo.hooks.callHook('compiled', typo)
+
+    expect(warnings()).toContain(
+      '[mcp] server/mcp/tool is not scanned, so nothing in it is served. ' +
+        'Rename it to tools if that is what you meant.',
+    )
+    expect(warnings().join('\n')).not.toContain('server/mcp/lib')
+
+    await typo.close()
+    await rm(root, { recursive: true, force: true })
   })
 })
 

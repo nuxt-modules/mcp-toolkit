@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { discoverDefinitions } from './discover.ts'
 import { resolveModuleOptions } from './options.ts'
+import { reportDefinitions } from './report.ts'
 import { renderHandler, renderRegistry } from './template.ts'
 import { watchDefinitions } from './watch.ts'
 import type { McpModuleOptions } from './options.ts'
@@ -69,6 +70,8 @@ export default function mcp(options: McpModuleOptions = {}): NitroModule {
         lazy: true,
         middleware: false,
       })
+
+      reportDefinitions(nitro, route, definitionsDir)
 
       if (nitro.options.dev) {
         watchDefinitions(nitro, definitionsDir)

@@ -7,6 +7,7 @@ import { z } from 'zod'
  */
 export default defineMcpTool({
   description: 'Drop cached entries, or all of them',
+  tags: ['destructive', 'admin'],
   annotations: { destructiveHint: true },
   inputSchema: z.object({
     prefix: z.string().default('').describe('Only purge keys starting with this'),

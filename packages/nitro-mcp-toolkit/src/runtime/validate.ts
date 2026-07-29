@@ -1,4 +1,4 @@
-import type { McpDefinition, McpIdentity, McpResource } from './definition.ts'
+import type { McpDefinition, McpDefinitionSummary, McpIdentity, McpResource } from './definition.ts'
 
 const KINDS = { tool: 'Tools', resource: 'Resources', prompt: 'Prompts' } as const
 
@@ -40,7 +40,7 @@ function duplicates(values: string[]): string[] {
  */
 export function resolveIdentity(
   kind: McpDefinition['kind'],
-  definition: { name?: string; title?: string },
+  definition: { name?: string; title?: string; group?: string },
   identity?: McpIdentity,
 ): McpIdentity {
   const name = identity?.name ?? definition.name
@@ -52,7 +52,48 @@ export function resolveIdentity(
     )
   }
 
-  return { name, title: identity?.title ?? definition.title }
+  return {
+    name,
+    title: identity?.title ?? definition.title,
+    group: identity?.group ?? definition.group,
+  }
+}
+
+/**
+ * The `_meta` a definition advertises, so a client can tell apart what a name
+ * alone does not. Absent when there is nothing to say.
+ *
+ * @internal
+ */
+export function resolveMeta(
+  group: string | undefined,
+  tags: string[] | undefined,
+): Record<string, unknown> | undefined {
+  if (!group && !tags?.length) return undefined
+
+  return { ...(group ? { group } : {}), ...(tags?.length ? { tags } : {}) }
+}
+
+function isResource(definition: McpDefinition): definition is McpResource {
+  return definition.kind === 'resource'
+}
+
+/**
+ * Flatten registrations into what a handler advertises about itself.
+ *
+ * @internal
+ */
+export function summarize(registrations: readonly McpRegistration[]): McpDefinitionSummary[] {
+  return registrations.map(({ definition, identity }) => ({
+    kind: definition.kind,
+    name: identity.name,
+    ...(identity.title ? { title: identity.title } : {}),
+    ...(definition.description ? { description: definition.description } : {}),
+    ...(identity.group ? { group: identity.group } : {}),
+    ...(definition.tags?.length ? { tags: [...definition.tags] } : {}),
+    ...(isResource(definition) ? { uri: definition.uri } : {}),
+    ...(definition.source ? { file: definition.source.file } : {}),
+  }))
 }
 
 /**
@@ -77,7 +118,10 @@ export function resolveDefinitions(definitions: readonly McpDefinition[]): McpRe
       continue
     }
 
-    registrations.push({ definition, identity: { name, title } })
+    registrations.push({
+      definition,
+      identity: { name, title, group: definition.group ?? definition.source?.group },
+    })
   }
 
   for (const [kind, label] of Object.entries(KINDS)) {
@@ -96,9 +140,7 @@ export function resolveDefinitions(definitions: readonly McpDefinition[]): McpRe
     }
   }
 
-  const resources = definitions.filter(
-    (definition): definition is McpResource => definition.kind === 'resource',
-  )
+  const resources = definitions.filter(isResource)
 
   for (const uri of duplicates(resources.map((resource) => resource.uri))) {
     problems.push(`Resources must answer distinct URIs, but ${JSON.stringify(uri)} is used twice.`)

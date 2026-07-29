@@ -11,12 +11,14 @@ export interface McpDefinitionSource {
 }
 
 /**
- * The name and title a definition is registered under. Discovery derives both
- * from the filename, so a file that names itself always wins.
+ * What a definition is registered under, as resolved by whoever collected it.
+ * Discovery derives all three from the file, so a definition that states any of
+ * them itself always wins.
  */
 export interface McpIdentity {
   name: string
   title?: string
+  group?: string
 }
 
 /**
@@ -30,6 +32,10 @@ export interface McpDefinition {
   readonly name?: string
   readonly title?: string
   readonly description?: string
+  /** Declared, or the subdirectory a discovered definition sits in. */
+  readonly group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  readonly tags?: string[]
   /** Set for discovered definitions; absent for hand-written ones. */
   readonly source?: McpDefinitionSource
   /**
@@ -39,6 +45,23 @@ export interface McpDefinition {
    * @internal
    */
   readonly register: (server: McpServer, identity?: McpIdentity) => void
+}
+
+/**
+ * What a handler serves, flattened to plain JSON so a catalog route can return
+ * it as-is. Filter it with `Array.filter`: every field is a plain value.
+ */
+export interface McpDefinitionSummary {
+  kind: McpDefinition['kind']
+  name: string
+  title?: string
+  description?: string
+  group?: string
+  tags?: string[]
+  /** Resources only: the URI read, or the pattern a template answers. */
+  uri?: string
+  /** Path relative to the scanned directory, for discovered definitions. */
+  file?: string
 }
 
 export interface McpTool extends McpDefinition {

@@ -1,3 +1,5 @@
+/// <reference path="./virtual.d.ts" />
+
 export { createMcpHandler } from './handler.ts'
 export { defineMcpPrompt } from './prompt.ts'
 export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
@@ -20,6 +22,7 @@ export type {
 export type {
   McpDefinition,
   McpDefinitionSource,
+  McpDefinitionSummary,
   McpIdentity,
   McpPrompt,
   McpResource,

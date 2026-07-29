@@ -59,6 +59,22 @@ Subdirectories are for your own sanity, not for the client: `tools/admin/purge.t
 
 In development, adding or deleting a definition file is picked up without a restart.
 
+Every build prints what each endpoint ended up serving, and warns when a route is mounted over a directory that holds nothing — which is what a definition sitting somewhere no `mcp()` looks at looks like from the outside.
+
+### Groups and tags
+
+A definition can carry a `group` and free-form `tags`, on all three kinds:
+
+```ts
+export default defineMcpTool({
+  group: 'admin', // overrides the group its directory implies
+  tags: ['destructive', 'slow'],
+  handler: () => purge(),
+})
+```
+
+Both are advertised in the definition's `_meta`, so a client sees them in `tools/list` and can sort or filter on them. The group defaults to the subdirectory the file sits in, which is why most files only ever set `tags`.
+
 ### Options
 
 ```ts
@@ -90,6 +106,25 @@ export default defineConfig({
   ],
 })
 ```
+
+A server serves exactly what sits under its `dir`, so the admin tools above are not filtered out of `/mcp` — they were never part of it, and no definition can belong to a server it does not sit under. To serve one definition from two endpoints, point both instances at the same `dir`, or [wire a route by hand](#wiring-it-by-hand) and import the definitions you want.
+
+### Listing what a server serves
+
+A handler exposes the set it registered as plain JSON — the same set every client sees. Each server is generated under a module id named after its route, so any route can import it:
+
+```ts
+// server/routes/catalog.ts
+import mcp from '#mcp/mcp/handler' // `/admin/mcp` is `#mcp/admin-mcp/handler`
+
+export default defineHandler(() =>
+  mcp.definitions.filter((definition) => definition.tags?.includes('public')),
+)
+```
+
+Each entry carries `kind`, `name`, `title`, `description`, `group`, `tags`, the `uri` of a resource, and the `file` it was discovered in. There is no filtering API on purpose: every field is a plain value, so `Array.filter` covers groups, tags and kinds at once.
+
+Those ids are typed by a declaration the package ships, so there is nothing to configure — and a handler mounted by hand exposes the same `definitions`, read off your own route.
 
 ## Tools
 
