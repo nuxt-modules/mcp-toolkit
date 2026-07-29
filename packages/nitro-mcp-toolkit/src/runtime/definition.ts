@@ -24,6 +24,10 @@ export interface McpTool extends McpDefinition {
 
 export interface McpResource extends McpDefinition {
   readonly kind: 'resource'
+  /**
+   * The URI clients read, or the template pattern it answers when the
+   * definition was given a `ResourceTemplate` — e.g. `docs://{slug}`.
+   */
   readonly uri: string
 }
 

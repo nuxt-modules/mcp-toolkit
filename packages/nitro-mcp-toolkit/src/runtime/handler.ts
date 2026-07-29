@@ -7,7 +7,7 @@ import type {
   ServerEventBus,
   ServerNotifier,
 } from '@modelcontextprotocol/server'
-import type { McpPrompt, McpResource, McpTool } from './registry'
+import type { McpPrompt, McpResource, McpTool } from './definition'
 
 export interface McpHandlerOptions {
   /** Advertised to clients during initialization. */

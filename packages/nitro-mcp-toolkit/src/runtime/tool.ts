@@ -10,7 +10,7 @@ import type {
   ToolAnnotations,
 } from '@modelcontextprotocol/server'
 import type { McpContext } from './context'
-import type { McpTool } from './registry'
+import type { McpTool } from './definition'
 import type { McpToolValue } from './results'
 
 type Schema = StandardSchemaWithJSON

@@ -9,7 +9,7 @@ import type {
   Variables,
 } from '@modelcontextprotocol/server'
 import type { McpContext } from './context'
-import type { McpResource } from './registry'
+import type { McpResource } from './definition'
 
 type Awaitable<T> = T | Promise<T>
 
@@ -70,7 +70,7 @@ export function defineMcpResource(definition: McpResourceTemplateDefinition): Mc
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, mimeType, icons, cacheHint, uri } = definition
+  const { name, title, description, mimeType, icons, cacheHint } = definition
   const config: ResourceMetadata & { cacheHint?: CacheHint } = {
     title,
     description,
@@ -78,15 +78,16 @@ export function defineMcpResource(
     icons,
     cacheHint,
   }
+  const isStaticUri = isStatic(definition)
 
   return {
     kind: 'resource',
     name,
     title,
     description,
-    uri: typeof uri === 'string' ? uri : uri.uriTemplate.toString(),
+    uri: isStaticUri ? definition.uri : definition.uri.uriTemplate.toString(),
     register(server) {
-      if (isStatic(definition)) {
+      if (isStaticUri) {
         const { uri: staticUri, handler } = definition
         server.registerResource(name, staticUri, config, async (url: URL, ctx: ServerContext) =>
           toReadResult(url, await handler(url, buildContext(ctx))),

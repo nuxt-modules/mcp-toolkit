@@ -17,7 +17,7 @@ export type {
   McpResourceReturn,
   McpResourceTemplateDefinition,
 } from './resource'
-export type { McpDefinition, McpPrompt, McpResource, McpTool } from './registry'
+export type { McpDefinition, McpPrompt, McpResource, McpTool } from './definition'
 export type { McpToolValue } from './results'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool'
 

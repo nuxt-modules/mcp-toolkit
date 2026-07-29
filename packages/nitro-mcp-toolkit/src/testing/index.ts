@@ -1,15 +1,14 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol'
 import type { ClientCapabilities } from '@modelcontextprotocol/client'
-import type { AuthInfo, McpHandlerRequestOptions } from '@modelcontextprotocol/server'
+import type { AuthInfo } from '@modelcontextprotocol/server'
+import type { McpHandler } from '../runtime/handler'
 
 /**
- * Anything fetch-shaped: the handler from `createMcpHandler`, or a bare SDK
- * handler.
+ * Anything fetch-shaped: the handler from `createMcpHandler`, a bare SDK
+ * handler, or a built Nitro app's entry.
  */
-export interface McpFetchHandler {
-  fetch: (request: Request, options?: McpHandlerRequestOptions) => Promise<Response>
-}
+export type McpFetchHandler = Pick<McpHandler, 'fetch'>
 
 export interface McpTestClientOptions {
   /**

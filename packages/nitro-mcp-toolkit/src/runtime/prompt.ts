@@ -7,7 +7,7 @@ import type {
   StandardSchemaWithJSON,
 } from '@modelcontextprotocol/server'
 import type { McpContext } from './context'
-import type { McpPrompt } from './registry'
+import type { McpPrompt } from './definition'
 
 type Schema = StandardSchemaWithJSON
 type Awaitable<T> = T | Promise<T>
