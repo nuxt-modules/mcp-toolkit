@@ -31,7 +31,7 @@
     "motion-v": "^2.3.0",
     "nuxt": "^4.5.1",
     "nuxt-studio": "^1.7.0",
-    "shaders": "^2.5.135"
+    "shaders": "^3.0.445"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.16.0",
