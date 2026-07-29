@@ -20,8 +20,8 @@ allowBuilds:
 
 overrides:
   '@nuxtjs/mcp-toolkit': workspace:*
-  unhead: ^3.2.1
-  '@unhead/vue': ^3.2.1
+  unhead: ^3.2.3
+  '@unhead/vue': ^3.2.3
 
 minimumReleaseAge: 2880
 
@@ -46,3 +46,7 @@ minimumReleaseAgeExclude:
   - '@vue/language-core'
   - vue-tsc
   - better-sqlite3@12.10.1
+  - '@modelcontextprotocol/sdk@1.30.0'
+  - '@modelcontextprotocol/client@2.0.0'
+  - '@modelcontextprotocol/core@2.0.0'
+  - '@modelcontextprotocol/server@2.0.0'
