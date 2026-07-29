@@ -59,8 +59,20 @@ header h1 {
 }
 
 header .server {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+header .server img {
+  width: 1rem;
+  height: 1rem;
+}
+
+header .server a {
+  color: inherit;
 }
 
 header .spacer {

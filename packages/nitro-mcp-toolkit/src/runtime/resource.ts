@@ -1,4 +1,5 @@
 import { buildContext } from './context.ts'
+import { resolveIdentity } from './validate.ts'
 import type {
   CacheHint,
   Icon,
@@ -20,7 +21,8 @@ type Awaitable<T> = T | Promise<T>
 export type McpResourceReturn = ReadResourceResult | string
 
 interface McpResourceMetadata {
-  name: string
+  /** Derived from the filename when discovered. */
+  name?: string
   title?: string
   description?: string
   mimeType?: string
@@ -71,13 +73,6 @@ export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
   const { name, title, description, mimeType, icons, cacheHint } = definition
-  const config: ResourceMetadata & { cacheHint?: CacheHint } = {
-    title,
-    description,
-    mimeType,
-    icons,
-    cacheHint,
-  }
   const isStaticUri = isStatic(definition)
 
   return {
@@ -86,18 +81,31 @@ export function defineMcpResource(
     title,
     description,
     uri: isStaticUri ? definition.uri : definition.uri.uriTemplate.toString(),
-    register(server) {
+    register(server, identity) {
+      const resolved = resolveIdentity('resource', definition, identity)
+      const config: ResourceMetadata & { cacheHint?: CacheHint } = {
+        title: resolved.title,
+        description,
+        mimeType,
+        icons,
+        cacheHint,
+      }
+
       if (isStaticUri) {
         const { uri: staticUri, handler } = definition
-        server.registerResource(name, staticUri, config, async (url: URL, ctx: ServerContext) =>
-          toReadResult(url, await handler(url, buildContext(ctx))),
+        server.registerResource(
+          resolved.name,
+          staticUri,
+          config,
+          async (url: URL, ctx: ServerContext) =>
+            toReadResult(url, await handler(url, buildContext(ctx))),
         )
         return
       }
 
       const { uri: template, handler } = definition
       server.registerResource(
-        name,
+        resolved.name,
         template,
         config,
         async (url: URL, variables: Variables, ctx: ServerContext) =>

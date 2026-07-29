@@ -1,5 +1,6 @@
 import { buildContext } from './context.ts'
 import { noArguments } from './schema.ts'
+import { resolveIdentity } from './validate.ts'
 import type {
   GetPromptResult,
   Icon,
@@ -19,7 +20,8 @@ type Awaitable<T> = T | Promise<T>
 export type McpPromptReturn = GetPromptResult | string
 
 interface McpPromptMetadata {
-  name: string
+  /** Derived from the filename when discovered. */
+  name?: string
   title?: string
   description?: string
   icons?: Icon[]
@@ -65,18 +67,20 @@ export function defineMcpPrompt(
   definition: McpPromptDefinition<Schema> | McpPromptDefinitionWithoutInput,
 ): McpPrompt {
   const { name, title, description, icons } = definition
-  const config = { title, description, icons }
 
   return {
     kind: 'prompt',
     name,
     title,
     description,
-    register(server) {
+    register(server, identity) {
+      const resolved = resolveIdentity('prompt', definition, identity)
+      const config = { title: resolved.title, description, icons }
+
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition
         server.registerPrompt(
-          name,
+          resolved.name,
           { ...config, argsSchema: inputSchema },
           async (args, ctx: ServerContext) =>
             toPromptResult(await handler(args, buildContext(ctx))),
@@ -86,7 +90,7 @@ export function defineMcpPrompt(
 
       const { handler } = definition
       server.registerPrompt(
-        name,
+        resolved.name,
         { ...config, argsSchema: noArguments },
         async (_args, ctx: ServerContext) => toPromptResult(await handler(buildContext(ctx))),
       )

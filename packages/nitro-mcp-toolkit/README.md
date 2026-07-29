@@ -5,11 +5,9 @@ Build a [Model Context Protocol](https://modelcontextprotocol.io) server inside 
 Targets protocol revision **2026-07-28** and falls back to the 2025 revisions automatically, so one endpoint serves both generations of clients.
 
 > [!NOTE]
-> Early development. The runtime below is stable and tested; file-based discovery and the Nitro module land on `nitro-mcp-toolkit/module` in a later release.
+> Early development, built wave by wave. Everything documented here is tested, but the API can still move between releases.
 
 ## Install
-
-The toolkit is in alpha, built wave by wave, so it publishes under the `alpha` tag and the API can still move between releases.
 
 ```bash
 npm install nitro-mcp-toolkit@alpha zod
@@ -19,41 +17,79 @@ Any [Standard Schema](https://standardschema.dev) library works — Zod, Valibot
 
 ## Quick start
 
-Nitro v3 only scans for file-based routes once you point it at a directory, so opt in first:
+Add the module, then write definitions. There is nothing else to wire.
 
 ```ts
 // nitro.config.ts
 import { defineConfig } from 'nitro'
+import mcp from 'nitro-mcp-toolkit/module'
 
 export default defineConfig({
-  serverDir: 'server',
+  modules: [mcp({ name: 'my-server', version: '1.0.0' })],
 })
 ```
 
-Then create the route. The value `createMcpHandler` returns **is** a Nitro route handler, so there is nothing to wrap.
-
 ```ts
-// server/routes/mcp.ts
-import { createMcpHandler, defineMcpTool } from 'nitro-mcp-toolkit'
+// server/mcp/tools/greet.ts
+import { defineMcpTool } from 'nitro-mcp-toolkit'
 import { z } from 'zod'
 
-const greet = defineMcpTool({
-  name: 'greet',
+export default defineMcpTool({
   description: 'Greet someone by name',
   inputSchema: z.object({ name: z.string() }),
   handler: ({ name }) => `Hello ${name}!`,
 })
+```
 
-export default createMcpHandler({
+Your server answers MCP at `/mcp`, with one tool named `greet` — after the file it lives in.
+
+## Discovery
+
+Every file under these three directories is registered:
+
+| Directory              | Holds                       |
+| ---------------------- | --------------------------- |
+| `server/mcp/tools`     | `defineMcpTool` exports     |
+| `server/mcp/resources` | `defineMcpResource` exports |
+| `server/mcp/prompts`   | `defineMcpPrompt` exports   |
+
+A definition takes its `name` and `title` from its filename — `list-documentation.ts` becomes `list-documentation` and `List Documentation` — so most files never spell either out. Set `name` yourself and it wins, whatever the file is called.
+
+Subdirectories are for your own sanity, not for the client: `tools/admin/purge.ts` is still the tool `purge`, and records `admin` as its group.
+
+In development, adding or deleting a definition file is picked up without a restart.
+
+### Options
+
+```ts
+mcp({
+  route: '/mcp', // where the endpoint is mounted
+  dir: 'server/mcp', // where definitions are looked for
   name: 'my-server',
   version: '1.0.0',
-  tools: [greet],
+  title: 'My Server',
+  description: 'What a human reads in a client’s server list',
+  icons: [{ src: 'https://example.com/icon.png', mimeType: 'image/png', sizes: ['64x64'] }],
+  websiteUrl: 'https://example.com',
+  instructions: 'What the model is told about this server as a whole',
+  legacy: 'stateless', // or 'reject', for a 2026-07-28-only endpoint
 })
 ```
 
-Your server now answers MCP at `/mcp`.
+These cross into generated code, so they are data only. A server that needs `bus` or `onError` mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
 
-Not using file-based routes? The handler also exposes a web-standard `fetch`, so it mounts anywhere — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime.
+### More than one server
+
+Install the module again. Nitro only dedupes modules given as a path, so each call is its own server, with its own definitions.
+
+```ts
+export default defineConfig({
+  modules: [
+    mcp({ name: 'my-server', version: '1.0.0' }),
+    mcp({ route: '/admin/mcp', dir: 'server/mcp-admin', name: 'my-admin', version: '1.0.0' }),
+  ],
+})
+```
 
 ## Tools
 
@@ -64,7 +100,6 @@ import { defineMcpTool } from 'nitro-mcp-toolkit'
 import { z } from 'zod'
 
 export default defineMcpTool({
-  name: 'search',
   description: 'Search the catalogue',
   annotations: { readOnlyHint: true },
   inputSchema: z.object({
@@ -98,7 +133,6 @@ Declaring `outputSchema` narrows the handler's return type **and** routes a plai
 
 ```ts
 export default defineMcpTool({
-  name: 'bmi',
   inputSchema: z.object({ weightKg: z.number(), heightM: z.number() }),
   outputSchema: z.object({ bmi: z.number() }),
   handler: ({ weightKg, heightM }) => ({ bmi: weightKg / heightM ** 2 }),
@@ -129,7 +163,6 @@ A resource is data addressed by URI. Return a string for the simple case.
 import { defineMcpResource } from 'nitro-mcp-toolkit'
 
 export default defineMcpResource({
-  name: 'changelog',
   uri: 'docs://changelog',
   mimeType: 'text/markdown',
   handler: () => readFile('CHANGELOG.md', 'utf8'),
@@ -142,7 +175,6 @@ Pass a `ResourceTemplate` for a family of URIs. `list` powers discovery and `com
 import { defineMcpResource, ResourceTemplate } from 'nitro-mcp-toolkit'
 
 export default defineMcpResource({
-  name: 'doc-page',
   uri: new ResourceTemplate('docs://{slug}', {
     list: () => ({ resources: pages.map((slug) => ({ name: slug, uri: `docs://${slug}` })) }),
     complete: { slug: (value) => pages.filter((page) => page.startsWith(value)) },
@@ -160,7 +192,6 @@ import { defineMcpPrompt } from 'nitro-mcp-toolkit'
 import { z } from 'zod'
 
 export default defineMcpPrompt({
-  name: 'summarize',
   inputSchema: z.object({
     text: z.string(),
     // Prompt arguments arrive as strings on the wire.
@@ -188,6 +219,28 @@ handler: (ctx) => {
 | `signal` | Aborts when the client cancels                                       |
 | `era`    | `'modern'` or `'legacy'`, the revision this client negotiated        |
 | `mcp`    | The raw SDK context — the escape hatch for anything not wrapped yet  |
+
+## Wiring it by hand
+
+The module is convenience, never a requirement: `createMcpHandler` returns a value that **is** a Nitro route handler, so a route is all it takes. Reach for this when a server needs something the module's data-only options cannot carry.
+
+```ts
+// nitro.config.ts — Nitro only scans for file-based routes once you opt in
+export default defineConfig({ serverDir: 'server' })
+```
+
+```ts
+// server/routes/mcp.ts
+import { createMcpHandler, defineMcpTool } from 'nitro-mcp-toolkit'
+
+const greet = defineMcpTool({ name: 'greet', handler: () => 'Hello!' })
+
+export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [greet] })
+```
+
+Handwritten definitions name themselves, since no filename is there to do it.
+
+The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime.
 
 ## Testing
 

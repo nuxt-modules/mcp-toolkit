@@ -1,8 +1,9 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
 import { runWithRequest, setEra } from './context.ts'
-import { assertDefinitions } from './validate.ts'
+import { resolveDefinitions } from './validate.ts'
 import type {
+  Icon,
   McpHandlerRequestOptions,
   PerRequestResponseMode,
   ServerEventBus,
@@ -15,6 +16,12 @@ export interface McpHandlerOptions {
   name?: string
   version?: string
   title?: string
+  /** What this server is, for a human reading a client's server list. */
+  description?: string
+  /** Shown beside the server's name by clients that render one. */
+  icons?: Icon[]
+  /** Where a human can read more about this server. */
+  websiteUrl?: string
   /** Guidance the client shows to the model about this server as a whole. */
   instructions?: string
   tools?: McpTool[]
@@ -71,9 +78,7 @@ export interface McpHandler {
  */
 export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
   const { tools = [], resources = [], prompts = [] } = options
-  const definitions = [...tools, ...resources, ...prompts]
-
-  assertDefinitions(definitions)
+  const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
 
   const sdk = createSdkHandler(
     (requestCtx) => {
@@ -86,12 +91,15 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
           name: options.name ?? 'nitro-mcp-server',
           version: options.version ?? '0.0.0',
           title: options.title,
+          description: options.description,
+          icons: options.icons,
+          websiteUrl: options.websiteUrl,
         },
         { instructions: options.instructions },
       )
 
-      for (const definition of definitions) {
-        definition.register(server)
+      for (const { definition, identity } of registrations) {
+        definition.register(server, identity)
       }
 
       return server

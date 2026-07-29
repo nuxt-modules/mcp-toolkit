@@ -3,7 +3,6 @@ import { z } from 'zod'
 
 /** Exercises `outputSchema`: the plain return lands in `structuredContent`. */
 export default defineMcpTool({
-  name: 'bmi',
   description: 'Compute a body mass index',
   inputSchema: z.object({
     weightKg: z.number().positive(),

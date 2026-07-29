@@ -17,7 +17,14 @@ export type {
   McpResourceReturn,
   McpResourceTemplateDefinition,
 } from './resource.ts'
-export type { McpDefinition, McpPrompt, McpResource, McpTool } from './definition.ts'
+export type {
+  McpDefinition,
+  McpDefinitionSource,
+  McpIdentity,
+  McpPrompt,
+  McpResource,
+  McpTool,
+} from './definition.ts'
 export type { McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 

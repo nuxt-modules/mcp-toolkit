@@ -114,6 +114,14 @@ A bare Nitro v3 app used to exercise `nitro-mcp-toolkit`. `pnpm dev:nitro` serve
 
 Relative imports inside `packages/nitro-mcp-toolkit/src` must carry their `.ts` extension — that is what makes the source loadable by Node, and therefore what makes the stub work.
 
+The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/admin/mcp`, so both discovery and the multi-server case stay exercised by hand. Nothing collects definitions: dropping a file under `server/mcp/{tools,resources,prompts}` is the whole wiring, and its filename is its name. The package's own e2e fixture passes the `mcp()` instances to `createNitro` instead of declaring them in a `nitro.config.ts` — Nitro's config loader would otherwise transform `src/module` a second time, which wrecks coverage attribution. The playground is what proves a real `nitro.config.ts` can import the module by its public specifier.
+
+**Discovery generates two Nitro virtual modules per instance** — `#mcp/<slug>/registry`, which imports each definition file, and `#mcp/<slug>/handler`, which is what `options.handlers` mounts. Three things about this were established empirically and are easy to break:
+
+- A bare `nitro-mcp-toolkit` import inside a virtual module resolves fine, in dev and in a production build, so the generated handler imports the toolkit exactly as a user's file does — one module instance, one `AsyncLocalStorage`.
+- The registry inlines its own `fromFile` helper rather than importing one, which keeps build-time naming out of the runtime bundle and the runtime free of an export that only generated code would call.
+- **Dev pickup needs `nitro.hooks.callHook('rollup:reload')`.** A new file is imported by nothing, so neither the bundler's graph nor `devServer.watch` (which reloads the worker without rebuilding) can notice it; only a rebuild re-renders the registry. The module therefore watches the definitions directory itself with `fs.watch` and calls that hook. Note the vite builder does not listen to it — an upstream gap, not something to work around here.
+
 ## Releasing
 
 The two published packages release on separate tracks, because changesets' prerelease mode is repo-wide and `@nuxtjs/mcp-toolkit` still ships stable.
