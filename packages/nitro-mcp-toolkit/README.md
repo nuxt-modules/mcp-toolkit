@@ -311,7 +311,11 @@ Note that MCP clients still negotiate the 2025 revision by default, so a client 
 
 ## Runtimes
 
-The request context is carried by `AsyncLocalStorage`, so the handler needs `node:async_hooks`: available on Node, Deno and Bun, and on Cloudflare Workers behind the `nodejs_compat` flag.
+Apart from one import the runtime is web-standard: the request context is carried by `AsyncLocalStorage`, so the handler needs `node:async_hooks`. It is the only Node built-in a built bundle pulls in — the SDK, h3 and your definitions add none — and it is there on Node, Deno, Bun, Vercel and Netlify, and on Cloudflare Workers once `nodejs_compat` is enabled. On workerd the SDK also selects a schema validator that generates no code, so nothing in the bundle needs `eval`.
+
+Presets that emit an `iife` bundle, `winterjs` among them, leave every `node:` import as an undefined global. That is a Nitro packaging limit which any app importing a built-in runs into, and not something this package can work around.
+
+Windows is supported: discovery, the imports generated from the paths it finds, and the dev watcher all speak `/` there, and a CI job keeps it that way.
 
 ## License
 

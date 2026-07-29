@@ -1,4 +1,7 @@
-import { basename, dirname, join, relative } from 'node:path'
+// `pathe` rather than `node:path`: these paths end up in generated code, in log
+// lines and in comparisons against glob results, all of which want `/` — which
+// is what tinyglobby returns on Windows too.
+import { basename, dirname, join, relative } from 'pathe'
 import { glob } from 'tinyglobby'
 import { identityFromFilename } from './naming.ts'
 
@@ -50,7 +53,7 @@ export async function discoverDefinitions(dir: string): Promise<DiscoveredDefini
 }
 
 function describe(dir: DefinitionDir, root: string, path: string): DiscoveredDefinition {
-  const inDir = relative(root, path).replace(/\\/g, '/')
+  const inDir = relative(root, path)
   const group = dirname(inDir)
 
   return {

@@ -1,4 +1,4 @@
-import { relative } from 'node:path'
+import { relative } from 'pathe'
 import { glob } from 'tinyglobby'
 import { DEFINITION_DIRS, discoverDefinitions } from './discover.ts'
 import type { DiscoveredDefinition } from './discover.ts'

@@ -1,9 +1,12 @@
 import { fileURLToPath } from 'node:url'
+import { normalize } from 'pathe'
 import { describe, expect, it } from 'vitest'
 import { discoverDefinitions } from '../src/module/discover.ts'
 import { identityFromFilename } from '../src/module/naming.ts'
 
-const dir = fileURLToPath(new URL('./fixtures/discovery/server/mcp', import.meta.url))
+// Normalized, so the expectations below read the same on Windows as what the
+// module produces there: `/` throughout, drive letter and all.
+const dir = normalize(fileURLToPath(new URL('./fixtures/discovery/server/mcp', import.meta.url)))
 
 describe('identityFromFilename', () => {
   it.each([

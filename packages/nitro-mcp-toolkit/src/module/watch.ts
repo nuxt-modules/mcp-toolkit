@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { watch } from 'node:fs/promises'
-import { dirname, extname, join, resolve, sep } from 'node:path'
+import { dirname, extname, join, resolve, sep } from 'pathe'
 import { DEFINITION_DIRS, discoverDefinitions } from './discover.ts'
 import type { Nitro } from 'nitro/types'
 

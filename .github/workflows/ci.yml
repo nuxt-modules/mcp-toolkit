@@ -78,6 +78,25 @@ jobs:
       - name: Enforce coverage thresholds
         run: pnpm run test:coverage
 
+  # `nitro-mcp-toolkit` discovers files, generates imports from their paths and
+  # watches them, so it is the one package whose behaviour depends on the OS.
+  # Only its own suite runs here; the rest is covered above.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter nitro-mcp-toolkit
+      - name: Prepare
+        run: pnpm --filter nitro-mcp-toolkit dev:prepare
+      - name: Test
+        run: pnpm --filter nitro-mcp-toolkit test
+
   package:
     runs-on: ubuntu-latest
     steps:
@@ -108,7 +127,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: [build, lint, typecheck, test, package]
+    needs: [build, lint, typecheck, test, test-windows, package]
     steps:
       - uses: actions/checkout@v7
         with:

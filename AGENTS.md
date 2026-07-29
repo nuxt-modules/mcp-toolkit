@@ -164,6 +164,15 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 - **Comments are the exception, not the default.** Don't add comments that restate what the code does, header/banner comments on every function, or long comment blocks explaining a workaround — instead avoid needing the workaround. Only comment genuinely non-obvious rationale ("why", not "what"), and keep it to one or two lines.
 - **Match the ecosystem a package sits on.** `packages/nuxt-mcp-toolkit`, `apps/docs`, and `apps/playground` stay on Nuxt-ecosystem tooling (`nuxt-module-build`, ESLint + `@nuxt/eslint-config`), since that's what their users/contributors expect. `packages/nitro-mcp-toolkit` sits directly on `nitro`/`h3` with no Nuxt in between, so it uses that ecosystem's own tooling instead: `obuild` for building and `oxlint` + `oxfmt` for linting/formatting (config in `.oxlintrc.json` / `.oxfmtrc.json`). Don't mix conventions within a single package, but different packages can follow different ecosystems when that's genuinely what they're built on.
 - **Reuse what's already a dependency.** Before adding a bespoke hook/event system, cache layer, router, etc., check whether a package already in the dependency tree (e.g. `hookable`, `ohash`, `rou3` via `nitro`/`h3`) covers the need — it's free to use and matches the ecosystem's own conventions.
+- **Paths in `packages/nitro-mcp-toolkit` go through `pathe`, never `node:path`.** Every path the module handles ends up in generated code, in a log line, or compared against a `tinyglobby` result — and glob results use `/` on Windows too. `pathe` normalizes everything to `/`, drive letters included, so the module produces the same strings on all three platforms and its tests can assert them. `node:fs` is happy with those paths. The runtime (`src/runtime`) touches no paths at all.
+
+### Platform support (`nitro-mcp-toolkit`)
+
+The runtime imports exactly one Node built-in, `node:async_hooks`, for the `AsyncLocalStorage` that carries the request context; the SDK, h3 and zod add none, so a built bundle is otherwise web-standard. Keep it that way: a second built-in would cost the edge story.
+
+`AsyncLocalStorage` cannot be swapped for a `WeakMap` keyed by the request — the SDK does not hand back the same `Request` object it was given, which was measured, not assumed. Cloudflare therefore needs `nodejs_compat`; that is documented in the README rather than worked around.
+
+Windows is covered by a dedicated `test-windows` CI job that runs this package's suite alone, since it is the only one whose behaviour depends on the OS. Its e2e test builds a real Nitro app, which is what proves the absolute paths in the generated registry resolve there.
 
 ### MCP Definitions
 
