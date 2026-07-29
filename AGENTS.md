@@ -121,21 +121,21 @@ The two published packages release on separate tracks, because changesets' prere
 | Package | Track | How |
 |---------|-------|-----|
 | `@nuxtjs/mcp-toolkit` | Stable, `latest` tag | Changesets. Add a changeset, merge, the `release` workflow opens a version PR |
-| `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually. Bumps the prerelease, publishes, commits the bump |
+| `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually with the exact version to publish |
 
 `nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix.
 
-**`ignore` covers versioning only.** `changeset publish` selects packages with a single filter, `!packageJson.private`, then publishes every one whose version is absent from npm. The two tracks therefore stay apart on one condition: the version of `nitro-mcp-toolkit` on `main` must always be a version that exists on npm. `release:alpha` upholds it by publishing before it commits the bump, and CI enforces it on every PR. Never bump that version by hand. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
+**`ignore` covers versioning only.** `changeset publish` selects packages with a single filter, `!packageJson.private`, then publishes every one whose version is absent from npm. The two tracks therefore stay apart on one condition: the version of `nitro-mcp-toolkit` on `main` must always be a version that exists on npm. CI enforces it on every PR. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
 
-Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`, moved by `release:latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
+**The `alpha` dist-tag on npm is the source of truth for where the package is, not the manifest.** `main` is protected and the bot cannot push to it, so a release cannot commit its own bump — the first attempt published fine and then went red on that push, having already shipped. The workflow therefore takes the version as an input, writes it to the manifest only inside the runner, publishes, and pushes a tag. Nothing comes back to `main`, whose version stays pinned at a published placeholder purely so `changeset publish` keeps skipping it. Read `npm view nitro-mcp-toolkit@alpha version` to know what is out there; the manifest will not tell you.
 
-`release:alpha` bumps *before* it publishes, so the version in the manifest always equals the last published one.
+Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
 
 Publish from CI, not from a laptop: the workflow points at `registry.npmjs.org` through `setup-node`, whereas a local `npm config` may resolve to a corporate proxy that refuses the write. Keep `.npmrc` out of the repo for the same reason.
 
 The two tracks authenticate differently. `@nuxtjs/mcp-toolkit` belongs to the Nuxt team and uses `NPM_TOKEN`; `nitro-mcp-toolkit` belongs to a personal account, so that same token gets a 404 on it — npm's way of saying "not authorized". It uses `NPM_TOKEN_ALPHA` instead, a granular token scoped to that single package.
 
-The bump uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version — which would bump without publishing.
+Writing the version uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version.
 
 ### MCP Starter (`apps/mcp-starter/`)
 
