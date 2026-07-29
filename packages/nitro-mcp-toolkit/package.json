@@ -10,6 +10,7 @@
     "directory": "packages/nitro-mcp-toolkit"
   },
   "files": [
+    "README.md",
     "dist"
   ],
   "type": "module",

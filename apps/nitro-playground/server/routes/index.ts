@@ -1,21 +1,21 @@
-import { defineHandler } from "h3";
-import { definitions } from "../mcp";
+import { defineHandler } from 'h3'
+import { definitions } from '../mcp'
 
 const escape = (value: string) =>
-  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export default defineHandler((event) => {
-  const endpoint = new URL("/mcp", event.url).href;
+  const endpoint = new URL('/mcp', event.url).href
 
   const rows = definitions
     .map(
       (definition) =>
         `<tr><td>${definition.kind}</td><td><code>${escape(definition.name)}</code></td>` +
-        `<td>${escape(definition.description ?? "")}</td></tr>`,
+        `<td>${escape(definition.description ?? '')}</td></tr>`,
     )
-    .join("");
+    .join('')
 
-  event.res.headers.set("content-type", "text/html; charset=utf-8");
+  event.res.headers.set('content-type', 'text/html; charset=utf-8')
 
   return `<!doctype html>
 <meta charset="utf-8">
@@ -43,5 +43,5 @@ pnpm probe:nitro greet '{"name":"Ada"}' # call one tool</pre>
     "nitro-playground": { "url": "${escape(endpoint)}" }
   }
 }</pre>
-`;
-});
+`
+})
