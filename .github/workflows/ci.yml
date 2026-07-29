@@ -25,6 +25,8 @@ jobs:
         run: pnpm run dev:prepare
       - name: Build module
         run: pnpm run build:module
+      - name: Build nitro
+        run: pnpm run build:nitro
 
   lint:
     runs-on: ubuntu-latest
@@ -93,5 +95,7 @@ jobs:
         run: pnpm run dev:prepare
       - name: Build module
         run: pnpm run build:module
+      - name: Build nitro
+        run: pnpm run build:nitro
       - name: Publish
-        run: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/nuxt-mcp-toolkit'
+        run: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/nuxt-mcp-toolkit' './packages/nitro-mcp-toolkit'
