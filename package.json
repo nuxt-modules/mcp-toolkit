@@ -34,7 +34,8 @@
     "automd": "npx automd --config .github/automd.json",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "turbo run build --filter=@nuxtjs/mcp-toolkit --filter=nitro-mcp-toolkit && changeset publish"
+    "release": "turbo run build --filter=@nuxtjs/mcp-toolkit && changeset publish",
+    "release:alpha": "pnpm --filter nitro-mcp-toolkit release:alpha"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.7.0",

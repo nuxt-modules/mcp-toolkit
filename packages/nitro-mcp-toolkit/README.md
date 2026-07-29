@@ -9,8 +9,10 @@ Targets protocol revision **2026-07-28** and falls back to the 2025 revisions au
 
 ## Install
 
+The toolkit is in alpha, built wave by wave, so it publishes under the `alpha` tag and the API can still move between releases.
+
 ```bash
-npm install nitro-mcp-toolkit zod
+npm install nitro-mcp-toolkit@alpha zod
 ```
 
 Any [Standard Schema](https://standardschema.dev) library works — Zod, Valibot, ArkType. Nothing is auto-imported: every helper is imported explicitly.

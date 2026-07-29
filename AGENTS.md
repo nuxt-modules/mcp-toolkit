@@ -114,6 +114,19 @@ A bare Nitro v3 app used to exercise `nitro-mcp-toolkit`. `pnpm dev:nitro` serve
 
 Relative imports inside `packages/nitro-mcp-toolkit/src` must carry their `.ts` extension — that is what makes the source loadable by Node, and therefore what makes the stub work.
 
+## Releasing
+
+The two published packages release on separate tracks, because changesets' prerelease mode is repo-wide and `@nuxtjs/mcp-toolkit` still ships stable.
+
+| Package | Track | How |
+|---------|-------|-----|
+| `@nuxtjs/mcp-toolkit` | Stable, `latest` tag | Changesets. Add a changeset, merge, the `release` workflow opens a version PR |
+| `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually. Bumps the prerelease, publishes, commits the bump |
+
+`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix. Its `publishConfig.tag` keeps alpha builds off the `latest` tag, and `prepack` runs `obuild` so a stale `dist` can never be published (remember `dev:prepare` leaves stubs there).
+
+The bump uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version — which would bump without publishing.
+
 ### MCP Starter (`apps/mcp-starter/`)
 
 A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtjs/mcp-toolkit/server` imports). Readers scaffold **only** this folder via giget/tiged (see [apps/mcp-starter/README.md](apps/mcp-starter/README.md)). Short blog paste: [PROMPT.md](apps/mcp-starter/PROMPT.md). In the monorepo, run **`pnpm build:module`** before `pnpm dev:starter` so `server` exports exist.
