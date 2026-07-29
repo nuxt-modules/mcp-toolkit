@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createNitro } from 'nitro/builder'
@@ -262,6 +262,11 @@ describe('watching for definitions in development', () => {
   it('rebuilds when a definition file appears, and again when it goes', async () => {
     const file = join(root, 'server/mcp/tools/late.ts')
 
+    // The registry already holds what is there: booting is not a change.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(reloads).toBe(0)
+
     await writeFile(file, 'export default {}\n')
     await vi.waitFor(() => expect(reloads).toBeGreaterThan(0), { timeout: 10_000 })
 
@@ -269,6 +274,17 @@ describe('watching for definitions in development', () => {
 
     await rm(file)
     await vi.waitFor(() => expect(reloads).toBeGreaterThan(afterAdd), { timeout: 10_000 })
+  })
+
+  // A moved directory reports only itself: no event ever names the files in it.
+  it('rebuilds when a directory arrives with definitions already inside', async () => {
+    const staged = await mkdtemp(join(tmpdir(), 'nitro-mcp-staged-'))
+    await writeFile(join(staged, 'bulk.ts'), 'export default {}\n')
+
+    const before = reloads
+
+    await rename(staged, join(root, 'server/mcp/tools/bulk'))
+    await vi.waitFor(() => expect(reloads).toBeGreaterThan(before), { timeout: 10_000 })
   })
 
   it('sees a definitions directory that did not exist yet', async () => {
