@@ -3,12 +3,28 @@ import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol.ts'
 import type { ClientCapabilities } from '@modelcontextprotocol/client'
 import type { AuthInfo } from '@modelcontextprotocol/server'
 import type { McpHandler } from '../runtime/handler.ts'
+import type {
+  CallToolResult,
+  GetPromptResult,
+  ReadResourceResult,
+} from '@modelcontextprotocol/server'
 
 /**
  * Anything fetch-shaped: the handler from `createMcpHandler`, a bare SDK
  * handler, or a built Nitro app's entry.
  */
 export type McpFetchHandler = Pick<McpHandler, 'fetch'>
+
+/**
+ * An SDK client that closes itself when it leaves scope.
+ *
+ * @example
+ * ```ts
+ * await using client = await createMcpTestClient(handler)
+ * // no close needed, even if an assertion throws
+ * ```
+ */
+export type McpTestClient = Client & AsyncDisposable
 
 export interface McpTestClientOptions {
   /**
@@ -36,14 +52,14 @@ export interface McpTestClientOptions {
  *
  * @example
  * ```ts
- * const client = await createMcpTestClient(handler)
+ * await using client = await createMcpTestClient(handler)
  * const result = await client.callTool({ name: 'greet', arguments: { name: 'Ada' } })
  * ```
  */
 export async function createMcpTestClient(
   handler: McpFetchHandler,
   options: McpTestClientOptions = {},
-): Promise<Client> {
+): Promise<McpTestClient> {
   const { era = 'modern', auth, url = 'http://localhost/mcp', capabilities } = options
 
   const client = new Client(
@@ -62,5 +78,31 @@ export async function createMcpTestClient(
 
   await client.connect(transport)
 
-  return client
+  // `await using` then covers the close, which a failing assertion would
+  // otherwise skip and leak.
+  return Object.assign(client, {
+    [Symbol.asyncDispose]: () => client.close(),
+  })
+}
+
+type TextCarrier = Partial<CallToolResult & ReadResourceResult & GetPromptResult>
+
+/**
+ * The text a result carries, joined by newlines.
+ *
+ * Works on a tool call, a resource read and a prompt render alike, so an
+ * assertion can read `expect(textOf(result)).toBe('Hello Ada')` instead of
+ * spelling out the content-block shape.
+ */
+export function textOf(result: TextCarrier): string {
+  const blocks = [
+    ...(result.content ?? []),
+    ...(result.contents ?? []),
+    ...(result.messages ?? []).map((message) => message.content),
+  ]
+
+  return blocks
+    .map((block) => ('text' in block && typeof block.text === 'string' ? block.text : ''))
+    .filter((text) => text !== '')
+    .join('\n')
 }

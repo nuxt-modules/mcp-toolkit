@@ -14,7 +14,7 @@ describe('defineMcpPrompt', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const { prompts } = await client.listPrompts()
     expect(prompts).toMatchObject([{ name: 'standup', title: 'Daily standup' }])
@@ -23,8 +23,6 @@ describe('defineMcpPrompt', () => {
     expect(result.messages).toEqual([
       { role: 'user', content: { type: 'text', text: 'Summarize yesterday.' } },
     ])
-
-    await client.close()
   })
 
   it('advertises arguments and receives them parsed', async () => {
@@ -37,7 +35,7 @@ describe('defineMcpPrompt', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const { prompts } = await client.listPrompts()
     expect(prompts[0]?.arguments).toMatchObject([{ name: 'path', description: 'File to review' }])
@@ -46,8 +44,6 @@ describe('defineMcpPrompt', () => {
     expect(result.messages).toEqual([
       { role: 'user', content: { type: 'text', text: 'Review src/index.ts.' } },
     ])
-
-    await client.close()
   })
 
   it('passes a multi-message result through untouched', async () => {
@@ -64,12 +60,10 @@ describe('defineMcpPrompt', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const result = await client.getPrompt({ name: 'pair' })
     expect(result.messages).toHaveLength(2)
     expect(result.messages[1]).toMatchObject({ role: 'assistant' })
-
-    await client.close()
   })
 })

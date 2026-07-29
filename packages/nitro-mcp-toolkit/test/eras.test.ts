@@ -24,7 +24,7 @@ describe('protocol eras', () => {
       ],
     })
 
-    const client = await createMcpTestClient(handler, { era })
+    await using client = await createMcpTestClient(handler, { era })
 
     const { tools } = await client.listTools()
     expect(tools).toMatchObject([{ name: 'greet' }])
@@ -32,8 +32,6 @@ describe('protocol eras', () => {
     const result = await client.callTool({ name: 'greet', arguments: { name: 'Ada' } })
     expect(result.content).toEqual([{ type: 'text', text: 'Hello Ada' }])
     expect(seenEras).toEqual([era])
-
-    await client.close()
   })
 
   it('refuses a legacy client when the endpoint is modern-only', async () => {

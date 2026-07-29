@@ -192,19 +192,20 @@ handler: (ctx) => {
 `nitro-mcp-toolkit/testing` connects a real MCP client to your handler in memory. No port, no build, no HTTP server.
 
 ```ts
-import { createMcpTestClient } from 'nitro-mcp-toolkit/testing'
+import { createMcpTestClient, textOf } from 'nitro-mcp-toolkit/testing'
 import { expect, it } from 'vitest'
 import handler from '../server/routes/mcp'
 
 it('greets', async () => {
-  const client = await createMcpTestClient(handler)
+  await using client = await createMcpTestClient(handler)
 
   const result = await client.callTool({ name: 'greet', arguments: { name: 'Ada' } })
 
-  expect(result.content).toEqual([{ type: 'text', text: 'Hello Ada!' }])
-  await client.close()
+  expect(textOf(result)).toBe('Hello Ada!')
 })
 ```
+
+The client closes itself when it leaves scope, so a failing assertion cannot leak it. `textOf` reads the text out of a tool call, a resource read or a prompt alike, for when the shape of the content blocks is not what you are asserting.
 
 Pass `{ era: 'legacy' }` to test the 2025 path, or `{ auth }` to stand in for a verified token.
 
@@ -217,6 +218,10 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', legacy: '
 ```
 
 Note that MCP clients still negotiate the 2025 revision by default, so a client must opt in to the modern path. The toolkit exports `MODERN_PROTOCOL_VERSION` to pin it — the SDK's `LATEST_PROTOCOL_VERSION` names the newest _legacy_ revision, not this one.
+
+## Runtimes
+
+The request context is carried by `AsyncLocalStorage`, so the handler needs `node:async_hooks`: available on Node, Deno and Bun, and on Cloudflare Workers behind the `nodejs_compat` flag.
 
 ## License
 

@@ -15,7 +15,7 @@ describe('defineMcpResource', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const { resources } = await client.listResources()
     expect(resources).toMatchObject([
@@ -29,8 +29,6 @@ describe('defineMcpResource', () => {
 
     const read = await client.readResource({ uri: 'docs://readme' })
     expect(read.contents).toEqual([{ uri: 'docs://readme', text: 'contents of docs://readme' }])
-
-    await client.close()
   })
 
   it('resolves template variables for a templated resource', async () => {
@@ -43,15 +41,13 @@ describe('defineMcpResource', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const { resourceTemplates } = await client.listResourceTemplates()
     expect(resourceTemplates).toMatchObject([{ name: 'page', uriTemplate: 'docs://{slug}' }])
 
     const read = await client.readResource({ uri: 'docs://getting-started' })
     expect(read.contents).toEqual([{ uri: 'docs://getting-started', text: 'page getting-started' }])
-
-    await client.close()
   })
 
   it('passes a full result through untouched', async () => {
@@ -66,11 +62,9 @@ describe('defineMcpResource', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const read = await client.readResource({ uri: 'blob://logo' })
     expect(read.contents).toEqual([{ uri: 'blob://logo', blob: 'AAA=', mimeType: 'image/png' }])
-
-    await client.close()
   })
 })

@@ -20,6 +20,10 @@ function isCallToolResult(value: object): value is CallToolResult {
   )
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 function textBlock(text: string): ContentBlock[] {
   return [{ type: 'text', text }]
 }
@@ -27,13 +31,17 @@ function textBlock(text: string): ContentBlock[] {
 /**
  * Coerce a handler return into a `CallToolResult`.
  *
- * When the tool declares an `outputSchema`, a plain value becomes
- * `structuredContent` (which the SDK validates) rather than only text — the
- * schema would otherwise never be satisfied.
+ * A tool that declares an `outputSchema` promises to return that shape, so the
+ * value goes straight to `structuredContent` for the SDK to validate. Sniffing
+ * it for protocol keys instead would break any schema that happens to describe
+ * a `content` array, and the schema could never be satisfied.
  *
  * @internal
  */
 export function toCallToolResult(value: unknown, hasOutputSchema: boolean): CallToolResult {
+  if (hasOutputSchema && isObject(value)) {
+    return { content: textBlock(JSON.stringify(value, null, 2)), structuredContent: value }
+  }
   if (typeof value === 'string') {
     return { content: textBlock(value) }
   }
@@ -48,10 +56,7 @@ export function toCallToolResult(value: unknown, hasOutputSchema: boolean): Call
   }
 
   if (!isCallToolResult(value)) {
-    const text = JSON.stringify(value, null, 2)
-    return hasOutputSchema
-      ? { content: textBlock(text), structuredContent: value as Record<string, unknown> }
-      : { content: textBlock(text) }
+    return { content: textBlock(JSON.stringify(value, null, 2)) }
   }
 
   if (value.isError && !value.content?.length) {

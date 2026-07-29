@@ -22,7 +22,7 @@ function inspector() {
 describe('handler context', () => {
   it('hands the handler the event, signal and raw SDK context', async () => {
     const { seen, tool } = inspector()
-    const client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
+    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
 
     await client.callTool({ name: 'inspect' })
 
@@ -30,32 +30,26 @@ describe('handler context', () => {
     expect(ctx?.event.req.url).toBe('http://localhost/mcp')
     expect(ctx?.signal).toBeInstanceOf(AbortSignal)
     expect(ctx?.mcp.mcpReq).toBeDefined()
-
-    await client.close()
   })
 
   it('carries the auth info the caller passed to fetch', async () => {
     const { seen, tool } = inspector()
-    const client = await createMcpTestClient(createMcpHandler({ tools: [tool] }), {
+    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }), {
       auth: { token: 'tok', clientId: 'client-1', scopes: ['mcp'], expiresAt: 4e9 },
     })
 
     await client.callTool({ name: 'inspect' })
 
     expect(seen.at(-1)?.auth).toMatchObject({ clientId: 'client-1', scopes: ['mcp'] })
-
-    await client.close()
   })
 
   it('leaves auth undefined when the caller passed none', async () => {
     const { seen, tool } = inspector()
-    const client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
+    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
 
     await client.callTool({ name: 'inspect' })
 
     expect(seen.at(-1)?.auth).toBeUndefined()
-
-    await client.close()
   })
 
   it('shares the event across concurrent requests without mixing them up', async () => {
@@ -80,7 +74,6 @@ describe('handler context', () => {
         },
       }).then(async (client) => {
         await client.callTool({ name: 'slow' })
-        await client.close()
       })
 
     await Promise.all([call('a'), call('b')])

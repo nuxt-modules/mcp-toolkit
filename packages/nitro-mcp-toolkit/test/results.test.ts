@@ -8,9 +8,8 @@ async function callReturning(value: McpToolReturn<undefined>) {
   const handler = createMcpHandler({
     tools: [defineMcpTool({ name: 'value', handler: () => value })],
   })
-  const client = await createMcpTestClient(handler)
+  await using client = await createMcpTestClient(handler)
   const result = await client.callTool({ name: 'value' })
-  await client.close()
   return result
 }
 
@@ -53,7 +52,7 @@ describe('result coercion', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     const result = await client.callTool({ name: 'boom' })
     expect(result.isError).toBe(true)
@@ -63,8 +62,6 @@ describe('result coercion', () => {
     expect(result.content).toMatchObject([
       { type: 'text', text: expect.stringContaining('"id": "x"') },
     ])
-
-    await client.close()
   })
 
   it('reports a thrown non-error value', async () => {
@@ -78,13 +75,11 @@ describe('result coercion', () => {
         }),
       ],
     })
-    const client = await createMcpTestClient(handler)
+    await using client = await createMcpTestClient(handler)
 
     await expect(client.callTool({ name: 'boom' })).resolves.toMatchObject({
       isError: true,
       content: [{ type: 'text', text: 'plain string' }],
     })
-
-    await client.close()
   })
 })

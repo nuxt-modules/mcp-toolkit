@@ -3,6 +3,17 @@
   "version": "0.0.1",
   "private": true,
   "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
+  "keywords": [
+    "ai",
+    "h3",
+    "llm",
+    "mcp",
+    "modelcontextprotocol",
+    "nitro",
+    "tools"
+  ],
+  "homepage": "https://github.com/nuxt-modules/mcp-toolkit/tree/main/packages/nitro-mcp-toolkit#readme",
+  "bugs": "https://github.com/nuxt-modules/mcp-toolkit/issues",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -35,6 +46,7 @@
     "dev:prepare": "obuild --stub",
     "lint": "oxlint . && oxfmt --check .",
     "lint:fix": "oxlint . --fix && oxfmt .",
+    "lint:package": "publint && attw --pack . --profile esm-only",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
@@ -44,6 +56,7 @@
     "@modelcontextprotocol/server": "^2.0.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@modelcontextprotocol/client": "2.0.0",
     "@vitest/coverage-v8": "^4.1.10",
     "h3": "2.0.1-rc.22",
@@ -51,6 +64,7 @@
     "obuild": "^0.4.38",
     "oxfmt": "^0.60.0",
     "oxlint": "^1.75.0",
+    "publint": "^0.3.22",
     "typescript": "~6.0.3",
     "vitest": "^4.1.10",
     "zod": "^4.2.0"
@@ -64,5 +78,8 @@
     "@modelcontextprotocol/client": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

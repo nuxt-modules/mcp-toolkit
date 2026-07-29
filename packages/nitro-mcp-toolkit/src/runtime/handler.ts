@@ -1,6 +1,7 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
 import { runWithRequest, setEra } from './context.ts'
+import { assertDefinitions } from './validate.ts'
 import type {
   McpHandlerRequestOptions,
   PerRequestResponseMode,
@@ -47,7 +48,11 @@ export interface McpHandlerOptions {
  */
 export interface McpHandler {
   (event: H3Event): Promise<Response>
-  /** Serve one request outside of Nitro (Workers, Deno, Bun, or a test). */
+  /**
+   * Serve one request outside of Nitro: Deno, Bun, a test, or any runtime that
+   * provides `node:async_hooks` — on Cloudflare Workers that means enabling the
+   * `nodejs_compat` flag, which the request context depends on.
+   */
   fetch: (request: Request, options?: McpHandlerRequestOptions) => Promise<Response>
   /** Push list-changed and resource-updated events to subscribed clients. */
   notify: ServerNotifier
@@ -67,6 +72,8 @@ export interface McpHandler {
 export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
   const { tools = [], resources = [], prompts = [] } = options
   const definitions = [...tools, ...resources, ...prompts]
+
+  assertDefinitions(definitions)
 
   const sdk = createSdkHandler(
     (requestCtx) => {
