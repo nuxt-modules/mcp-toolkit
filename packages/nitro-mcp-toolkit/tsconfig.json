@@ -13,7 +13,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      "nitro-mcp-toolkit": ["./src/index.ts"]
+      "nitro-mcp-toolkit/server": ["./src/runtime/index.ts"],
+      "nitro-mcp-toolkit/testing": ["./src/testing/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],

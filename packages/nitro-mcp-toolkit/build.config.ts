@@ -4,9 +4,17 @@ export default defineBuildConfig({
   entries: [
     {
       type: 'bundle',
-      input: ['./src/index.ts', './src/runtime/handler.ts'],
+      input: ['./src/runtime/index.ts', './src/testing/index.ts'],
       rolldown: {
-        external: ['nitro', 'nitro/types', 'h3', '@modelcontextprotocol/server', 'zod'],
+        // Left unbundled so obuild's dts pass resolves these against the
+        // consumer's own copies rather than inlining ours.
+        external: [
+          'nitro',
+          'nitro/types',
+          'h3',
+          '@modelcontextprotocol/server',
+          '@modelcontextprotocol/client',
+        ],
       },
     },
   ],
