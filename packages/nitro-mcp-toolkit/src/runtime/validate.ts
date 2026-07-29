@@ -1,10 +1,21 @@
-import type { McpDefinition, McpResource } from './definition.ts'
+import type { McpDefinition, McpDefinitionSummary, McpIdentity, McpResource } from './definition.ts'
 
 const KINDS = { tool: 'Tools', resource: 'Resources', prompt: 'Prompts' } as const
+
+/** A definition paired with the name and title it will be registered under. */
+export interface McpRegistration {
+  definition: McpDefinition
+  identity: McpIdentity
+}
 
 function fail(problems: string[]): never {
   const detail = problems.map((problem) => `  - ${problem}`).join('\n')
   throw new Error(`[nitro-mcp-toolkit] Invalid MCP definitions:\n${detail}`)
+}
+
+/** Where a definition came from, for error messages that must be actionable. */
+function locate(definition: McpDefinition): string {
+  return definition.source ? ` (${definition.source.file})` : ''
 }
 
 function duplicates(values: string[]): string[] {
@@ -22,7 +33,72 @@ function duplicates(values: string[]): string[] {
 }
 
 /**
- * Check a definition set before it ever serves a request.
+ * Resolve the identity a definition registers under: what the definition
+ * declares, or what the caller derived from its filename.
+ *
+ * @internal
+ */
+export function resolveIdentity(
+  kind: McpDefinition['kind'],
+  definition: { name?: string; title?: string; group?: string },
+  identity?: McpIdentity,
+): McpIdentity {
+  const name = identity?.name ?? definition.name
+
+  if (!name) {
+    throw new Error(
+      `[nitro-mcp-toolkit] This ${kind} has no name. Give it one, or let the module name it ` +
+        `from its filename by placing the file under the scanned ${kind}s directory.`,
+    )
+  }
+
+  return {
+    name,
+    title: identity?.title ?? definition.title,
+    group: identity?.group ?? definition.group,
+  }
+}
+
+/**
+ * The `_meta` a definition advertises, so a client can tell apart what a name
+ * alone does not. Absent when there is nothing to say.
+ *
+ * @internal
+ */
+export function resolveMeta(
+  group: string | undefined,
+  tags: string[] | undefined,
+): Record<string, unknown> | undefined {
+  if (!group && !tags?.length) return undefined
+
+  return { ...(group ? { group } : {}), ...(tags?.length ? { tags } : {}) }
+}
+
+function isResource(definition: McpDefinition): definition is McpResource {
+  return definition.kind === 'resource'
+}
+
+/**
+ * Flatten registrations into what a handler advertises about itself.
+ *
+ * @internal
+ */
+export function summarize(registrations: readonly McpRegistration[]): McpDefinitionSummary[] {
+  return registrations.map(({ definition, identity }) => ({
+    kind: definition.kind,
+    name: identity.name,
+    ...(identity.title ? { title: identity.title } : {}),
+    ...(definition.description ? { description: definition.description } : {}),
+    ...(identity.group ? { group: identity.group } : {}),
+    ...(definition.tags?.length ? { tags: [...definition.tags] } : {}),
+    ...(isResource(definition) ? { uri: definition.uri } : {}),
+    ...(definition.source ? { file: definition.source.file } : {}),
+  }))
+}
+
+/**
+ * Check a definition set before it ever serves a request, and pair each
+ * definition with the identity it registers under.
  *
  * The SDK registers definitions per request, so a clash would otherwise first
  * surface as an HTTP 500 on the first call, with the real cause nowhere in the
@@ -30,32 +106,49 @@ function duplicates(values: string[]): string[] {
  *
  * @internal
  */
-export function assertDefinitions(definitions: readonly McpDefinition[]): void {
+export function resolveDefinitions(definitions: readonly McpDefinition[]): McpRegistration[] {
   const problems: string[] = []
+  const registrations: McpRegistration[] = []
 
   for (const definition of definitions) {
-    if (typeof definition.name !== 'string' || definition.name.trim() === '') {
-      problems.push(`A ${definition.kind} was defined without a name.`)
+    const { name, title } = definition
+
+    if (typeof name !== 'string' || name.trim() === '') {
+      problems.push(`A ${definition.kind} was defined without a name${locate(definition)}.`)
+      continue
     }
+
+    registrations.push({
+      definition,
+      identity: { name, title, group: definition.group ?? definition.source?.group },
+    })
   }
 
   for (const [kind, label] of Object.entries(KINDS)) {
-    const named = definitions.filter((definition) => definition.kind === kind)
+    const named = registrations.filter(({ definition }) => definition.kind === kind)
 
-    for (const name of duplicates(named.map((definition) => definition.name))) {
-      problems.push(`${label} must have unique names, but ${JSON.stringify(name)} is used twice.`)
+    for (const name of duplicates(named.map(({ identity }) => identity.name))) {
+      const where = named
+        .filter(({ identity }) => identity.name === name)
+        .map(({ definition }) => definition.source?.file)
+        .filter((file) => file !== undefined)
+
+      problems.push(
+        `${label} must have unique names, but ${JSON.stringify(name)} is used twice` +
+          `${where.length > 0 ? ` (${where.join(', ')})` : ''}.`,
+      )
     }
   }
 
-  const uris = definitions
-    .filter((definition): definition is McpResource => definition.kind === 'resource')
-    .map((resource) => resource.uri)
+  const resources = definitions.filter(isResource)
 
-  for (const uri of duplicates(uris)) {
+  for (const uri of duplicates(resources.map((resource) => resource.uri))) {
     problems.push(`Resources must answer distinct URIs, but ${JSON.stringify(uri)} is used twice.`)
   }
 
   if (problems.length > 0) {
     fail(problems)
   }
+
+  return registrations
 }

@@ -65,4 +65,27 @@ describe('createMcpHandler validation', () => {
   it('accepts an empty server', () => {
     expect(() => createMcpHandler()).not.toThrow()
   })
+
+  // Two files sharing a name is the mistake discovery makes easy to commit, so
+  // the message has to say which files to go and look at.
+  it('names the files behind a clash between discovered definitions', () => {
+    const greet = defineMcpTool({ name: 'greet', handler: () => 'ok' })
+
+    expect(() =>
+      createMcpHandler({
+        tools: [
+          { ...greet, source: { file: 'tools/greet.ts' } },
+          { ...greet, source: { file: 'tools/admin/greet.ts' } },
+        ],
+      }),
+    ).toThrow(/"greet" is used twice \(tools\/greet\.ts, tools\/admin\/greet\.ts\)/)
+  })
+
+  it('says where a nameless definition came from', () => {
+    const nameless = defineMcpTool({ handler: () => 'ok' })
+
+    expect(() =>
+      createMcpHandler({ tools: [{ ...nameless, source: { file: 'tools/index.ts' } }] }),
+    ).toThrow(/A tool was defined without a name \(tools\/index\.ts\)/)
+  })
 })

@@ -8,7 +8,6 @@ const pages: Record<string, string> = {
 
 /** Exercises templated URIs, variable extraction, listing and completions. */
 export default defineMcpResource({
-  name: 'doc-page',
   description: 'A documentation page, addressed by slug',
   mimeType: 'text/markdown',
   uri: new ResourceTemplate('playground://docs/{slug}', {

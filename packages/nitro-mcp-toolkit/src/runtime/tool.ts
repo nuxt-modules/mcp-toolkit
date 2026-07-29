@@ -1,6 +1,7 @@
 import { isInputRequiredResult } from '@modelcontextprotocol/server'
 import { buildContext } from './context.ts'
 import { toCallToolResult, toErrorResult } from './results.ts'
+import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   CallToolResult,
   Icon,
@@ -26,11 +27,15 @@ export type McpToolReturn<Output extends Schema | undefined> =
   | (Output extends Schema ? StandardSchemaWithJSON.InferInput<Output> : McpToolValue)
 
 interface McpToolMetadata {
-  /** Identifier the client calls. */
-  name: string
+  /** Identifier the client calls. Derived from the filename when discovered. */
+  name?: string
   /** Human-readable name shown in clients. */
   title?: string
   description?: string
+  /** Inferred from the subdirectory when discovered, e.g. `tools/admin/*`. */
+  group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  tags?: string[]
   annotations?: ToolAnnotations
   icons?: Icon[]
 }
@@ -95,7 +100,7 @@ export function defineMcpTool(
     | McpToolDefinition<Schema, Schema | undefined>
     | McpToolDefinitionWithoutInput<Schema | undefined>,
 ): McpTool {
-  const { name, title, description, annotations, icons, outputSchema } = definition
+  const { name, title, description, group, tags, annotations, icons, outputSchema } = definition
   const hasOutputSchema = outputSchema !== undefined
 
   return {
@@ -103,19 +108,29 @@ export function defineMcpTool(
     name,
     title,
     description,
-    register(server) {
-      const config = { title, description, outputSchema, annotations, icons }
+    group,
+    tags,
+    register(server, identity) {
+      const resolved = resolveIdentity('tool', definition, identity)
+      const config = {
+        title: resolved.title,
+        description,
+        outputSchema,
+        annotations,
+        icons,
+        _meta: resolveMeta(resolved.group, tags),
+      }
 
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition
-        server.registerTool(name, { ...config, inputSchema }, (args, ctx: ServerContext) =>
+        server.registerTool(resolved.name, { ...config, inputSchema }, (args, ctx: ServerContext) =>
           settle(() => handler(args, buildContext(ctx)), hasOutputSchema),
         )
         return
       }
 
       const { handler } = definition
-      server.registerTool(name, config, (ctx: ServerContext) =>
+      server.registerTool(resolved.name, config, (ctx: ServerContext) =>
         settle(() => handler(buildContext(ctx)), hasOutputSchema),
       )
     },

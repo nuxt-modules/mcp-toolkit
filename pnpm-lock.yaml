@@ -200,6 +200,9 @@ importers:
       '@modelcontextprotocol/server':
         specifier: ^2.0.0
         version: 2.0.0
+      tinyglobby:
+        specifier: ^0.2.17
+        version: 0.2.17
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: ^0.18.5

@@ -1,3 +1,5 @@
+/// <reference path="./virtual.d.ts" />
+
 export { createMcpHandler } from './handler.ts'
 export { defineMcpPrompt } from './prompt.ts'
 export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
@@ -17,7 +19,15 @@ export type {
   McpResourceReturn,
   McpResourceTemplateDefinition,
 } from './resource.ts'
-export type { McpDefinition, McpPrompt, McpResource, McpTool } from './definition.ts'
+export type {
+  McpDefinition,
+  McpDefinitionSource,
+  McpDefinitionSummary,
+  McpIdentity,
+  McpPrompt,
+  McpResource,
+  McpTool,
+} from './definition.ts'
 export type { McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 

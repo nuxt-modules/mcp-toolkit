@@ -5,7 +5,6 @@ import { defineMcpTool } from 'nitro-mcp-toolkit'
  * event really is threaded through the SDK rather than lost in its clone.
  */
 export default defineMcpTool({
-  name: 'whoami',
   description: 'Report what the server sees about the current request',
   handler: (ctx) => ({
     era: ctx.era,

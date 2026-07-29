@@ -7,7 +7,6 @@ import { z } from 'zod'
  * result, never as a transport-level failure that kills the session.
  */
 export default defineMcpTool({
-  name: 'boom',
   description: 'Throw on purpose, to inspect how failures reach the client',
   annotations: { readOnlyHint: true },
   inputSchema: z.object({

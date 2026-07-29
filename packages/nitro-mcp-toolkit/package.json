@@ -31,6 +31,10 @@
       "types": "./dist/runtime/index.d.mts",
       "import": "./dist/runtime/index.mjs"
     },
+    "./module": {
+      "types": "./dist/module/index.d.mts",
+      "import": "./dist/module/index.mjs"
+    },
     "./testing": {
       "types": "./dist/testing/index.d.mts",
       "import": "./dist/testing/index.mjs"
@@ -55,7 +59,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0"
+    "@modelcontextprotocol/server": "^2.0.0",
+    "tinyglobby": "^0.2.17"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

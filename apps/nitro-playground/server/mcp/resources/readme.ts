@@ -1,7 +1,6 @@
 import { defineMcpResource } from 'nitro-mcp-toolkit'
 
 export default defineMcpResource({
-  name: 'readme',
   uri: 'playground://readme',
   description: 'What this playground is for',
   mimeType: 'text/markdown',

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import * as moduleEntry from '../src/module/index.ts'
 import * as runtime from '../src/runtime/index.ts'
 import * as testing from '../src/testing/index.ts'
 
@@ -20,6 +21,14 @@ describe('public exports', () => {
         "imageResult",
         "inputRequired",
         "inputResponse",
+      ]
+    `)
+  })
+
+  it('exposes the module entry', () => {
+    expect(Object.keys(moduleEntry).sort()).toMatchInlineSnapshot(`
+      [
+        "default",
       ]
     `)
   })

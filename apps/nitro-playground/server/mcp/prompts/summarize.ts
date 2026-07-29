@@ -3,7 +3,6 @@ import { z } from 'zod'
 
 /** Exercises prompt arguments and a multi-message result. */
 export default defineMcpPrompt({
-  name: 'summarize',
   description: 'Summarize a piece of text to a target length',
   inputSchema: z.object({
     text: z.string().describe('The text to summarize'),

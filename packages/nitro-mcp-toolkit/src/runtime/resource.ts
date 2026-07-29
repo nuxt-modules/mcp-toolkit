@@ -1,4 +1,5 @@
 import { buildContext } from './context.ts'
+import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   CacheHint,
   Icon,
@@ -20,9 +21,14 @@ type Awaitable<T> = T | Promise<T>
 export type McpResourceReturn = ReadResourceResult | string
 
 interface McpResourceMetadata {
-  name: string
+  /** Derived from the filename when discovered. */
+  name?: string
   title?: string
   description?: string
+  /** Inferred from the subdirectory when discovered, e.g. `resources/docs/*`. */
+  group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  tags?: string[]
   mimeType?: string
   icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
@@ -70,14 +76,7 @@ export function defineMcpResource(definition: McpResourceTemplateDefinition): Mc
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, mimeType, icons, cacheHint } = definition
-  const config: ResourceMetadata & { cacheHint?: CacheHint } = {
-    title,
-    description,
-    mimeType,
-    icons,
-    cacheHint,
-  }
+  const { name, title, description, group, tags, mimeType, icons, cacheHint } = definition
   const isStaticUri = isStatic(definition)
 
   return {
@@ -85,19 +84,35 @@ export function defineMcpResource(
     name,
     title,
     description,
+    group,
+    tags,
     uri: isStaticUri ? definition.uri : definition.uri.uriTemplate.toString(),
-    register(server) {
+    register(server, identity) {
+      const resolved = resolveIdentity('resource', definition, identity)
+      const config: ResourceMetadata & { cacheHint?: CacheHint } = {
+        title: resolved.title,
+        description,
+        mimeType,
+        icons,
+        cacheHint,
+        _meta: resolveMeta(resolved.group, tags),
+      }
+
       if (isStaticUri) {
         const { uri: staticUri, handler } = definition
-        server.registerResource(name, staticUri, config, async (url: URL, ctx: ServerContext) =>
-          toReadResult(url, await handler(url, buildContext(ctx))),
+        server.registerResource(
+          resolved.name,
+          staticUri,
+          config,
+          async (url: URL, ctx: ServerContext) =>
+            toReadResult(url, await handler(url, buildContext(ctx))),
         )
         return
       }
 
       const { uri: template, handler } = definition
       server.registerResource(
-        name,
+        resolved.name,
         template,
         config,
         async (url: URL, variables: Variables, ctx: ServerContext) =>

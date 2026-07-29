@@ -93,7 +93,7 @@ async function load() {
       rpc('prompts/list'),
     ])
 
-    el.server.textContent = server ? `${server.name}@${server.version}` : ''
+    renderServer(server)
 
     state.entries = [
       ...tools.tools.map((tool) => ({
@@ -160,6 +160,25 @@ const LABELS = {
   resource: 'Resources',
   template: 'Templates',
   prompt: 'Prompts',
+}
+
+/** Whatever the server advertises about itself: its icon, its name, its site. */
+function renderServer(server) {
+  el.server.innerHTML = ''
+  if (!server) return
+
+  const icon = server.icons?.[0]
+  if (icon) {
+    el.server.append(Object.assign(document.createElement('img'), { src: icon.src, alt: '' }))
+  }
+
+  const label = `${server.name}@${server.version}`
+
+  el.server.append(
+    server.websiteUrl
+      ? Object.assign(document.createElement('a'), { href: server.websiteUrl, textContent: label })
+      : document.createTextNode(label),
+  )
 }
 
 function renderNav() {

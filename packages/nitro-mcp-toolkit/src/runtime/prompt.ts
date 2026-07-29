@@ -1,5 +1,6 @@
 import { buildContext } from './context.ts'
 import { noArguments } from './schema.ts'
+import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   GetPromptResult,
   Icon,
@@ -19,9 +20,14 @@ type Awaitable<T> = T | Promise<T>
 export type McpPromptReturn = GetPromptResult | string
 
 interface McpPromptMetadata {
-  name: string
+  /** Derived from the filename when discovered. */
+  name?: string
   title?: string
   description?: string
+  /** Inferred from the subdirectory when discovered, e.g. `prompts/review/*`. */
+  group?: string
+  /** Free-form labels, advertised in `_meta` for clients to filter on. */
+  tags?: string[]
   icons?: Icon[]
 }
 
@@ -64,19 +70,28 @@ export function defineMcpPrompt<Input extends Schema>(
 export function defineMcpPrompt(
   definition: McpPromptDefinition<Schema> | McpPromptDefinitionWithoutInput,
 ): McpPrompt {
-  const { name, title, description, icons } = definition
-  const config = { title, description, icons }
+  const { name, title, description, group, tags, icons } = definition
 
   return {
     kind: 'prompt',
     name,
     title,
     description,
-    register(server) {
+    group,
+    tags,
+    register(server, identity) {
+      const resolved = resolveIdentity('prompt', definition, identity)
+      const config = {
+        title: resolved.title,
+        description,
+        icons,
+        _meta: resolveMeta(resolved.group, tags),
+      }
+
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition
         server.registerPrompt(
-          name,
+          resolved.name,
           { ...config, argsSchema: inputSchema },
           async (args, ctx: ServerContext) =>
             toPromptResult(await handler(args, buildContext(ctx))),
@@ -86,7 +101,7 @@ export function defineMcpPrompt(
 
       const { handler } = definition
       server.registerPrompt(
-        name,
+        resolved.name,
         { ...config, argsSchema: noArguments },
         async (_args, ctx: ServerContext) => toPromptResult(await handler(buildContext(ctx))),
       )

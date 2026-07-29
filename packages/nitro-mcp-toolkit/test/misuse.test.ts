@@ -26,4 +26,14 @@ describe('registering a definition outside the toolkit handler', () => {
     await client.close()
     await server.close()
   })
+
+  // A name is optional because discovery derives one; registering a definition
+  // that never got either way round has to say so.
+  it('refuses a definition that no one ever named', () => {
+    const server = new McpServer({ name: 'hand-rolled', version: '0.0.0' })
+
+    expect(() => defineMcpTool({ handler: () => 'pong' }).register(server)).toThrow(
+      /This tool has no name/,
+    )
+  })
 })
