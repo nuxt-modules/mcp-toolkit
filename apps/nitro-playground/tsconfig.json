@@ -1,0 +1,13 @@
+{
+  "extends": "nitro/tsconfig",
+  "compilerOptions": {
+    "types": ["node"],
+    // Mirrors the runtime alias in `nitro.config.ts`, so editing the toolkit
+    // updates types here without a rebuild.
+    "paths": {
+      "nitro-mcp-toolkit": ["../../packages/nitro-mcp-toolkit/src/runtime/index.ts"],
+      "nitro-mcp-toolkit/testing": ["../../packages/nitro-mcp-toolkit/src/testing/index.ts"]
+    }
+  },
+  "include": ["nitro.config.ts", "server/**/*.ts", "scripts/**/*.ts"]
+}

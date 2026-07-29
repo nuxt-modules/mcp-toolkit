@@ -17,7 +17,8 @@ nuxt-mcp-toolkit/
 ├── apps/
 │   ├── docs/                 # Documentation site (mcp-toolkit.nuxt.dev)
 │   ├── playground/           # Development playground for testing
-│   └── mcp-starter/        # Minimal MCP template (`pnpm dev:starter`)
+│   ├── mcp-starter/        # Minimal MCP template (`pnpm dev:starter`)
+│   └── nitro-playground/   # Bare Nitro v3 app for nitro-mcp-toolkit (`pnpm dev:nitro`)
 ```
 
 ## Development Environment Setup
@@ -53,10 +54,13 @@ Run from the repository root:
 | Command | Description |
 |---------|-------------|
 | `pnpm dev` | Start the playground app |
+| `pnpm dev:nitro` | Start the bare Nitro playground on port 3030 |
+| `pnpm probe:nitro` | Drive the Nitro playground with a real MCP client |
 | `pnpm dev:starter` | Start the minimal MCP starter app |
 | `pnpm dev:docs` | Start the documentation site |
 | `pnpm build` | Build all packages |
 | `pnpm build:module` | Build only the module |
+| `pnpm build:nitro` | Build only the Nitro toolkit |
 | `pnpm build:docs` | Build only the docs |
 | `pnpm test` | Run all tests |
 | `pnpm lint` | Run ESLint |

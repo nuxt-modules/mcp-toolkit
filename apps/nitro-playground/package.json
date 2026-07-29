@@ -1,0 +1,34 @@
+{
+  "name": "nitro-mcp-toolkit-playground",
+  "private": true,
+  "description": "Bare Nitro v3 app used to develop and probe nitro-mcp-toolkit by hand",
+  "license": "MIT",
+  "author": "Hugo Richard <hugo.richard@vercel.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nuxt-modules/mcp-toolkit.git",
+    "directory": "apps/nitro-playground"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "nitro build",
+    "dev": "nitro dev --port 3030",
+    "dev:prepare": "nitro prepare",
+    "lint": "oxlint . && oxfmt --check .",
+    "lint:fix": "oxlint . --fix && oxfmt .",
+    "probe": "node scripts/probe.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "h3": "2.0.1-rc.22",
+    "nitro-mcp-toolkit": "workspace:*",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "nitro": "3.0.260610-beta",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.3"
+  }
+}
