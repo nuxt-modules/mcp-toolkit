@@ -1,8 +1,8 @@
 import { HTTPError } from 'h3'
 import { describe, expect, it } from 'vitest'
-import { audioResult, createMcpHandler, defineMcpTool, imageResult } from '../src/runtime'
-import { createMcpTestClient } from '../src/testing'
-import type { McpToolReturn } from '../src/runtime'
+import { audioResult, createMcpHandler, defineMcpTool, imageResult } from '../src/runtime/index.ts'
+import { createMcpTestClient } from '../src/testing/index.ts'
+import type { McpToolReturn } from '../src/runtime/index.ts'
 
 async function callReturning(value: McpToolReturn<undefined>) {
   const handler = createMcpHandler({

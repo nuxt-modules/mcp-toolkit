@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createMcpHandler, defineMcpTool } from '../src/runtime'
-import { createMcpTestClient } from '../src/testing'
+import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
+import { createMcpTestClient } from '../src/testing/index.ts'
 
 // One definition set must serve both protocol revisions, so the two eras can
 // never drift apart.

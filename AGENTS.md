@@ -108,6 +108,12 @@ apps/docs/server/mcp/
 
 A full-featured example app demonstrating module usage with authentication, todos, and various MCP definitions.
 
+### Nitro Playground (`apps/nitro-playground/`)
+
+A bare Nitro v3 app used to exercise `nitro-mcp-toolkit` (`pnpm dev:nitro`, then `pnpm probe:nitro`). It depends on the toolkit as a plain `workspace:*` dependency and imports it by its public specifier, with **no alias**, so it validates the same resolution a user gets — a broken `exports` map fails here. Source-level reloading comes from two pieces instead: `dev:prepare` runs `obuild --stub`, which points the toolkit's `dist` at its source, and the app's `devServer.watch` reloads when that source changes. Because `dev:prepare` leaves stubs in `dist`, run `pnpm build:nitro` for a real artifact before publishing or measuring bundle size.
+
+Relative imports inside `packages/nitro-mcp-toolkit/src` must carry their `.ts` extension — that is what makes the source loadable by Node, and therefore what makes the stub work.
+
 ### MCP Starter (`apps/mcp-starter/`)
 
 A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtjs/mcp-toolkit/server` imports). Readers scaffold **only** this folder via giget/tiged (see [apps/mcp-starter/README.md](apps/mcp-starter/README.md)). Short blog paste: [PROMPT.md](apps/mcp-starter/PROMPT.md). In the monorepo, run **`pnpm build:module`** before `pnpm dev:starter` so `server` exports exist.

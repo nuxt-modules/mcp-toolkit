@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createMcpHandler, defineMcpPrompt } from '../src/runtime'
-import { createMcpTestClient } from '../src/testing'
+import { createMcpHandler, defineMcpPrompt } from '../src/runtime/index.ts'
+import { createMcpTestClient } from '../src/testing/index.ts'
 
 describe('defineMcpPrompt', () => {
   it('expands an argument-less prompt from a returned string', async () => {

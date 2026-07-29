@@ -1,13 +1,13 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
-import { runWithRequest, setEra } from './context'
+import { runWithRequest, setEra } from './context.ts'
 import type {
   McpHandlerRequestOptions,
   PerRequestResponseMode,
   ServerEventBus,
   ServerNotifier,
 } from '@modelcontextprotocol/server'
-import type { McpPrompt, McpResource, McpTool } from './definition'
+import type { McpPrompt, McpResource, McpTool } from './definition.ts'
 
 export interface McpHandlerOptions {
   /** Advertised to clients during initialization. */

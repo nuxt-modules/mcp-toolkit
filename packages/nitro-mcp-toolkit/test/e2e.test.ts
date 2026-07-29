@@ -2,7 +2,7 @@ import { rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { build, createNitro } from 'nitro/builder'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createMcpTestClient } from '../src/testing'
+import { createMcpTestClient } from '../src/testing/index.ts'
 import type { Nitro } from 'nitro/types'
 import type { Client } from '@modelcontextprotocol/client'
 

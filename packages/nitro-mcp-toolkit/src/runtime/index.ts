@@ -1,25 +1,25 @@
-export { createMcpHandler } from './handler'
-export { defineMcpPrompt } from './prompt'
-export { MODERN_PROTOCOL_VERSION } from './protocol'
-export { defineMcpResource } from './resource'
-export { audioResult, imageResult } from './results'
-export { defineMcpTool } from './tool'
+export { createMcpHandler } from './handler.ts'
+export { defineMcpPrompt } from './prompt.ts'
+export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
+export { defineMcpResource } from './resource.ts'
+export { audioResult, imageResult } from './results.ts'
+export { defineMcpTool } from './tool.ts'
 
-export type { McpContext } from './context'
-export type { McpHandler, McpHandlerOptions } from './handler'
+export type { McpContext } from './context.ts'
+export type { McpHandler, McpHandlerOptions } from './handler.ts'
 export type {
   McpPromptDefinition,
   McpPromptDefinitionWithoutInput,
   McpPromptReturn,
-} from './prompt'
+} from './prompt.ts'
 export type {
   McpResourceDefinition,
   McpResourceReturn,
   McpResourceTemplateDefinition,
-} from './resource'
-export type { McpDefinition, McpPrompt, McpResource, McpTool } from './definition'
-export type { McpToolValue } from './results'
-export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool'
+} from './resource.ts'
+export type { McpDefinition, McpPrompt, McpResource, McpTool } from './definition.ts'
+export type { McpToolValue } from './results.ts'
+export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 
 // Re-exported so a definition file only ever imports from this entry: the
 // multi-round-trip builders, the resource-template class, and the result types

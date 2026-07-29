@@ -1,4 +1,4 @@
-import { buildContext } from './context'
+import { buildContext } from './context.ts'
 import type {
   CacheHint,
   Icon,
@@ -8,8 +8,8 @@ import type {
   ServerContext,
   Variables,
 } from '@modelcontextprotocol/server'
-import type { McpContext } from './context'
-import type { McpResource } from './definition'
+import type { McpContext } from './context.ts'
+import type { McpResource } from './definition.ts'
 
 type Awaitable<T> = T | Promise<T>
 

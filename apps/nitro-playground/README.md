@@ -7,9 +7,10 @@ pnpm dev:nitro     # http://localhost:3030
 pnpm probe:nitro   # list every definition, on both protocol eras
 ```
 
-The toolkit is aliased to its source in both `nitro.config.ts` and
-`tsconfig.json`, so editing `packages/nitro-mcp-toolkit/src` reloads here with no
-rebuild.
+The toolkit is a plain `workspace:*` dependency, imported by its public
+specifier — no alias, so this app exercises the same resolution a user gets.
+`pnpm dev:prepare` runs `obuild --stub`, which points the package's `dist` at its
+source, and `devServer.watch` reloads the app when that source changes.
 
 ## Probing
 
@@ -25,11 +26,6 @@ pnpm probe:nitro --prompt summarize '{"text":"..."}'       # render a prompt
 ```
 
 Point it elsewhere with `MCP_URL`.
-
-Unlike the server, the probe resolves the toolkit through its public export map
-rather than the source alias, so it exercises the surface users actually install.
-That means it reads `packages/nitro-mcp-toolkit/dist`, which `pnpm dev:nitro`
-rebuilds on start.
 
 ## Layout
 

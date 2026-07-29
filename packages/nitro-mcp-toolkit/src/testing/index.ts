@@ -1,8 +1,8 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
-import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol'
+import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol.ts'
 import type { ClientCapabilities } from '@modelcontextprotocol/client'
 import type { AuthInfo } from '@modelcontextprotocol/server'
-import type { McpHandler } from '../runtime/handler'
+import type { McpHandler } from '../runtime/handler.ts'
 
 /**
  * Anything fetch-shaped: the handler from `createMcpHandler`, a bare SDK

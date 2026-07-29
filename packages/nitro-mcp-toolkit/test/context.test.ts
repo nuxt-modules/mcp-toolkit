@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createMcpHandler, defineMcpTool } from '../src/runtime'
-import { createMcpTestClient } from '../src/testing'
-import type { McpContext } from '../src/runtime'
+import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
+import { createMcpTestClient } from '../src/testing/index.ts'
+import type { McpContext } from '../src/runtime/index.ts'
 
 /**
  * Captures the context a handler was entered with, so the wiring around it can

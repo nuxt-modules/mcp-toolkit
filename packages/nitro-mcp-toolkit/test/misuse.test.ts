@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/client'
 import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server'
 import { describe, expect, it } from 'vitest'
-import { defineMcpTool } from '../src/runtime'
+import { defineMcpTool } from '../src/runtime/index.ts'
 
 // Definitions read the serving event from the scope `createMcpHandler` opens, so
 // registering them on a hand-rolled server must fail with a message that says so

@@ -1,8 +1,8 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
-import { defineMcpTool } from '../src/runtime'
+import { defineMcpTool } from '../src/runtime/index.ts'
 import type { CallToolResult } from '@modelcontextprotocol/server'
-import type { McpContext, McpToolReturn } from '../src/runtime'
+import type { McpContext, McpToolReturn } from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 

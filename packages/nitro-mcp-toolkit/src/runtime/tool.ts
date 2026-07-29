@@ -1,6 +1,6 @@
 import { isInputRequiredResult } from '@modelcontextprotocol/server'
-import { buildContext } from './context'
-import { toCallToolResult, toErrorResult } from './results'
+import { buildContext } from './context.ts'
+import { toCallToolResult, toErrorResult } from './results.ts'
 import type {
   CallToolResult,
   Icon,
@@ -9,9 +9,9 @@ import type {
   StandardSchemaWithJSON,
   ToolAnnotations,
 } from '@modelcontextprotocol/server'
-import type { McpContext } from './context'
-import type { McpTool } from './definition'
-import type { McpToolValue } from './results'
+import type { McpContext } from './context.ts'
+import type { McpTool } from './definition.ts'
+import type { McpToolValue } from './results.ts'
 
 type Schema = StandardSchemaWithJSON
 type Awaitable<T> = T | Promise<T>

@@ -1,13 +1,13 @@
-import { buildContext } from './context'
-import { noArguments } from './schema'
+import { buildContext } from './context.ts'
+import { noArguments } from './schema.ts'
 import type {
   GetPromptResult,
   Icon,
   ServerContext,
   StandardSchemaWithJSON,
 } from '@modelcontextprotocol/server'
-import type { McpContext } from './context'
-import type { McpPrompt } from './definition'
+import type { McpContext } from './context.ts'
+import type { McpPrompt } from './definition.ts'
 
 type Schema = StandardSchemaWithJSON
 type Awaitable<T> = T | Promise<T>

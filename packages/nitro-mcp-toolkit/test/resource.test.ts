@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createMcpHandler, defineMcpResource, ResourceTemplate } from '../src/runtime'
-import { createMcpTestClient } from '../src/testing'
+import { createMcpHandler, defineMcpResource, ResourceTemplate } from '../src/runtime/index.ts'
+import { createMcpTestClient } from '../src/testing/index.ts'
 
 describe('defineMcpResource', () => {
   it('reads a static resource, coercing a returned string into contents', async () => {

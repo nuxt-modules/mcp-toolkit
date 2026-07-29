@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createMcpHandler, defineMcpTool } from '../src/runtime'
-import { createMcpTestClient } from '../src/testing'
+import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
+import { createMcpTestClient } from '../src/testing/index.ts'
 import type { CallToolResult } from '@modelcontextprotocol/server'
 
 function serve(...tools: ReturnType<typeof defineMcpTool>[]) {
