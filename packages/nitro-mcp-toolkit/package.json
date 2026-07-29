@@ -14,15 +14,17 @@
   ],
   "type": "module",
   "sideEffects": false,
+  "types": "./dist/runtime/index.d.mts",
   "exports": {
-    "./server": {
+    ".": {
       "types": "./dist/runtime/index.d.mts",
       "import": "./dist/runtime/index.mjs"
     },
     "./testing": {
       "types": "./dist/testing/index.d.mts",
       "import": "./dist/testing/index.mjs"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"

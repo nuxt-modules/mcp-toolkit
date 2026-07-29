@@ -3,7 +3,7 @@ import {
   defineMcpPrompt,
   defineMcpResource,
   defineMcpTool,
-} from 'nitro-mcp-toolkit/server'
+} from 'nitro-mcp-toolkit'
 import { z } from 'zod'
 
 const greet = defineMcpTool({

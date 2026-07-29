@@ -8,8 +8,6 @@ export default defineConfig({
   // Lets the fixture import the public specifier while resolving to source, so
   // the e2e run never depends on a previous build.
   alias: {
-    'nitro-mcp-toolkit/server': fileURLToPath(
-      new URL('../../../src/runtime/index.ts', import.meta.url),
-    ),
+    'nitro-mcp-toolkit': fileURLToPath(new URL('../../../src/runtime/index.ts', import.meta.url)),
   },
 })
