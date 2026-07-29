@@ -1,5 +1,11 @@
 import { existsSync } from 'node:fs'
 import { watch } from 'node:fs/promises'
+// `fs.watch` is the one caller that must be handed the platform's own
+// separators: on Windows libuv compares the paths it reports against the one it
+// was given and aborts the process when they differ, so a `/` here would take
+// the whole dev server down. Everything else stays on `pathe`, since the paths
+// we compare against come from a glob.
+import { normalize as nativePath } from 'node:path'
 import { dirname, extname, join, resolve, sep } from 'pathe'
 import { DEFINITION_DIRS, discoverDefinitions } from './discover.ts'
 import type { Nitro } from 'nitro/types'
@@ -87,7 +93,7 @@ export function watchDefinitions(nitro: Nitro, dir: string): void {
         const inside = root === dir
         // Watching an ancestor recursively would register a watch for every
         // directory under it, node_modules included, to learn one name.
-        const events = watch(root, { recursive: inside, signal: controller.signal })
+        const events = watch(nativePath(root), { recursive: inside, signal: controller.signal })
 
         if (inside) await reloadIfChanged()
 

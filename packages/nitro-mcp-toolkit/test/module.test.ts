@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createNitro } from 'nitro/builder'
@@ -6,6 +6,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import mcp from '../src/module/index.ts'
 import { fixtureDir, modules } from './helpers/discovery-fixture.ts'
 import type { Nitro } from 'nitro/types'
+
+/**
+ * A throwaway app directory, at its real path: on Windows `mkdtemp` can answer
+ * with an 8.3 short name, which is not the name the filesystem reports back in
+ * watch events.
+ */
+async function tempApp(prefix: string): Promise<string> {
+  return realpath(await mkdtemp(join(tmpdir(), prefix)))
+}
 
 /** Absolute paths are machine-specific; the shape of the module is not. */
 function readable(code: string): string {
@@ -211,7 +220,7 @@ describe('the report of what each endpoint serves', () => {
   })
 
   it('warns about a directory named nearly like a scanned one', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nitro-mcp-typo-'))
+    const root = await tempApp('nitro-mcp-typo-')
     await mkdir(join(root, 'server/mcp/tool'), { recursive: true })
     await mkdir(join(root, 'server/mcp/lib'), { recursive: true })
 
@@ -244,7 +253,7 @@ describe('watching for definitions in development', () => {
   let reloads: number
 
   beforeAll(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nitro-mcp-watch-'))
+    root = await tempApp('nitro-mcp-watch-')
     await mkdir(join(root, 'server/mcp/tools'), { recursive: true })
 
     nitro = await createNitro({ rootDir: root, dev: true, preset: 'nitro-dev', modules: [mcp()] })
@@ -278,7 +287,7 @@ describe('watching for definitions in development', () => {
 
   // A moved directory reports only itself: no event ever names the files in it.
   it('rebuilds when a directory arrives with definitions already inside', async () => {
-    const staged = await mkdtemp(join(tmpdir(), 'nitro-mcp-staged-'))
+    const staged = await tempApp('nitro-mcp-staged-')
     await writeFile(join(staged, 'bulk.ts'), 'export default {}\n')
 
     const before = reloads
@@ -288,7 +297,7 @@ describe('watching for definitions in development', () => {
   })
 
   it('sees a definitions directory that did not exist yet', async () => {
-    const late = await mkdtemp(join(tmpdir(), 'nitro-mcp-late-'))
+    const late = await tempApp('nitro-mcp-late-')
     const lateNitro = await createNitro({
       rootDir: late,
       dev: true,
