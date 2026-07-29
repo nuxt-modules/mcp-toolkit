@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest'
+import * as runtime from '../src/runtime/index.ts'
+import * as testing from '../src/testing/index.ts'
+
+// The published surface is the one thing that cannot change without warning, so
+// a diff here is the reminder to ship a changeset — or to put an export back.
+describe('public exports', () => {
+  it('exposes the runtime entry', () => {
+    expect(Object.keys(runtime).sort()).toMatchInlineSnapshot(`
+      [
+        "MODERN_PROTOCOL_VERSION",
+        "ResourceTemplate",
+        "acceptedContent",
+        "audioResult",
+        "completable",
+        "createMcpHandler",
+        "defineMcpPrompt",
+        "defineMcpResource",
+        "defineMcpTool",
+        "imageResult",
+        "inputRequired",
+        "inputResponse",
+      ]
+    `)
+  })
+
+  it('exposes the testing entry', () => {
+    expect(Object.keys(testing).sort()).toMatchInlineSnapshot(`
+      [
+        "createMcpTestClient",
+        "textOf",
+      ]
+    `)
+  })
+})

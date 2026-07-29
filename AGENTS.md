@@ -17,7 +17,8 @@ nuxt-mcp-toolkit/
 ├── apps/
 │   ├── docs/                 # Documentation site (mcp-toolkit.nuxt.dev)
 │   ├── playground/           # Development playground for testing
-│   └── mcp-starter/        # Minimal MCP template (`pnpm dev:starter`)
+│   ├── mcp-starter/        # Minimal MCP template (`pnpm dev:starter`)
+│   └── nitro-playground/   # Bare Nitro v3 app for nitro-mcp-toolkit (`pnpm dev:nitro`)
 ```
 
 ## Development Environment Setup
@@ -53,10 +54,13 @@ Run from the repository root:
 | Command | Description |
 |---------|-------------|
 | `pnpm dev` | Start the playground app |
+| `pnpm dev:nitro` | Start the Nitro playground and its inspector UI on port 3030 |
+| `pnpm probe:nitro` | Drive the Nitro playground with a real MCP client, from the CLI |
 | `pnpm dev:starter` | Start the minimal MCP starter app |
 | `pnpm dev:docs` | Start the documentation site |
 | `pnpm build` | Build all packages |
 | `pnpm build:module` | Build only the module |
+| `pnpm build:nitro` | Build only the Nitro toolkit |
 | `pnpm build:docs` | Build only the docs |
 | `pnpm test` | Run all tests |
 | `pnpm lint` | Run ESLint |
@@ -103,6 +107,31 @@ apps/docs/server/mcp/
 ### Playground (`apps/playground/`)
 
 A full-featured example app demonstrating module usage with authentication, todos, and various MCP definitions.
+
+### Nitro Playground (`apps/nitro-playground/`)
+
+A bare Nitro v3 app used to exercise `nitro-mcp-toolkit`. `pnpm dev:nitro` serves an **inspector** on port 3030 that lists every definition, generates a form from its advertised schema, renders the result, and exposes the raw JSON-RPC — use it in preference to `pnpm probe:nitro`, which is the same thing as a CLI. The inspector (`apps/nitro-playground/public/inspector.js`) speaks MCP directly over `fetch` rather than through the SDK, so it stays dependency-free and fails whenever the HTTP surface regresses; it is the seed of the Wave 6 dev inspector. It depends on the toolkit as a plain `workspace:*` dependency and imports it by its public specifier, with **no alias**, so it validates the same resolution a user gets — a broken `exports` map fails here. Source-level reloading comes from two pieces instead: `dev:prepare` runs `obuild --stub`, which points the toolkit's `dist` at its source, and the app's `devServer.watch` reloads when that source changes. Because `dev:prepare` leaves stubs in `dist`, run `pnpm build:nitro` for a real artifact before publishing or measuring bundle size.
+
+Relative imports inside `packages/nitro-mcp-toolkit/src` must carry their `.ts` extension — that is what makes the source loadable by Node, and therefore what makes the stub work.
+
+## Releasing
+
+The two published packages release on separate tracks, because changesets' prerelease mode is repo-wide and `@nuxtjs/mcp-toolkit` still ships stable.
+
+| Package | Track | How |
+|---------|-------|-----|
+| `@nuxtjs/mcp-toolkit` | Stable, `latest` tag | Changesets. Add a changeset, merge, the `release` workflow opens a version PR |
+| `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually. Bumps the prerelease, publishes, commits the bump |
+
+`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
+
+Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`, moved by `release:latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
+
+`release:alpha` bumps *before* it publishes, so the version in the manifest always equals the last published one.
+
+Publish from CI, not from a laptop: the workflow points at `registry.npmjs.org` through `setup-node` and authenticates with `NPM_TOKEN`, whereas a local `npm config` may resolve to a corporate proxy that refuses the write. Keep `.npmrc` out of the repo for the same reason.
+
+The bump uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version — which would bump without publishing.
 
 ### MCP Starter (`apps/mcp-starter/`)
 

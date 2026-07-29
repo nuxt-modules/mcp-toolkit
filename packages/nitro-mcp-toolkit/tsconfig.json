@@ -12,8 +12,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    // Relative imports carry their `.ts` extension so the source is loadable by
+    // Node directly, which is what lets `obuild --stub` stand in for a build.
+    "allowImportingTsExtensions": true,
+    // The e2e fixture imports the public specifier; resolving it to source keeps
+    // `typecheck` independent of whether `dist` has been built.
     "paths": {
-      "nitro-mcp-toolkit": ["./src/index.ts"]
+      "nitro-mcp-toolkit": ["./src/runtime/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],

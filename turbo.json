@@ -31,9 +31,17 @@
     "lint:fix": {
       "cache": false
     },
+    "lint:package": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
     "test": {
       "dependsOn": ["build"],
       "outputs": []
+    },
+    "test:coverage": {
+      "dependsOn": ["build"],
+      "outputs": ["coverage/**"]
     },
     "typecheck": {
       "dependsOn": ["transit"]

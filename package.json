@@ -11,6 +11,8 @@
   "packageManager": "pnpm@11.17.0",
   "scripts": {
     "dev": "turbo run dev --filter=@nuxtjs/mcp-toolkit-playground",
+    "dev:nitro": "turbo run dev --filter=nitro-mcp-toolkit-playground",
+    "probe:nitro": "pnpm --filter nitro-mcp-toolkit-playground --silent probe",
     "dev:starter": "turbo run dev --filter=@nuxtjs/mcp-toolkit-starter",
     "dev:prepare": "turbo run dev:prepare",
     "dev:docs": "turbo run dev --filter=@nuxtjs/mcp-toolkit-docs",
@@ -21,7 +23,9 @@
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "lint:docs": "turbo run lint --filter=@nuxtjs/mcp-toolkit-docs",
+    "lint:package": "turbo run lint:package --filter=nitro-mcp-toolkit",
     "test": "turbo run test --filter=@nuxtjs/mcp-toolkit --filter=nitro-mcp-toolkit",
+    "test:coverage": "turbo run test:coverage --filter=nitro-mcp-toolkit",
     "typecheck": "turbo run typecheck",
     "typecheck:docs": "turbo run typecheck --filter=@nuxtjs/mcp-toolkit-docs",
     "eval": "turbo run eval --filter=@nuxtjs/mcp-toolkit-docs",
@@ -30,7 +34,8 @@
     "automd": "npx automd --config .github/automd.json",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "turbo run build --filter=@nuxtjs/mcp-toolkit && changeset publish"
+    "release": "turbo run build --filter=@nuxtjs/mcp-toolkit && changeset publish",
+    "release:alpha": "pnpm --filter nitro-mcp-toolkit release:alpha"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.7.0",

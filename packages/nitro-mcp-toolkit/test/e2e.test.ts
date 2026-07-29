@@ -2,7 +2,9 @@ import { rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { build, createNitro } from 'nitro/builder'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createMcpTestClient } from '../src/testing/index.ts'
 import type { Nitro } from 'nitro/types'
+import type { Client } from '@modelcontextprotocol/client'
 
 const fixtureDir = fileURLToPath(new URL('./fixtures/basic', import.meta.url))
 
@@ -10,35 +12,45 @@ interface StandardServerEntry {
   fetch: (request: Request) => Response | Promise<Response>
 }
 
-describe('nitroMcpToolkit (e2e)', () => {
+// Proves the core survives a real Nitro build: bundling, the `standard` preset's
+// fetch entry, and file-based routing. Everything else is covered by the unit
+// tests, which import from `src` and run in milliseconds.
+describe('inside a built Nitro app', () => {
   let nitro: Nitro
-  let server: StandardServerEntry
+  let client: Client
 
-  // Built once per describe block and reused across tests below, since a
-  // full Nitro build is expensive relative to the assertions it enables.
   beforeAll(async () => {
-    // `standard` preset exports a bare `{ fetch }` with no listening socket
+    // The `standard` preset exports a bare `{ fetch }` and listens on no socket.
     nitro = await createNitro({ rootDir: fixtureDir, dev: false, preset: 'standard' })
     await build(nitro)
 
-    const entry = `${nitro.options.output.serverDir}/index.mjs`
-    ;({ default: server } = (await import(/* @vite-ignore */ entry)) as {
-      default: StandardServerEntry
+    const { default: server } = (await import(
+      /* @vite-ignore */ `${nitro.options.output.serverDir}/index.mjs`
+    )) as { default: StandardServerEntry }
+
+    client = await createMcpTestClient({
+      fetch: (request) => Promise.resolve(server.fetch(request)),
     })
   })
 
   afterAll(async () => {
+    await client.close()
     await nitro.close()
     await rm(new URL('./fixtures/basic/.output', import.meta.url), { recursive: true, force: true })
   })
 
-  it('boots a Nitro app with the module registered and serves its route', async () => {
-    const response = await server.fetch(new Request('http://localhost/mcp'))
+  it('serves the tool the route registered, with the Nitro event in scope', async () => {
+    const result = await client.callTool({ name: 'greet', arguments: { name: 'Ada' } })
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      toolkit: 'nitro-mcp-toolkit',
-      status: 'ok',
+    expect(result.content).toEqual([{ type: 'text', text: 'Hello Ada from /mcp' }])
+  })
+
+  it('serves the route resource and prompt', async () => {
+    await expect(client.readResource({ uri: 'docs://readme' })).resolves.toMatchObject({
+      contents: [{ uri: 'docs://readme', text: 'Fixture readme' }],
+    })
+    await expect(client.getPrompt({ name: 'review' })).resolves.toMatchObject({
+      messages: [{ role: 'user', content: { type: 'text', text: 'Review this fixture.' } }],
     })
   })
 })
