@@ -123,7 +123,11 @@ The two published packages release on separate tracks, because changesets' prere
 | `@nuxtjs/mcp-toolkit` | Stable, `latest` tag | Changesets. Add a changeset, merge, the `release` workflow opens a version PR |
 | `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually. Bumps the prerelease, publishes, commits the bump |
 
-`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix. Its `publishConfig.tag` keeps alpha builds off the `latest` tag, and `prepack` runs `obuild` so a stale `dist` can never be published (remember `dev:prepare` leaves stubs there).
+`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
+
+Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`, moved by `release:latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
+
+`release:alpha` bumps *before* it publishes, which keeps the version in git equal to the last published one. The first alpha was therefore published from the version already in the manifest, without a bump.
 
 The bump uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version — which would bump without publishing.
 
