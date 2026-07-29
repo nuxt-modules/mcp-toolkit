@@ -1,38 +1,31 @@
-import { rm } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
-import { build, createNitro } from 'nitro/builder'
+import { createNitro } from 'nitro/builder'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Nitro } from 'nitro/types'
+import { nitroMcpToolkit } from '../src/module'
 
-const fixtureDir = fileURLToPath(new URL('./fixtures/basic', import.meta.url))
-
-interface StandardServerEntry {
-  fetch: (request: Request) => Response | Promise<Response>
-}
-
+// `createNitro` alone (without `build`) already runs module `setup()` and
+// stays cheap, so wiring can be asserted without a full bundle per test.
 describe('nitroMcpToolkit', () => {
   let nitro: Nitro | undefined
 
   afterEach(async () => {
     await nitro?.close()
     nitro = undefined
-    await rm(new URL('./fixtures/basic/.output', import.meta.url), { recursive: true, force: true })
   })
 
-  it('boots a Nitro app with the module registered and serves its route', async () => {
-    // `standard` preset exports a bare `{ fetch }` with no listening socket
-    nitro = await createNitro({ rootDir: fixtureDir, dev: false, preset: 'standard' })
-    await build(nitro)
+  it('registers a handler on the default route', async () => {
+    nitro = await createNitro({ rootDir: process.cwd(), dev: false, modules: [nitroMcpToolkit()] })
 
-    const entry = `${nitro.options.output.serverDir}/index.mjs`
-    const { default: server } = await import(/* @vite-ignore */ entry) as { default: StandardServerEntry }
+    expect(nitro.options.handlers).toContainEqual(expect.objectContaining({ route: '/mcp' }))
+  })
 
-    const response = await server.fetch(new Request('http://localhost/mcp'))
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      toolkit: 'nitro-mcp-toolkit',
-      status: 'ok',
+  it('registers a handler on a custom route', async () => {
+    nitro = await createNitro({
+      rootDir: process.cwd(),
+      dev: false,
+      modules: [nitroMcpToolkit({ route: '/custom-mcp' })],
     })
+
+    expect(nitro.options.handlers).toContainEqual(expect.objectContaining({ route: '/custom-mcp' }))
   })
 })

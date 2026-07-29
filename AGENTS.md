@@ -207,6 +207,12 @@ pnpm test:watch
 - `handler.test.ts` - HTTP handler tests
 - `fixtures/` - Mini Nuxt apps used as test fixtures
 
+### Performance in Tests
+
+- Keep `lint`, `typecheck`, and `test` as separate package scripts (don't merge them into one command) so Turborepo can cache and run each independently.
+- If a test needs an expensive fixture (building a full app, booting a server), set it up once in `beforeAll`/`afterAll` and share it across the `it()` blocks in that `describe`, rather than rebuilding per test in `beforeEach`/`afterEach`.
+- Prefer a fast unit test that imports the function under test directly from `src` over an end-to-end test that goes through a full build, when the two would cover the same logic — it's faster, has accurate coverage (a full build/bundle round-trip breaks source-to-coverage mapping), and doesn't need type-unsafe mocking. Reserve full build/e2e tests for verifying wiring that unit tests can't reach.
+
 ### Writing Tests
 
 ```typescript
