@@ -43,7 +43,7 @@
     "@nuxt/eslint-config": "^1.16.0",
     "eslint": "^10.8.0",
     "turbo": "^2.10.7",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   },
   "workspaces": [
     "apps/*",
