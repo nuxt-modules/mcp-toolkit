@@ -3,6 +3,8 @@
   "extends": [
     "github>nuxt/renovate-config-nuxt"
   ],
+  "schedule": ["before 3am on Monday"],
+  "timezone": "UTC",
   "packageRules": [{
     "matchDepTypes": ["resolutions"],
     "enabled": false
