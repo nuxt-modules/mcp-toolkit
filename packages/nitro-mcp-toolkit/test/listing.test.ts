@@ -4,7 +4,6 @@ import {
   defineMcpPrompt,
   defineMcpResource,
   defineMcpTool,
-  ResourceTemplate,
 } from '../src/runtime/index.ts'
 
 const handler = createMcpHandler({
@@ -24,11 +23,7 @@ const handler = createMcpHandler({
   ],
   resources: [
     defineMcpResource({ name: 'readme', uri: 'docs://readme', handler: () => 'Readme' }),
-    defineMcpResource({
-      name: 'page',
-      uri: new ResourceTemplate('docs://{slug}', { list: undefined }),
-      handler: () => 'Page',
-    }),
+    defineMcpResource({ name: 'page', uriTemplate: 'docs://{slug}', handler: () => 'Page' }),
   ],
   prompts: [defineMcpPrompt({ name: 'review', tags: ['slow'], handler: () => 'ok' })],
 })

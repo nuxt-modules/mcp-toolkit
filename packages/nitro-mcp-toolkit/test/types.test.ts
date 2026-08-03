@@ -1,10 +1,14 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import { defineMcpTool } from '../src/runtime/index.ts'
-import type { CallToolResult } from '@modelcontextprotocol/server'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
-import type { McpContext, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
+import type {
+  McpCallToolResult,
+  McpContext,
+  McpHandler,
+  McpToolReturn,
+} from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 
@@ -34,7 +38,7 @@ describe('tool typing', () => {
 
   it('narrows the return type to the output schema', () => {
     expectTypeOf<{ bmi: number }>().toExtend<McpToolReturn<typeof output>>()
-    expectTypeOf<CallToolResult>().toExtend<McpToolReturn<typeof output>>()
+    expectTypeOf<McpCallToolResult>().toExtend<McpToolReturn<typeof output>>()
 
     // The whole point of declaring `outputSchema`: a mismatched shape, and the
     // loose values allowed without a schema, stop being valid returns.

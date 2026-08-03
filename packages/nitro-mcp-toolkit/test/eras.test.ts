@@ -36,7 +36,7 @@ describe('protocol eras', () => {
 
   it('refuses a legacy client when the endpoint is modern-only', async () => {
     const handler = createMcpHandler({
-      legacy: 'reject',
+      era: 'modern',
       tools: [defineMcpTool({ name: 'ping', handler: () => 'pong' })],
     })
 

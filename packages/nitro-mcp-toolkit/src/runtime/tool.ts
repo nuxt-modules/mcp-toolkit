@@ -1,20 +1,19 @@
-import { isInputRequiredResult } from '@modelcontextprotocol/server'
 import { buildContext } from './context.ts'
-import { toCallToolResult, toErrorResult } from './results.ts'
-import { resolveIdentity, resolveMeta } from './validate.ts'
+import { isInputRequired, toCallToolResult, toErrorResult } from './results.ts'
+import { resolveMeta } from './validate.ts'
+import type { H3Event } from 'h3'
 import type {
-  CallToolResult,
-  Icon,
-  InputRequiredResult,
-  ServerContext,
-  StandardSchemaWithJSON,
-  ToolAnnotations,
-} from '@modelcontextprotocol/server'
+  McpCallToolResult,
+  McpIcon,
+  McpInputRequiredResult,
+  McpToolAnnotations,
+  StandardTypedV1,
+} from 'h3-mcp'
 import type { McpContext } from './context.ts'
 import type { McpTool } from './definition.ts'
 import type { McpToolValue } from './results.ts'
 
-type Schema = StandardSchemaWithJSON
+type Schema = StandardTypedV1
 type Awaitable<T> = T | Promise<T>
 
 /**
@@ -22,9 +21,9 @@ type Awaitable<T> = T | Promise<T>
  * one is declared, any plain value otherwise, or a full protocol result.
  */
 export type McpToolReturn<Output extends Schema | undefined> =
-  | CallToolResult
-  | InputRequiredResult
-  | (Output extends Schema ? StandardSchemaWithJSON.InferInput<Output> : McpToolValue)
+  | McpCallToolResult
+  | McpInputRequiredResult
+  | (Output extends Schema ? StandardTypedV1.InferInput<Output> : McpToolValue)
 
 interface McpToolMetadata {
   /** Identifier the client calls. Derived from the filename when discovered. */
@@ -36,8 +35,8 @@ interface McpToolMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
-  annotations?: ToolAnnotations
-  icons?: Icon[]
+  annotations?: McpToolAnnotations
+  icons?: McpIcon[]
 }
 
 export interface McpToolDefinition<
@@ -49,7 +48,7 @@ export interface McpToolDefinition<
   /** Declaring one narrows the handler's return type and validates it. */
   outputSchema?: Output
   handler: (
-    args: StandardSchemaWithJSON.InferOutput<Input>,
+    args: StandardTypedV1.InferOutput<Input>,
     ctx: McpContext,
   ) => Awaitable<McpToolReturn<Output>>
 }
@@ -65,11 +64,11 @@ export interface McpToolDefinitionWithoutInput<
 async function settle(
   run: () => Awaitable<unknown>,
   hasOutputSchema: boolean,
-): Promise<CallToolResult | InputRequiredResult> {
+): Promise<McpCallToolResult | McpInputRequiredResult> {
   try {
     const result = await run()
     // A multi-round-trip result must reach the client untouched.
-    return isInputRequiredResult(result) ? result : toCallToolResult(result, hasOutputSchema)
+    return isInputRequired(result) ? result : toCallToolResult(result, hasOutputSchema)
   } catch (error) {
     return toErrorResult(error)
   }
@@ -110,29 +109,33 @@ export function defineMcpTool(
     description,
     group,
     tags,
-    register(server, identity) {
-      const resolved = resolveIdentity('tool', definition, identity)
-      const config = {
-        title: resolved.title,
+    build(identity, into) {
+      const advertised = {
+        name: identity.name,
+        title: identity.title,
         description,
         outputSchema,
         annotations,
         icons,
-        _meta: resolveMeta(resolved.group, tags),
+        _meta: resolveMeta(identity.group, tags),
       }
 
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition
-        server.registerTool(resolved.name, { ...config, inputSchema }, (args, ctx: ServerContext) =>
-          settle(() => handler(args, buildContext(ctx)), hasOutputSchema),
-        )
+        into.tools.push({
+          ...advertised,
+          inputSchema,
+          handler: (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
+            settle(() => handler(args, buildContext(event)), hasOutputSchema),
+        })
         return
       }
 
       const { handler } = definition
-      server.registerTool(resolved.name, config, (ctx: ServerContext) =>
-        settle(() => handler(buildContext(ctx)), hasOutputSchema),
-      )
+      into.tools.push({
+        ...advertised,
+        handler: (event: H3Event) => settle(() => handler(buildContext(event)), hasOutputSchema),
+      })
     },
   }
 }

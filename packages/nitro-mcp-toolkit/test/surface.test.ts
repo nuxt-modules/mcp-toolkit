@@ -10,10 +10,9 @@ describe('public exports', () => {
     expect(Object.keys(runtime).sort()).toMatchInlineSnapshot(`
       [
         "MODERN_PROTOCOL_VERSION",
-        "ResourceTemplate",
+        "McpJsonRpcError",
         "acceptedContent",
         "audioResult",
-        "completable",
         "createMcpHandler",
         "defineMcpPrompt",
         "defineMcpResource",

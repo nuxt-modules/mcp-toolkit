@@ -1,6 +1,5 @@
-import { AsyncLocalStorage } from 'node:async_hooks'
-import type { AuthInfo, ServerContext } from '@modelcontextprotocol/server'
 import type { H3Event } from 'h3'
+import type { McpRequestContext } from 'h3-mcp'
 
 /**
  * Context handed to every tool, resource and prompt handler.
@@ -12,69 +11,41 @@ export interface McpContext {
    */
   event: H3Event
   /**
-   * Authentication info for this request, when the caller supplied one.
-   */
-  auth?: AuthInfo
-  /**
-   * Aborts when the client cancels the request.
+   * Aborts when the client cancels the request or the response stream closes.
    */
   signal: AbortSignal
   /**
    * The protocol revision serving this request: `modern` for 2026-07-28,
-   * `legacy` for a 2025-era client answered through the SDK's fallback.
+   * `legacy` for a 2025-era client.
    */
   era: 'legacy' | 'modern'
   /**
-   * The raw SDK context, for everything the toolkit does not wrap — including
-   * the multi-round-trip primitives (`mcp.mcpReq.requestState`,
-   * `mcp.mcpReq.inputResponses`).
+   * The request as the engine sees it, for everything the toolkit does not
+   * wrap: `progress()`, `log()`, the multi-round-trip primitives
+   * (`requestState`, `inputResponses`), and the client's own identity.
    */
-  mcp: ServerContext
-}
-
-interface RequestStore {
-  event: H3Event
-  era: 'legacy' | 'modern'
-}
-
-const storage = new AsyncLocalStorage<RequestStore>()
-
-/**
- * @internal
- */
-export function runWithRequest<T>(event: H3Event, fn: () => T): T {
-  return storage.run({ event, era: 'modern' }, fn)
+  mcp: McpRequestContext
 }
 
 /**
- * The era is only known once the SDK classifies the request and calls the
- * server factory, which happens inside the scope opened above.
+ * Read the MCP request off the event.
  *
  * @internal
  */
-export function setEra(era: 'legacy' | 'modern'): void {
-  const store = storage.getStore()
-  if (store) {
-    store.era = era
-  }
-}
+export function buildContext(event: H3Event): McpContext {
+  const mcp = event.context.mcp
 
-/**
- * @internal
- */
-export function buildContext(mcp: ServerContext): McpContext {
-  const store = storage.getStore()
-  if (!store) {
+  if (!mcp) {
     throw new Error(
-      '[nitro-mcp-toolkit] No MCP request in scope. Handlers must be reached through the handler returned by `createMcpHandler`.',
+      '[nitro-mcp-toolkit] No MCP request on this event. Handlers must be reached through the handler returned by `createMcpHandler`.',
     )
   }
 
   return {
-    event: store.event,
-    era: store.era,
-    auth: mcp.http?.authInfo,
-    signal: mcp.mcpReq.signal,
+    event,
+    // A request without a stream carries no signal, so the connection's stands in.
+    signal: mcp.signal ?? event.req.signal,
+    era: mcp.era ?? 'modern',
     mcp,
   }
 }

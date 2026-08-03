@@ -1,39 +1,24 @@
-import { Client } from '@modelcontextprotocol/client'
-import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server'
+import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
-import { defineMcpTool } from '../src/runtime/index.ts'
+import { buildContext } from '../src/runtime/context.ts'
+import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
 
-// Definitions read the serving event from the scope `createMcpHandler` opens, so
-// registering them on a hand-rolled server must fail with a message that says so
-// rather than a confusing property access.
-describe('registering a definition outside the toolkit handler', () => {
-  it('explains that no MCP request is in scope', async () => {
-    const server = new McpServer({ name: 'hand-rolled', version: '0.0.0' })
-    defineMcpTool({ name: 'ping', handler: () => 'pong' }).register(server)
-
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
-    await server.connect(serverTransport)
-
-    const client = new Client({ name: 'test', version: '0.0.0' })
-    await client.connect(clientTransport)
-
-    const result = await client.callTool({ name: 'ping' })
-    expect(result.isError).toBe(true)
-    expect(result.content).toMatchObject([
-      { type: 'text', text: expect.stringContaining('No MCP request in scope') },
-    ])
-
-    await client.close()
-    await server.close()
+// Reaching a definition through anything but the toolkit's handler has to say
+// so, rather than fail on a confusing property access.
+describe('a definition reached outside the toolkit handler', () => {
+  it('explains that the event carries no MCP request', () => {
+    expect(() => buildContext(new H3Event(new Request('http://localhost/mcp')))).toThrow(
+      /No MCP request on this event/,
+    )
   })
+})
 
-  // A name is optional because discovery derives one; registering a definition
-  // that never got either way round has to say so.
-  it('refuses a definition that no one ever named', () => {
-    const server = new McpServer({ name: 'hand-rolled', version: '0.0.0' })
-
-    expect(() => defineMcpTool({ handler: () => 'pong' }).register(server)).toThrow(
-      /This tool has no name/,
+describe('a definition nobody ever named', () => {
+  // A name is optional because discovery derives one from the filename; a
+  // definition that got neither has to be refused before it serves anything.
+  it('is refused when the endpoint is built', () => {
+    expect(() => createMcpHandler({ tools: [defineMcpTool({ handler: () => 'pong' })] })).toThrow(
+      /A tool was defined without a name/,
     )
   })
 })

@@ -1,17 +1,12 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol.ts'
 import type { ClientCapabilities } from '@modelcontextprotocol/client'
-import type { AuthInfo } from '@modelcontextprotocol/server'
+import type { McpCallToolResult, McpGetPromptResult, McpReadResourceResult } from 'h3-mcp'
 import type { McpHandler } from '../runtime/handler.ts'
-import type {
-  CallToolResult,
-  GetPromptResult,
-  ReadResourceResult,
-} from '@modelcontextprotocol/server'
 
 /**
- * Anything fetch-shaped: the handler from `createMcpHandler`, a bare SDK
- * handler, or a built Nitro app's entry.
+ * Anything fetch-shaped: the handler from `createMcpHandler`, or a built Nitro
+ * app's entry.
  */
 export type McpFetchHandler = Pick<McpHandler, 'fetch'>
 
@@ -35,11 +30,8 @@ export interface McpTestClientOptions {
    * @default 'modern'
    */
   era?: 'modern' | 'legacy'
-  /**
-   * Authentication info handed to the handler, standing in for the gate that
-   * would verify a token in production.
-   */
-  auth?: AuthInfo
+  /** Sent on every request, for an endpoint that gates on a token. */
+  headers?: Record<string, string>
   /** Only the origin matters; the handler never sees the path. */
   url?: string
   capabilities?: ClientCapabilities
@@ -60,7 +52,7 @@ export async function createMcpTestClient(
   handler: McpFetchHandler,
   options: McpTestClientOptions = {},
 ): Promise<McpTestClient> {
-  const { era = 'modern', auth, url = 'http://localhost/mcp', capabilities } = options
+  const { era = 'modern', headers, url = 'http://localhost/mcp', capabilities } = options
 
   const client = new Client(
     { name: 'nitro-mcp-toolkit-test-client', version: '0.0.0' },
@@ -73,7 +65,13 @@ export async function createMcpTestClient(
   )
 
   const transport = new StreamableHTTPClientTransport(new URL(url), {
-    fetch: (input, init) => handler.fetch(new Request(input, init), { authInfo: auth }),
+    fetch: (input, init) => {
+      const request = new Request(input, init)
+      for (const [header, value] of Object.entries(headers ?? {})) {
+        request.headers.set(header, value)
+      }
+      return handler.fetch(request)
+    },
   })
 
   await client.connect(transport)
@@ -85,7 +83,7 @@ export async function createMcpTestClient(
   })
 }
 
-type TextCarrier = Partial<CallToolResult & ReadResourceResult & GetPromptResult>
+type TextCarrier = Partial<McpCallToolResult & McpReadResourceResult & McpGetPromptResult>
 
 /**
  * The text a result carries, joined by newlines.

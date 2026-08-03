@@ -1,4 +1,4 @@
-import { defineMcpResource, ResourceTemplate } from 'nitro-mcp-toolkit'
+import { defineMcpResource } from 'nitro-mcp-toolkit'
 
 const pages: Record<string, string> = {
   install: 'Add the toolkit, mount a handler on a route, done.',
@@ -10,22 +10,14 @@ const pages: Record<string, string> = {
 export default defineMcpResource({
   description: 'A documentation page, addressed by slug',
   mimeType: 'text/markdown',
-  uri: new ResourceTemplate('playground://docs/{slug}', {
-    list: () => ({
-      resources: Object.keys(pages).map((slug) => ({
-        name: slug,
-        uri: `playground://docs/${slug}`,
-      })),
-    }),
-    complete: {
-      slug: (value) => Object.keys(pages).filter((slug) => slug.startsWith(value)),
-    },
-  }),
+  uriTemplate: 'playground://docs/{slug}',
+  list: () => Object.keys(pages).map((slug) => ({ name: slug, uri: `playground://docs/${slug}` })),
+  complete: ({ argument }) => Object.keys(pages).filter((slug) => slug.startsWith(argument.value)),
   handler: (uri, { slug }) => {
-    const page = pages[String(slug)]
+    const page = pages[slug]
     if (!page) {
-      throw new Error(`No such page: ${String(slug)}`)
+      throw new Error(`No such page: ${slug}`)
     }
-    return { contents: [{ uri: uri.href, text: `# ${String(slug)}\n\n${page}` }] }
+    return { contents: [{ uri: uri.href, text: `# ${slug}\n\n${page}` }] }
   },
 })

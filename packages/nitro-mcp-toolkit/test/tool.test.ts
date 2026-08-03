@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
-import type { CallToolResult } from '@modelcontextprotocol/server'
+import type { McpCallToolResult } from '../src/runtime/index.ts'
 
 function serve(...tools: ReturnType<typeof defineMcpTool>[]) {
   return createMcpHandler({ name: 'test', version: '1.0.0', tools })
@@ -103,7 +103,7 @@ describe('defineMcpTool', () => {
     })
 
     it('passes a full result through untouched', async () => {
-      const passthrough: CallToolResult = {
+      const passthrough: McpCallToolResult = {
         content: [{ type: 'text', text: 'raw' }],
         _meta: { marker: true },
       }

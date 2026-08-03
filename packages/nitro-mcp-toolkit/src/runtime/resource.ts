@@ -1,14 +1,15 @@
 import { buildContext } from './context.ts'
-import { resolveIdentity, resolveMeta } from './validate.ts'
+import { toCompleteResult } from './results.ts'
+import { resolveMeta } from './validate.ts'
+import type { H3Event } from 'h3'
 import type {
-  CacheHint,
-  Icon,
-  ReadResourceResult,
-  ResourceMetadata,
-  ResourceTemplate,
-  ServerContext,
-  Variables,
-} from '@modelcontextprotocol/server'
+  McpCacheHints,
+  McpCompleteContext,
+  McpCompleteResult,
+  McpIcon,
+  McpReadResourceResult,
+  McpResourceDescriptor,
+} from 'h3-mcp'
 import type { McpContext } from './context.ts'
 import type { McpResource } from './definition.ts'
 
@@ -18,7 +19,7 @@ type Awaitable<T> = T | Promise<T>
  * What a resource handler may return: the text of the resource, or a full
  * protocol result when it carries several contents or binary data.
  */
-export type McpResourceReturn = ReadResourceResult | string
+export type McpResourceReturn = McpReadResourceResult | string
 
 interface McpResourceMetadata {
   /** Derived from the filename when discovered. */
@@ -30,33 +31,48 @@ interface McpResourceMetadata {
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
   mimeType?: string
-  icons?: Icon[]
+  icons?: McpIcon[]
   /** Advertised to clients so they may cache the read. */
-  cacheHint?: CacheHint
+  cache?: McpCacheHints
 }
 
 export interface McpResourceDefinition extends McpResourceMetadata {
   /** A concrete URI, e.g. `docs://changelog`. */
   uri: string
+  /** Size in bytes, when known. */
+  size?: number
   handler: (uri: URL, ctx: McpContext) => Awaitable<McpResourceReturn>
 }
 
 export interface McpResourceTemplateDefinition extends McpResourceMetadata {
-  /** A `ResourceTemplate` whose placeholders are resolved per read. */
-  uri: ResourceTemplate
-  handler: (uri: URL, variables: Variables, ctx: McpContext) => Awaitable<McpResourceReturn>
+  /** An RFC 6570 pattern whose placeholders are resolved per read. */
+  uriTemplate: string
+  /**
+   * The members this pattern currently expands to, for `resources/list`. Omit
+   * it when the family cannot be enumerated: the pattern is then discoverable
+   * through `resources/templates/list` alone.
+   */
+  list?: (ctx: McpContext) => Awaitable<McpResourceDescriptor[] | undefined>
+  /** Completions for a placeholder, as the client types it. */
+  complete?: (
+    completing: McpCompleteContext,
+    ctx: McpContext,
+  ) => Awaitable<McpCompleteResult | string[]>
+  handler: (
+    uri: URL,
+    variables: Record<string, string>,
+    ctx: McpContext,
+  ) => Awaitable<McpResourceReturn>
 }
 
-function toReadResult(uri: URL, value: McpResourceReturn): ReadResourceResult {
+function toReadResult(uri: URL, value: McpResourceReturn): McpReadResourceResult {
   return typeof value === 'string' ? { contents: [{ uri: uri.href, text: value }] } : value
 }
 
-// `uri` is a `string` or a class instance, neither of which is a unit type, so
-// the union needs a predicate rather than an inline `typeof` check to narrow.
-function isStatic(
+function isTemplate(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
-): definition is McpResourceDefinition {
-  return typeof definition.uri === 'string'
+): definition is McpResourceTemplateDefinition {
+  return 'uriTemplate' in definition
 }
 
 /**
@@ -70,14 +86,23 @@ function isStatic(
  *   handler: () => readFile('CHANGELOG.md', 'utf8'),
  * })
  * ```
+ *
+ * @example A family of URIs, read through one handler.
+ * ```ts
+ * export default defineMcpResource({
+ *   uriTemplate: 'docs://{slug}',
+ *   list: () => pages.map((slug) => ({ name: slug, uri: `docs://${slug}` })),
+ *   handler: (uri, { slug }) => renderPage(slug),
+ * })
+ * ```
  */
 export function defineMcpResource(definition: McpResourceDefinition): McpResource
 export function defineMcpResource(definition: McpResourceTemplateDefinition): McpResource
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, group, tags, mimeType, icons, cacheHint } = definition
-  const isStaticUri = isStatic(definition)
+  const { name, title, description, group, tags, mimeType, icons, cache } = definition
+  const templated = isTemplate(definition)
 
   return {
     kind: 'resource',
@@ -86,38 +111,44 @@ export function defineMcpResource(
     description,
     group,
     tags,
-    uri: isStaticUri ? definition.uri : definition.uri.uriTemplate.toString(),
-    register(server, identity) {
-      const resolved = resolveIdentity('resource', definition, identity)
-      const config: ResourceMetadata & { cacheHint?: CacheHint } = {
-        title: resolved.title,
+    uri: templated ? definition.uriTemplate : definition.uri,
+    build(identity, into) {
+      const advertised = {
+        name: identity.name,
+        title: identity.title,
         description,
         mimeType,
         icons,
-        cacheHint,
-        _meta: resolveMeta(resolved.group, tags),
+        cache,
+        _meta: resolveMeta(identity.group, tags),
       }
 
-      if (isStaticUri) {
-        const { uri: staticUri, handler } = definition
-        server.registerResource(
-          resolved.name,
-          staticUri,
-          config,
-          async (url: URL, ctx: ServerContext) =>
-            toReadResult(url, await handler(url, buildContext(ctx))),
-        )
+      if (!templated) {
+        const { uri, size, handler } = definition
+        into.resources.push({
+          ...advertised,
+          uri,
+          size,
+          handler: async (url: URL, event: H3Event) =>
+            toReadResult(url, await handler(url, buildContext(event))),
+        })
         return
       }
 
-      const { uri: template, handler } = definition
-      server.registerResource(
-        resolved.name,
-        template,
-        config,
-        async (url: URL, variables: Variables, ctx: ServerContext) =>
-          toReadResult(url, await handler(url, variables, buildContext(ctx))),
-      )
+      const { uriTemplate, list, complete, handler } = definition
+      into.resourceTemplates.push({
+        ...advertised,
+        uriTemplate,
+        ...(list ? { list: (event: H3Event) => list(buildContext(event)) } : {}),
+        ...(complete
+          ? {
+              complete: async (completing: McpCompleteContext, event: H3Event) =>
+                toCompleteResult(await complete(completing, buildContext(event))),
+            }
+          : {}),
+        handler: async (url: URL, variables: Record<string, string>, event: H3Event) =>
+          toReadResult(url, await handler(url, variables, buildContext(event))),
+      })
     },
   }
 }

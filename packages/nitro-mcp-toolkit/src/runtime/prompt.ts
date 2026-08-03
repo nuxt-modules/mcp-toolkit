@@ -1,23 +1,40 @@
 import { buildContext } from './context.ts'
-import { noArguments } from './schema.ts'
-import { resolveIdentity, resolveMeta } from './validate.ts'
+import { toCompleteResult } from './results.ts'
+import { resolveMeta } from './validate.ts'
+import type { H3Event } from 'h3'
 import type {
-  GetPromptResult,
-  Icon,
-  ServerContext,
-  StandardSchemaWithJSON,
-} from '@modelcontextprotocol/server'
+  McpCompleteContext,
+  McpCompleteResult,
+  McpGetPromptResult,
+  McpIcon,
+  StandardTypedV1,
+} from 'h3-mcp'
 import type { McpContext } from './context.ts'
 import type { McpPrompt } from './definition.ts'
 
-type Schema = StandardSchemaWithJSON
+type Schema = StandardTypedV1
 type Awaitable<T> = T | Promise<T>
 
 /**
  * What a prompt handler may return: the text of a single user message, or a
  * full result for multi-message conversations.
  */
-export type McpPromptReturn = GetPromptResult | string
+export type McpPromptReturn = McpGetPromptResult | string
+
+/**
+ * One argument a prompt declares, with the completions clients offer for it as
+ * the user types.
+ */
+export interface McpPromptArgumentDefinition {
+  name: string
+  title?: string
+  description?: string
+  required?: boolean
+  complete?: (
+    completing: McpCompleteContext,
+    ctx: McpContext,
+  ) => Awaitable<McpCompleteResult | string[]>
+}
 
 interface McpPromptMetadata {
   /** Derived from the filename when discovered. */
@@ -28,27 +45,45 @@ interface McpPromptMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
-  icons?: Icon[]
+  icons?: McpIcon[]
 }
 
 export interface McpPromptDefinition<Input extends Schema> extends McpPromptMetadata {
   /** A Standard Schema describing the prompt arguments. */
   inputSchema: Input
-  handler: (
-    args: StandardSchemaWithJSON.InferOutput<Input>,
-    ctx: McpContext,
-  ) => Awaitable<McpPromptReturn>
+  handler: (args: StandardTypedV1.InferOutput<Input>, ctx: McpContext) => Awaitable<McpPromptReturn>
+}
+
+export interface McpPromptDefinitionWithArguments extends McpPromptMetadata {
+  /**
+   * Arguments declared one by one, for prompts that offer completions. The wire
+   * only carries strings, so that is what the handler receives.
+   */
+  arguments: McpPromptArgumentDefinition[]
+  handler: (args: Record<string, string>, ctx: McpContext) => Awaitable<McpPromptReturn>
 }
 
 export interface McpPromptDefinitionWithoutInput extends McpPromptMetadata {
   inputSchema?: undefined
+  arguments?: undefined
   handler: (ctx: McpContext) => Awaitable<McpPromptReturn>
 }
 
-function toPromptResult(value: McpPromptReturn): GetPromptResult {
+type AnyPromptDefinition =
+  | McpPromptDefinition<Schema>
+  | McpPromptDefinitionWithArguments
+  | McpPromptDefinitionWithoutInput
+
+function toPromptResult(value: McpPromptReturn): McpGetPromptResult {
   return typeof value === 'string'
     ? { messages: [{ role: 'user', content: { type: 'text', text: value } }] }
     : value
+}
+
+function hasArguments(
+  definition: AnyPromptDefinition,
+): definition is McpPromptDefinitionWithArguments {
+  return 'arguments' in definition && definition.arguments !== undefined
 }
 
 /**
@@ -62,14 +97,21 @@ function toPromptResult(value: McpPromptReturn): GetPromptResult {
  *   handler: ({ path }) => `Review the code in ${path}.`,
  * })
  * ```
+ *
+ * @example Arguments the client can autocomplete.
+ * ```ts
+ * export default defineMcpPrompt({
+ *   arguments: [{ name: 'fruit', required: true, complete: ({ argument }) => fruits(argument.value) }],
+ *   handler: ({ fruit }) => `You picked ${fruit}`,
+ * })
+ * ```
  */
 export function defineMcpPrompt(definition: McpPromptDefinitionWithoutInput): McpPrompt
+export function defineMcpPrompt(definition: McpPromptDefinitionWithArguments): McpPrompt
 export function defineMcpPrompt<Input extends Schema>(
   definition: McpPromptDefinition<Input>,
 ): McpPrompt
-export function defineMcpPrompt(
-  definition: McpPromptDefinition<Schema> | McpPromptDefinitionWithoutInput,
-): McpPrompt {
+export function defineMcpPrompt(definition: AnyPromptDefinition): McpPrompt {
   const { name, title, description, group, tags, icons } = definition
 
   return {
@@ -79,32 +121,50 @@ export function defineMcpPrompt(
     description,
     group,
     tags,
-    register(server, identity) {
-      const resolved = resolveIdentity('prompt', definition, identity)
-      const config = {
-        title: resolved.title,
+    build(identity, into) {
+      const advertised = {
+        name: identity.name,
+        title: identity.title,
         description,
         icons,
-        _meta: resolveMeta(resolved.group, tags),
+        _meta: resolveMeta(identity.group, tags),
+      }
+
+      if (hasArguments(definition)) {
+        const { handler } = definition
+        into.prompts.push({
+          ...advertised,
+          arguments: definition.arguments.map(({ complete, ...argument }) => ({
+            ...argument,
+            ...(complete
+              ? {
+                  complete: async (completing: McpCompleteContext, event: H3Event) =>
+                    toCompleteResult(await complete(completing, buildContext(event))),
+                }
+              : {}),
+          })),
+          handler: async (args: Record<string, string>, event: H3Event) =>
+            toPromptResult(await handler(args, buildContext(event))),
+        })
+        return
       }
 
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition
-        server.registerPrompt(
-          resolved.name,
-          { ...config, argsSchema: inputSchema },
-          async (args, ctx: ServerContext) =>
-            toPromptResult(await handler(args, buildContext(ctx))),
-        )
+        into.prompts.push({
+          ...advertised,
+          arguments: inputSchema,
+          handler: async (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
+            toPromptResult(await handler(args, buildContext(event))),
+        })
         return
       }
 
       const { handler } = definition
-      server.registerPrompt(
-        resolved.name,
-        { ...config, argsSchema: noArguments },
-        async (_args, ctx: ServerContext) => toPromptResult(await handler(buildContext(ctx))),
-      )
+      into.prompts.push({
+        ...advertised,
+        handler: async (event: H3Event) => toPromptResult(await handler(buildContext(event))),
+      })
     },
   }
 }
