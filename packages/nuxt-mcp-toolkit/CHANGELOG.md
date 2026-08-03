@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.18.1
+
+### Patch Changes
+
+- [#306](https://github.com/nuxt-modules/mcp-toolkit/pull/306) [`9586655`](https://github.com/nuxt-modules/mcp-toolkit/commit/958665527e5970327a4131152cb2ed52df4a3921) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Send `log.notify.*` on the stream of the request being handled, so a notification emitted from a tool, resource or prompt is no longer lost. It previously went to the client's standalone SSE stream, which the client opens only after `connect()` returns — anything sent before then, including from the first tool call, was dropped. The client's `logging/setLevel` is still honoured.
+
 ## 0.18.0
 
 ### Minor Changes
