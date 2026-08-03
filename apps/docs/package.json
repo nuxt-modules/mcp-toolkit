@@ -19,19 +19,19 @@
     "eval:ui": "evalite watch"
   },
   "dependencies": {
-    "@ai-sdk/mcp": "^2.0.18",
+    "@ai-sdk/mcp": "^2.0.22",
     "@nuxt/ui": "^4.10.0",
     "@nuxtjs/mcp-toolkit": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "ai": "^7.0.40",
-    "better-sqlite3": "^13.0.1",
+    "ai": "^7.0.48",
+    "better-sqlite3": "^13.0.2",
     "docus": "^5.12.3",
     "minimark": "^1.0.0",
     "motion-v": "^2.3.0",
     "nuxt": "^4.5.1",
     "nuxt-studio": "^1.7.0",
-    "shaders": "^3.0.445"
+    "shaders": "^3.0.446"
   },
   "devDependencies": {
     "@nuxt/eslint-config": "^1.16.0",
