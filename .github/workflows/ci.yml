@@ -182,9 +182,13 @@ jobs:
       - name: Build packages
         run: pnpm exec turbo run build --filter='./packages/*'
 
-      # nitro-mcp-toolkit runs once below, under coverage, which enforces its thresholds
+      # nitro-mcp-toolkit runs once below, under coverage, which enforces its
+      # thresholds. @nuxtjs/mcp-toolkit-playground is excluded for the same
+      # reason as in the examples job: nuxt-hub's PGlite migrations need a
+      # real database binding that doesn't exist in CI, and test's
+      # dependsOn: ["build"] would otherwise reach it.
       - name: Test affected packages
-        run: pnpm exec turbo run test --affected --filter='!nitro-mcp-toolkit'
+        run: pnpm exec turbo run test --affected --filter='!nitro-mcp-toolkit' --filter='!@nuxtjs/mcp-toolkit-playground'
 
       - name: Prepare nitro-mcp-toolkit dist
         run: pnpm exec turbo run dev:prepare --filter=nitro-mcp-toolkit
