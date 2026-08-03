@@ -19,19 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      # changesets/action pushes the release branch, so credentials stay
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - run: corepack enable
-
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/setup
         with:
-          node-version: latest
           registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: pnpm install
 
       - name: Prepare
         run: pnpm dev:prepare
@@ -41,7 +36,7 @@ jobs:
 
       - name: Create Release PR or Publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           title: "chore(repo): version packages"
           version: pnpm run version

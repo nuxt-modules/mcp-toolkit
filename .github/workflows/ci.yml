@@ -9,105 +9,184 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  # Fork PRs get no OIDC token, so they fall back to the local cache
+  IS_INTERNAL: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+  TURBO_CACHE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'remote:rw' || 'local:rw' }}
+  # Without this, turbo silently treats every package as affected
+  TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+
 jobs:
-  build:
+  quality:
+    name: Lint & typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # remote cache OIDC
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Prepare
-        run: pnpm run dev:prepare
-      - name: Build module
-        run: pnpm run build:module
-      - name: Build nitro
-        run: pnpm run build:nitro
+          fetch-depth: 0 # --affected needs history
+          persist-credentials: false
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Prepare
-        run: pnpm run dev:prepare
+      - parallel:
+          - name: Set up Turborepo remote cache
+            if: env.IS_INTERNAL == 'true'
+            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            with:
+              team: ${{ vars.TURBO_TEAM }}
+
+          - name: Set up pnpm and Node
+            uses: ./.github/actions/setup
+
       - name: Lint
-        run: pnpm run lint
+        run: pnpm exec turbo run lint --affected
 
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Prepare
-        run: pnpm run dev:prepare
       - name: Typecheck
-        run: pnpm run typecheck
+        run: pnpm exec turbo run typecheck --affected
+
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # remote cache OIDC
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - parallel:
+          - name: Set up Turborepo remote cache
+            if: env.IS_INTERNAL == 'true'
+            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            with:
+              team: ${{ vars.TURBO_TEAM }}
+
+          - name: Set up pnpm and Node
+            uses: ./.github/actions/setup
+
+      - name: Build affected packages
+        run: pnpm exec turbo run build --affected --filter='./packages/*'
+
+  examples:
+    name: Build examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # remote cache OIDC
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - parallel:
+          - name: Set up Turborepo remote cache
+            if: env.IS_INTERNAL == 'true'
+            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            with:
+              team: ${{ vars.TURBO_TEAM }}
+
+          - name: Set up pnpm and Node
+            uses: ./.github/actions/setup
+
+      # --continue: one broken app must not cancel the others.
+      # @nuxtjs/mcp-toolkit-playground is excluded: nuxt-hub tries to run
+      # PGlite migrations at build time, which needs a real database binding
+      # that doesn't exist in CI. Its lint/typecheck/dev:prepare still run above.
+      - name: Build affected apps
+        run: pnpm exec turbo run build --affected --continue --filter='./apps/*' --filter='!@nuxtjs/mcp-toolkit-playground'
 
   test:
+    name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # remote cache OIDC
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Prepare
-        run: pnpm run dev:prepare
-      - name: Test
-        run: pnpm run test
+          fetch-depth: 0
+          persist-credentials: false
+
+      - parallel:
+          - name: Set up Turborepo remote cache
+            if: env.IS_INTERNAL == 'true'
+            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            with:
+              team: ${{ vars.TURBO_TEAM }}
+
+          - name: Set up pnpm and Node
+            uses: ./.github/actions/setup
+
+      # nitro-mcp-toolkit runs once below, under coverage, which enforces its thresholds
+      - name: Test affected packages
+        run: pnpm exec turbo run test --affected --filter='!nitro-mcp-toolkit'
+
+      - name: Prepare nitro-mcp-toolkit dist
+        run: pnpm exec turbo run dev:prepare --filter=nitro-mcp-toolkit
+
       - name: Enforce coverage thresholds
-        run: pnpm run test:coverage
+        run: pnpm --filter nitro-mcp-toolkit run test:coverage
 
   # `nitro-mcp-toolkit` discovers files, generates imports from their paths and
   # watches them, so it is the one package whose behaviour depends on the OS.
   # Only its own suite runs here; the rest is covered above.
   test-windows:
+    name: Test (Windows)
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --filter nitro-mcp-toolkit
-      - name: Prepare
-        run: pnpm --filter nitro-mcp-toolkit dev:prepare
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+        with:
+          filters: --filter=nitro-mcp-toolkit
+
+      # A no-op finishes almost instantly when nitro-mcp-toolkit isn't affected
       - name: Test
-        run: pnpm --filter nitro-mcp-toolkit test
+        run: pnpm exec turbo run test --affected --filter=nitro-mcp-toolkit
 
   package:
+    name: Audit published surface
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # remote cache OIDC
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          fetch-depth: 0
+          persist-credentials: false
+
+      - parallel:
+          - name: Set up Turborepo remote cache
+            if: env.IS_INTERNAL == 'true'
+            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            with:
+              team: ${{ vars.TURBO_TEAM }}
+
+          - name: Set up pnpm and Node
+            uses: ./.github/actions/setup
+
       - name: Audit published surface
         run: pnpm run lint:package
 
@@ -125,25 +204,47 @@ jobs:
           fi
 
   publish:
+    name: Publish preview package
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: [build, lint, typecheck, test, test-windows, package]
+    timeout-minutes: 15
+    # Not gated on the other jobs: a preview is most useful while the PR is red
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write # remote cache OIDC
+      pull-requests: write # pkg-pr-new comments the preview install command
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24.18.0
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          persist-credentials: false
+
+      - parallel:
+          - name: Set up Turborepo remote cache
+            if: env.IS_INTERNAL == 'true'
+            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            with:
+              team: ${{ vars.TURBO_TEAM }}
+
+          - name: Set up pnpm and Node
+            uses: ./.github/actions/setup
+
       - name: Prepare
         run: pnpm run dev:prepare
-      - name: Build module
-        run: pnpm run build:module
-      - name: Build nitro
-        run: pnpm run build:nitro
+
+      - name: Build packages
+        run: pnpm exec turbo run build --filter='./packages/*'
+
       - name: Publish
         run: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/nuxt-mcp-toolkit' './packages/nitro-mcp-toolkit'
+
+  # Single required check, so branch protection survives job renames
+  ci:
+    name: ci
+    runs-on: ubuntu-slim
+    needs: [quality, build, examples, test, test-windows, package]
+    if: always()
+    steps:
+      - name: Verify every required job succeeded
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
