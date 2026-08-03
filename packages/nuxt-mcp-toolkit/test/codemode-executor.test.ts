@@ -162,7 +162,7 @@ describe('executor concurrency', () => {
     expect(resultB.result).toBe('result-B')
   })
 
-  it('concurrent execute() calls return results to the correct caller', { timeout: 15000 }, async () => {
+  it('concurrent execute() calls return results to the correct caller', async () => {
     const fnsA: Record<string, (args: unknown) => Promise<unknown>> = {
       echo: async (args: unknown) => (args as { value: string }).value,
     }
