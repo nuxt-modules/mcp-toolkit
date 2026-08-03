@@ -1,5 +1,14 @@
 {
   "$schema": "https://turborepo.dev/schema.v2.json",
+  "ui": "tui",
+  "noUpdateNotifier": true,
+  "globalPassThroughEnv": [
+    "CI",
+    "GITHUB_ACTIONS",
+    "GITHUB_EVENT_NAME",
+    "GITHUB_REF",
+    "GITHUB_SHA"
+  ],
   "globalEnv": [
     "AI_GATEWAY_API_KEY",
     "STUDIO_SSO_URL",
@@ -8,11 +17,8 @@
   ],
   "globalDependencies": [".env"],
   "tasks": {
-    "transit": {
-      "dependsOn": ["^transit"]
-    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "dev:prepare"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".vercel/output/**", "dist/**", ".output/**", ".nuxt/**"]
     },
@@ -26,9 +32,10 @@
       "outputs": ["dist/**", ".output/**", ".nuxt/**"]
     },
     "lint": {
-      "dependsOn": ["transit"]
+      "dependsOn": ["dev:prepare"]
     },
     "lint:fix": {
+      "dependsOn": ["dev:prepare"],
       "cache": false
     },
     "lint:package": {
@@ -44,7 +51,7 @@
       "outputs": ["coverage/**"]
     },
     "typecheck": {
-      "dependsOn": ["transit"]
+      "dependsOn": ["dev:prepare"]
     },
     "eval": {
       "cache": false

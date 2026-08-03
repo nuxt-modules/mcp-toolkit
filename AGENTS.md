@@ -127,26 +127,11 @@ The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/
 
 ## Releasing
 
-The two published packages release on separate tracks, because changesets' prerelease mode is repo-wide and `@nuxtjs/mcp-toolkit` still ships stable.
+Both published packages go through the same flow: add a changeset, merge, and the `release` workflow opens a "Version Packages" PR; merging that PR publishes to npm under the `latest` dist-tag and creates a GitHub Release per package. `nitro-mcp-toolkit` used to release from a separate manual `release-alpha` workflow under an `alpha` tag while it was pre-alpha; it has since graduated onto this single track. It still stays pre-1.0 (`0.x`), so a breaking change there is a `minor` changeset, not `major` — the conventional reading of semver below 1.0.
 
-| Package | Track | How |
-|---------|-------|-----|
-| `@nuxtjs/mcp-toolkit` | Stable, `latest` tag | Changesets. Add a changeset, merge, the `release` workflow opens a version PR |
-| `nitro-mcp-toolkit` | Alpha, `alpha` tag | The `release-alpha` workflow, run manually with the exact version to publish |
+**The two packages publish from two different npm accounts, which one bearer token can't authenticate.** `@nuxtjs/mcp-toolkit` is scoped to the Nuxt org and uses `NPM_TOKEN`; `nitro-mcp-toolkit` is unscoped and owned by a personal account, so that same token gets a 404 on it — npm's way of saying "not authorized". It publishes with `NPM_TOKEN_ALPHA` instead, a granular token scoped to that one package (the name is a holdover from the old alpha-only workflow, not a claim about the release channel). `changeset publish` publishes every package needing a release in one command, shelling out to `pnpm publish` per package with no way to pass it a different token per call — so the split happens one level down, in pnpm's own auth resolution: the `release` workflow writes a registry-wide `_authToken` (falls through to unscoped packages, i.e. `nitro-mcp-toolkit`) plus a `@nuxtjs`-scoped override in `~/.npmrc` before publishing, rather than relying on `setup-node`'s single-token `registry-url` input. Do not add a third package under a third npm account without re-checking this — pnpm's scope-based auth only branches on the `@scope` prefix, so a second unscoped package would collide with `nitro-mcp-toolkit` on the same fallback key.
 
-`nitro-mcp-toolkit` is listed in `ignore` in `.changeset/config.json`, so a changeset naming it produces no bump — that is deliberate, not a bug to fix.
-
-**`ignore` covers versioning only.** `changeset publish` selects packages with a single filter, `!packageJson.private`, then publishes every one whose version is absent from npm. The two tracks therefore stay apart on one condition: the version of `nitro-mcp-toolkit` on `main` must always be a version that exists on npm. CI enforces it on every PR. `prepack` runs `obuild` so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
-
-**The `alpha` dist-tag on npm is the source of truth for where the package is, not the manifest.** `main` is protected and the bot cannot push to it, so a release cannot commit its own bump — the first attempt published fine and then went red on that push, having already shipped. The workflow therefore takes the version as an input, writes it to the manifest only inside the runner, publishes, and pushes a tag. Nothing comes back to `main`, whose version stays pinned at a published placeholder purely so `changeset publish` keeps skipping it. Read `npm view nitro-mcp-toolkit@alpha version` to know what is out there; the manifest will not tell you.
-
-Each alpha lands on two tags: `alpha`, declared in `publishConfig` so a manual publish cannot claim `latest` by accident, and then `latest`. The toolkit has no stable release competing for `latest`, so leaving it behind would serve a placeholder to anyone running `npm i nitro-mcp-toolkit`.
-
-Publish from CI, not from a laptop: the workflow points at `registry.npmjs.org` through `setup-node`, whereas a local `npm config` may resolve to a corporate proxy that refuses the write. Keep `.npmrc` out of the repo for the same reason.
-
-The two tracks authenticate differently. `@nuxtjs/mcp-toolkit` belongs to the Nuxt team and uses `NPM_TOKEN`; `nitro-mcp-toolkit` belongs to a personal account, so that same token gets a 404 on it — npm's way of saying "not authorized". It uses `NPM_TOKEN_ALPHA` instead, a granular token scoped to that single package.
-
-Writing the version uses `npm --no-workspaces version`, since both `pnpm version` and plain `npm version` walk the workspace, hit the `workspace:*` ranges in the apps, and exit non-zero *after* writing the new version.
+`prepack` runs `obuild` in both packages, so a stale `dist` can never be published, which matters because `dev:prepare` leaves stubs there.
 
 ### MCP Starter (`apps/mcp-starter/`)
 

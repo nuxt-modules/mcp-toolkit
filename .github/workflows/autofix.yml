@@ -7,23 +7,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number }}
+  cancel-in-progress: true
+
 jobs:
   autofix:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v7
+      # autofix.ci pushes through its own GitHub App, not the checkout token
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24.18.0
-          cache: 'pnpm'
+          persist-credentials: false
 
-      - name: 📦 Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
 
       - name: 💅 Lint code
         run: pnpm run lint:fix

@@ -42,8 +42,7 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
+    "access": "public"
   },
   "scripts": {
     "build": "obuild",
@@ -52,7 +51,6 @@
     "lint:fix": "oxlint . --fix && oxfmt .",
     "lint:package": "publint && attw --pack . --profile esm-only",
     "prepack": "obuild",
-    "release:alpha": "npm --no-workspaces version $VERSION --no-git-tag-version --allow-same-version && pnpm publish --tag alpha --no-git-checks && npm --no-workspaces dist-tag add nitro-mcp-toolkit@$VERSION latest",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
