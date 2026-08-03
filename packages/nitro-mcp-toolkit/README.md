@@ -4,6 +4,8 @@ Build a [Model Context Protocol](https://modelcontextprotocol.io) server inside 
 
 Targets protocol revision **2026-07-28** and falls back to the 2025 revisions automatically, so one endpoint serves both generations of clients.
 
+Built on [`h3-mcp`](https://mcp.h3.dev), which speaks the protocol directly over h3: no Node built-in reaches the bundle, and the toolkit adds file-based discovery, naming conventions and validation on top.
+
 > [!NOTE]
 > Early development, built wave by wave. Everything documented here is tested, but the API can still move between releases.
 
@@ -88,11 +90,26 @@ mcp({
   icons: [{ src: 'https://example.com/icon.png', mimeType: 'image/png', sizes: ['64x64'] }],
   websiteUrl: 'https://example.com',
   instructions: 'What the model is told about this server as a whole',
-  legacy: 'stateless', // or 'reject', for a 2026-07-28-only endpoint
+  era: 'dual', // or 'modern' / 'legacy' to serve one revision only
+  origin: { allow: ['https://app.example.com'] }, // browser clients, see below
 })
 ```
 
-These cross into generated code, so they are data only. A server that needs `bus` or `onError` mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
+These cross into generated code, so they are data only. A server that needs a callback, such as `onListen` or `auth.validate`, mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
+
+### Browser clients
+
+MCP clients send no `Origin` header, so the origin policy decides one thing only: which **web pages** may drive your server. A page the app serves to itself over a loopback host is accepted, which is why a browser tool works in development with nothing to configure, and every other origin is refused — that is what stops a page on some other host from driving a server bound to localhost.
+
+Deployed elsewhere, that page's origin has to be named:
+
+```ts
+mcp({ origin: { allow: ['https://app.example.com'] } })
+```
+
+An origin is matched exactly, scheme and port included. Pass `origin: false` to drop the check — reasonable for a public endpoint where a token, not the origin, is the boundary.
+
+The loopback condition is the load-bearing part of the default, and worth knowing if you write your own `validate`: `Origin` can only be compared against the request's own origin when the host is a loopback address. Everywhere else the host comes from a header the caller sets, and DNS rebinding — the attack this check exists to stop — sends the attacker's hostname in both, so the two always agree.
 
 ### More than one server
 
@@ -158,7 +175,7 @@ Return whatever is natural; the toolkit builds the protocol result.
 | `number`, `boolean`         | one text block, stringified   |
 | `null`, `undefined`         | no content                    |
 | object, array               | one text block of pretty JSON |
-| a full `CallToolResult`     | used as-is                    |
+| a full `McpCallToolResult`  | used as-is                    |
 | `imageResult(base64, mime)` | an image block                |
 | `audioResult(base64, mime)` | an audio block                |
 
@@ -204,17 +221,16 @@ export default defineMcpResource({
 })
 ```
 
-Pass a `ResourceTemplate` for a family of URIs. `list` powers discovery and `complete` powers argument autocompletion in clients.
+Declare a `uriTemplate` instead of a `uri` for a family of URIs. `list` makes the members discoverable in `resources/list`, and `complete` powers autocompletion as a client types.
 
 ```ts
-import { defineMcpResource, ResourceTemplate } from 'nitro-mcp-toolkit'
+import { defineMcpResource } from 'nitro-mcp-toolkit'
 
 export default defineMcpResource({
-  uri: new ResourceTemplate('docs://{slug}', {
-    list: () => ({ resources: pages.map((slug) => ({ name: slug, uri: `docs://${slug}` })) }),
-    complete: { slug: (value) => pages.filter((page) => page.startsWith(value)) },
-  }),
-  handler: (uri, { slug }) => renderPage(String(slug)),
+  uriTemplate: 'docs://{slug}',
+  list: () => pages.map((slug) => ({ name: slug, uri: `docs://${slug}` })),
+  complete: ({ argument }) => pages.filter((page) => page.startsWith(argument.value)),
+  handler: (uri, { slug }) => renderPage(slug),
 })
 ```
 
@@ -236,6 +252,21 @@ export default defineMcpPrompt({
 })
 ```
 
+Declare `arguments` instead of an `inputSchema` when a prompt should offer completions. The wire only carries strings, so that is what the handler receives — untouched by a schema.
+
+```ts
+export default defineMcpPrompt({
+  arguments: [
+    {
+      name: 'fruit',
+      required: true,
+      complete: ({ argument }) => fruits.filter((fruit) => fruit.startsWith(argument.value)),
+    },
+  ],
+  handler: ({ fruit }) => `You picked ${fruit}`,
+})
+```
+
 ## Request context
 
 Every handler receives a context as its last argument — the only argument when there is no input schema.
@@ -247,13 +278,14 @@ handler: (ctx) => {
 }
 ```
 
-| Field    | What it is                                                           |
-| -------- | -------------------------------------------------------------------- |
-| `event`  | The `H3Event` serving the request: headers, cookies, `event.context` |
-| `auth`   | Verified token info, when a verifier is configured                   |
-| `signal` | Aborts when the client cancels                                       |
-| `era`    | `'modern'` or `'legacy'`, the revision this client negotiated        |
-| `mcp`    | The raw SDK context — the escape hatch for anything not wrapped yet  |
+| Field    | What it is                                                                         |
+| -------- | ---------------------------------------------------------------------------------- |
+| `event`  | The `H3Event` serving the request: headers, cookies, `event.context`               |
+| `signal` | Aborts when the client cancels                                                     |
+| `era`    | `'modern'` or `'legacy'`, the revision this client negotiated                      |
+| `mcp`    | The request as the engine sees it: `progress()`, `log()`, `clientInfo`, MRTR state |
+
+There is no ambient state to consult and nothing to await before reading it: the event serving the request _is_ the context. Whatever an auth middleware resolved is on `event.context`, where it put it.
 
 ## Wiring it by hand
 
@@ -297,23 +329,25 @@ it('greets', async () => {
 
 The client closes itself when it leaves scope, so a failing assertion cannot leak it. `textOf` reads the text out of a tool call, a resource read or a prompt alike, for when the shape of the content blocks is not what you are asserting.
 
-Pass `{ era: 'legacy' }` to test the 2025 path, or `{ auth }` to stand in for a verified token.
+Pass `{ era: 'legacy' }` to test the 2025 path, or `{ headers }` for an endpoint that gates on a token.
 
 ## Protocol revisions
 
-The handler serves 2026-07-28 and, by default, falls back to stateless 2025-era serving. Pass `legacy: 'reject'` for a modern-only endpoint.
+The handler serves both revisions and dispatches per request. Pass `era: 'modern'` for a 2026-07-28-only endpoint, or `era: 'legacy'` to serve the 2025 era alone.
 
 ```ts
-export default createMcpHandler({ name: 'my-server', version: '1.0.0', legacy: 'reject' })
+export default createMcpHandler({ name: 'my-server', version: '1.0.0', era: 'modern' })
 ```
 
-Note that MCP clients still negotiate the 2025 revision by default, so a client must opt in to the modern path. The toolkit exports `MODERN_PROTOCOL_VERSION` to pin it — the SDK's `LATEST_PROTOCOL_VERSION` names the newest _legacy_ revision, not this one.
+Note that MCP clients still negotiate the 2025 revision by default, so a client must opt in to the modern path. The toolkit exports `MODERN_PROTOCOL_VERSION` to pin it.
 
 ## Runtimes
 
-Apart from one import the runtime is web-standard: the request context is carried by `AsyncLocalStorage`, so the handler needs `node:async_hooks`. It is the only Node built-in a built bundle pulls in — the SDK, h3 and your definitions add none — and it is there on Node, Deno, Bun, Vercel and Netlify, and on Cloudflare Workers once `nodejs_compat` is enabled. On workerd the SDK also selects a schema validator that generates no code, so nothing in the bundle needs `eval`.
+Neither the runtime nor the engine under it imports a single Node built-in — whatever a bundle ends up needing comes from the preset you build for, not from here. So the server runs anywhere `fetch` does: Node, Deno, Bun, Cloudflare Workers, Vercel, Netlify, with no compatibility flag to turn on. The request context is the `H3Event`, not ambient state, which is what spares it `node:async_hooks`.
 
-Presets that emit an `iife` bundle, `winterjs` among them, leave every `node:` import as an undefined global. That is a Nitro packaging limit which any app importing a built-in runs into, and not something this package can work around.
+Built for `cloudflare_module`, an app with five tools, four resources and two prompts comes out at 61.9 kB gzip with not one `node:` import in the worker.
+
+Only the module is build-time, and only because a file cannot be discovered where there is no filesystem: it reads the directory while Nitro builds and generates the imports. Nothing of it ships.
 
 Windows is supported: discovery, the imports generated from the paths it finds, and the dev watcher all speak `/` there, and a CI job keeps it that way.
 

@@ -1,9 +1,10 @@
-import type { Icon, PerRequestResponseMode } from '@modelcontextprotocol/server'
+import type { McpEra, McpIcon } from 'h3-mcp'
 
 /**
  * What the server advertises and how it answers — everything a definition file
- * cannot express. These cross into generated code, so they are data only:
- * a server needing `bus` or `onError` mounts `createMcpHandler` by hand.
+ * cannot express. These cross into generated code, so they are data only: a
+ * server needing a callback, such as `onListen` or `auth.validate`, mounts
+ * `createMcpHandler` by hand.
  */
 export interface McpServerOptions {
   /** Advertised to clients during initialization. */
@@ -13,24 +14,29 @@ export interface McpServerOptions {
   /** What this server is, for a human reading a client's server list. */
   description?: string
   /** Shown beside the server's name by clients that render one. */
-  icons?: Icon[]
+  icons?: McpIcon[]
   /** Where a human can read more about this server. */
   websiteUrl?: string
   /** Guidance the client shows to the model about this server as a whole. */
   instructions?: string
   /**
-   * How 2025-era clients are served: through the SDK's stateless fallback, or
-   * refused outright for a 2026-07-28-only endpoint.
+   * Which protocol revisions the endpoint serves: both, 2026-07-28 only, or
+   * the 2025 era only.
    *
-   * @default 'stateless'
+   * @default 'dual'
    */
-  legacy?: 'stateless' | 'reject'
+  era?: McpEra
   /**
-   * Whether modern exchanges answer with a single JSON body or an SSE stream.
+   * Browser origins allowed beyond the app's own loopback pages, which pass by
+   * default. Requests carrying no `Origin` — every MCP client proper — are
+   * unaffected. `false` drops the check.
    *
-   * @default 'auto'
+   * @example
+   * ```ts
+   * mcp({ origin: { allow: ['https://app.example.com'] } })
+   * ```
    */
-  responseMode?: PerRequestResponseMode
+  origin?: false | { allow?: string[]; allowMissing?: boolean }
 }
 
 export interface McpModuleOptions extends McpServerOptions {

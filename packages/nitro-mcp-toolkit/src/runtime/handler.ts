@@ -1,52 +1,59 @@
-import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
-import { H3Event } from 'h3'
-import { runWithRequest, setEra } from './context.ts'
+import { H3Event, toResponse } from 'h3'
+import { defineMcpHandler } from 'h3-mcp'
 import { resolveDefinitions, summarize } from './validate.ts'
+import type { McpHandlerOptions as EngineOptions } from 'h3-mcp'
 import type {
-  Icon,
-  McpHandlerRequestOptions,
-  PerRequestResponseMode,
-  ServerEventBus,
-  ServerNotifier,
-} from '@modelcontextprotocol/server'
-import type { McpDefinitionSummary, McpPrompt, McpResource, McpTool } from './definition.ts'
+  McpDefinitionBuckets,
+  McpDefinitionSummary,
+  McpPrompt,
+  McpResource,
+  McpTool,
+} from './definition.ts'
 
-export interface McpHandlerOptions {
+/**
+ * Everything the engine takes that is not a definition: eras, caching, auth,
+ * origin checks, request limits, subscriptions. Passed straight through, so the
+ * toolkit never has to keep up with it.
+ */
+type EngineWiring = Omit<
+  EngineOptions,
+  'name' | 'version' | 'tools' | 'resources' | 'resourceTemplates' | 'prompts'
+>
+
+export interface McpHandlerOptions extends EngineWiring {
   /** Advertised to clients during initialization. */
   name?: string
   version?: string
-  title?: string
-  /** What this server is, for a human reading a client's server list. */
-  description?: string
-  /** Shown beside the server's name by clients that render one. */
-  icons?: Icon[]
-  /** Where a human can read more about this server. */
-  websiteUrl?: string
-  /** Guidance the client shows to the model about this server as a whole. */
-  instructions?: string
   tools?: McpTool[]
+  /** Static resources and URI templates alike. */
   resources?: McpResource[]
   prompts?: McpPrompt[]
   /**
-   * How 2025-era clients are served: through the SDK's stateless fallback, or
-   * refused outright for a 2026-07-28-only endpoint.
+   * Which browser origins may reach the endpoint, beyond the pages the app
+   * serves to itself over loopback, which are accepted by default. Requests
+   * carrying no `Origin` are unaffected, and a `validate` of your own replaces
+   * the default. `false` drops the check.
    *
-   * @default 'stateless'
+   * @example
+   * ```ts
+   * createMcpHandler({ origin: { allow: ['https://app.example.com'] } })
+   * ```
    */
-  legacy?: 'stateless' | 'reject'
-  /**
-   * Whether modern exchanges answer with a single JSON body or an SSE stream.
-   *
-   * @default 'auto'
-   */
-  responseMode?: PerRequestResponseMode
-  /**
-   * The change-event bus backing `subscriptions/listen`. Supply a shared
-   * implementation to notify clients from several processes.
-   */
-  bus?: ServerEventBus
-  /** Called for out-of-band errors; it never alters the response. */
-  onError?: (error: Error) => void
+  origin?: EngineWiring['origin']
+}
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
+
+// The loopback test is not optional: `event.url` reads the `Host` header, which
+// DNS rebinding sets to the attacker's own name — matching its `Origin`.
+function sameLoopbackOrigin(origin: string, event: H3Event): boolean {
+  return origin === event.url.origin && LOOPBACK_HOSTS.has(event.url.hostname)
+}
+
+function resolveOrigin(origin: McpHandlerOptions['origin']): EngineOptions['origin'] {
+  if (origin === false) return false
+
+  return { ...origin, validate: origin?.validate ?? sameLoopbackOrigin }
 }
 
 /**
@@ -54,13 +61,9 @@ export interface McpHandlerOptions {
  * exposes the web-standard `fetch` face for any other runtime.
  */
 export interface McpHandler {
-  (event: H3Event): Promise<Response>
-  /**
-   * Serve one request outside of Nitro: Deno, Bun, a test, or any runtime that
-   * provides `node:async_hooks` — on Cloudflare Workers that means enabling the
-   * `nodejs_compat` flag, which the request context depends on.
-   */
-  fetch: (request: Request, options?: McpHandlerRequestOptions) => Promise<Response>
+  (event: H3Event): unknown
+  /** Serve one request outside of Nitro: Deno, Bun, a test, an edge runtime. */
+  fetch: (request: Request) => Promise<Response>
   /**
    * Everything this endpoint serves, as plain JSON — a catalog of the same set
    * every client sees.
@@ -76,10 +79,6 @@ export interface McpHandler {
    * ```
    */
   definitions: readonly McpDefinitionSummary[]
-  /** Push list-changed and resource-updated events to subscribed clients. */
-  notify: ServerNotifier
-  bus: ServerEventBus
-  close: () => Promise<void>
 }
 
 /**
@@ -92,54 +91,45 @@ export interface McpHandler {
  * ```
  */
 export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
-  const { tools = [], resources = [], prompts = [] } = options
+  const {
+    name = 'nitro-mcp-server',
+    version = '0.0.0',
+    tools = [],
+    resources = [],
+    prompts = [],
+    origin,
+    ...wiring
+  } = options
+
   const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
+  const buckets: McpDefinitionBuckets = {
+    tools: [],
+    resources: [],
+    resourceTemplates: [],
+    prompts: [],
+  }
 
-  const sdk = createSdkHandler(
-    (requestCtx) => {
-      // Called once per request, so definitions can never leak state between
-      // clients; the same set serves both protocol eras.
-      setEra(requestCtx.era)
+  for (const { definition, identity } of registrations) {
+    definition.build(identity, buckets)
+  }
 
-      const server = new McpServer(
-        {
-          name: options.name ?? 'nitro-mcp-server',
-          version: options.version ?? '0.0.0',
-          title: options.title,
-          description: options.description,
-          icons: options.icons,
-          websiteUrl: options.websiteUrl,
-        },
-        { instructions: options.instructions },
-      )
+  const handle = defineMcpHandler({
+    ...wiring,
+    name,
+    version,
+    origin: resolveOrigin(origin),
+    ...buckets,
+  })
 
-      for (const { definition, identity } of registrations) {
-        definition.register(server, identity)
-      }
-
-      return server
-    },
-    {
-      legacy: options.legacy,
-      responseMode: options.responseMode,
-      bus: options.bus,
-      onerror: options.onError,
-    },
-  )
-
-  // Driven bare, there is no Nitro event to carry, so one is synthesized over
-  // the request: handlers get a consistent `ctx.event` either way.
-  const fetch: McpHandler['fetch'] = (request, requestOptions) =>
-    runWithRequest(new H3Event(request), () => sdk.fetch(request, requestOptions))
-
-  const handle = (event: H3Event): Promise<Response> =>
-    runWithRequest(event, () => sdk.fetch(event.req))
+  // Driven bare, there is no Nitro event to serve, so one is made over the
+  // request: handlers get a consistent `ctx.event` either way.
+  const fetch: McpHandler['fetch'] = async (request) => {
+    const event = new H3Event(request)
+    return toResponse(await handle(event), event)
+  }
 
   return Object.assign(handle, {
     fetch,
     definitions: Object.freeze(summarize(registrations)),
-    notify: sdk.notify,
-    bus: sdk.bus,
-    close: sdk.close,
   })
 }

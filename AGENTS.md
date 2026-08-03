@@ -120,7 +120,7 @@ The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/
 
 **Discovery generates two Nitro virtual modules per instance** — `#mcp/<slug>/registry`, which imports each definition file, and `#mcp/<slug>/handler`, which is what `options.handlers` mounts. Three things about this were established empirically and are easy to break:
 
-- A bare `nitro-mcp-toolkit` import inside a virtual module resolves fine, in dev and in a production build, so the generated handler imports the toolkit exactly as a user's file does — one module instance, one `AsyncLocalStorage`.
+- A bare `nitro-mcp-toolkit` import inside a virtual module resolves fine, in dev and in a production build, so the generated handler imports the toolkit exactly as a user's file does — one module instance, one copy of the engine.
 - The registry inlines its own `fromFile` helper rather than importing one, which keeps build-time naming out of the runtime bundle and the runtime free of an export that only generated code would call.
 - A route may import `#mcp/<slug>/handler` to read `handler.definitions`, and that id is typed with nothing to configure: `src/runtime/virtual.d.ts` declares the pattern `#mcp/*/handler`, and the app pulls it in through its own import of the toolkit. Three constraints hold it together, all established by experiment. The declaration must be a **global** file — the same lines inside a `.d.ts` that has a top-level export are read as an augmentation of a module that does not exist, and silently do nothing. The **dts pass drops triple-slash references**, so `build.config.ts` re-attaches the one in `src/runtime/index.ts` and ships the declaration next to the built types, rewriting its inline import from `./index.ts` to `./index.mjs`; do not point that import at the package's own name, since `typecheck` does not depend on a build and would then fail on a fresh clone. Nitro's own answer, a `paths` entry in a generated `tsconfig.json`, is not usable here: `generateTsConfig` is off by default, so it would leave every bare Nitro app mapping the id by hand.
 - **Dev pickup needs `nitro.hooks.callHook('rollup:reload')`.** A new file is imported by nothing, so neither the bundler's graph nor `devServer.watch` (which reloads the worker without rebuilding) can notice it; only a rebuild re-renders the registry. The module therefore watches the definitions directory itself with `fs.watch` and calls that hook. Note the vite builder does not listen to it — an upstream gap, not something to work around here.
@@ -168,11 +168,21 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 
   **One exception, and it is not optional: `fs.watch` must be given the platform's own separators.** libuv compares the paths it reports against the one it was told to watch, and on a mismatch it calls `abort()` — the process dies on a native assertion (`!_wcsnicmp(filename, dir, dirlen)`, `src\win\fs-event.c`) that no `try` can catch. `watch.ts` therefore passes `node:path`'s `normalize` at that single call site and keeps `pathe` for everything it compares. The same assertion fires on an 8.3 short path, which is why tests take the `realpath` of their `mkdtemp` directory.
 
-### Platform support (`nitro-mcp-toolkit`)
+### The engine (`nitro-mcp-toolkit`)
 
-The runtime imports exactly one Node built-in, `node:async_hooks`, for the `AsyncLocalStorage` that carries the request context; the SDK, h3 and zod add none, so a built bundle is otherwise web-standard. Keep it that way: a second built-in would cost the edge story.
+The protocol itself is [`h3-mcp`](https://mcp.h3.dev)'s, not ours. It replaced `@modelcontextprotocol/server`, and the measurements that justified it are worth keeping in mind before anything is reintroduced: the playground's server bundle went from **974 kB (220 kB gzip) to 321 kB (72 kB gzip)** — the engine chunk alone from 688 kB to 80 kB — and one tool call through the official client from 0.13 ms to 0.063 ms.
 
-`AsyncLocalStorage` cannot be swapped for a `WeakMap` keyed by the request — the SDK does not hand back the same `Request` object it was given, which was measured, not assumed. Cloudflare therefore needs `nodejs_compat`; that is documented in the README rather than worked around.
+**The toolkit's job is what sits above the protocol**, and the split is worth respecting: discovery, filename-derived naming, `group`/`tags` in `_meta`, duplicate-name validation, return coercion, `handler.definitions`. Everything else is the engine's, and `McpHandlerOptions` inherits it by `Omit`-ing only the definition arrays from `h3-mcp`'s own options — so `auth`, `origin`, `limits`, `cache`, `era`, `onListen` and whatever it grows next need no work here.
+
+Definitions are **data, not registrations**. `defineMcp*` returns metadata plus a `build(identity, buckets)` that pushes the engine's own definition object into one of four arrays (`tools`, `resources`, `resourceTemplates`, `prompts`) — each definer knows its own bucket, which is what keeps the whole path free of a cast. `identity` arrives already resolved from `resolveDefinitions`, so nothing downstream re-derives a name.
+
+**Neither the runtime nor the engine imports a Node built-in.** The request context is the `H3Event` the engine hands each handler, so there is no `AsyncLocalStorage` and no `nodejs_compat` to ask of Cloudflare. Keep it that way: one built-in would cost the whole edge story. What a built app still shows (`node:http`, `node:stream` in `_libs/h3+rou3+srvx.mjs`) is the Node preset's own server, and disappears on an edge preset. The `_meta` on every definition is what carries `group` and `tags`, and it is the one engine field the toolkit depends on beyond the obvious.
+
+**One engine default is deliberately overridden: `origin`.** The engine trusts no browser origin until one is listed, which locks out a page the app serves to itself — the inspector included, which is how it was found. `createMcpHandler` therefore defaults `origin.validate` to same-origin **on a loopback host only**, and that second condition is the whole point: `event.url` reads the `Host` header, so a bare same-origin comparison — which is what `@nuxtjs/mcp-toolkit` does — is satisfied by DNS rebinding, where the attacker owns the hostname and `Origin` and `Host` therefore agree. Do not "align" the two by dropping the hostname test. A user-supplied `validate` replaces ours; `allow` adds to it, so listing a production origin does not cost a dev one.
+
+**The engine depends on `h3` directly, and demands a newer one than Nitro pins** (`^2.0.1-rc.26` against Nitro's `2.0.1-rc.22`), so a real app carries two copies: Nitro's builds the event, the engine's supplies our types. It works — an `H3Event` is used structurally, never with `instanceof` — and the live playground proves it, but it is why the package pins `h3` at rc.26 in both `devDependencies` and `peerDependencies` rather than following Nitro. A peer dependency upstream would end it.
+
+Two known gaps, both upstream: on the modern era the engine echoes only `name`/`version`/`title` in `_meta["io.modelcontextprotocol/serverInfo"]` (`toServerInfoMeta`), so `description`, `icons` and `websiteUrl` reach 2025-era clients only — `test/server-info.test.ts` asserts both halves and will fail the day that changes. And the MRTR helpers (`inputRequired`, `inputResponse`, `acceptedContent`) are ours, in `src/runtime/mrtr.ts`, because the engine ships the types but not the builders yet.
 
 Windows is covered by a dedicated `test-windows` CI job that runs this package's suite alone, since it is the only one whose behaviour depends on the OS. Its e2e test builds a real Nitro app, which is what proves the absolute paths in the generated registry resolve there.
 
@@ -321,7 +331,7 @@ describe('my feature', () => {
 
 ### SDK Version
 
-This module uses `@modelcontextprotocol/sdk` version 1.23.0+. When referencing SDK documentation, ensure compatibility with this version.
+`@nuxtjs/mcp-toolkit` uses `@modelcontextprotocol/sdk` 1.23.0+; check SDK documentation against that version. `nitro-mcp-toolkit` does not use the SDK at all — see [The engine](#the-engine-nitro-mcp-toolkit) — beyond `@modelcontextprotocol/client`, which its tests use as an impartial judge of conformance.
 
 ## Key Files
 

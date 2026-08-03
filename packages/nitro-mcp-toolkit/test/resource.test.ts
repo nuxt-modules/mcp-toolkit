@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createMcpHandler, defineMcpResource, ResourceTemplate } from '../src/runtime/index.ts'
+import { createMcpHandler, defineMcpResource } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 
 describe('defineMcpResource', () => {
@@ -36,8 +36,8 @@ describe('defineMcpResource', () => {
       resources: [
         defineMcpResource({
           name: 'page',
-          uri: new ResourceTemplate('docs://{slug}', { list: undefined }),
-          handler: (_uri, variables) => `page ${String(variables.slug)}`,
+          uriTemplate: 'docs://{slug}',
+          handler: (_uri, variables) => `page ${variables.slug}`,
         }),
       ],
     })
@@ -48,6 +48,37 @@ describe('defineMcpResource', () => {
 
     const read = await client.readResource({ uri: 'docs://getting-started' })
     expect(read.contents).toEqual([{ uri: 'docs://getting-started', text: 'page getting-started' }])
+  })
+
+  it('lists and completes what a template can resolve', async () => {
+    const slugs = ['getting-started', 'guide', 'reference']
+    const handler = createMcpHandler({
+      resources: [
+        defineMcpResource({
+          name: 'page',
+          uriTemplate: 'docs://{slug}',
+          list: () => slugs.map((slug) => ({ name: slug, uri: `docs://${slug}` })),
+          complete: ({ argument }) => slugs.filter((slug) => slug.startsWith(argument.value)),
+          handler: (_uri, variables) => `page ${variables.slug}`,
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+
+    // A template that can list its instances shows up under `resources/list`
+    // too, so a client that never reads templates still finds the pages.
+    const { resources } = await client.listResources()
+    expect(resources).toMatchObject([
+      { name: 'getting-started', uri: 'docs://getting-started' },
+      { name: 'guide', uri: 'docs://guide' },
+      { name: 'reference', uri: 'docs://reference' },
+    ])
+
+    const completion = await client.complete({
+      ref: { type: 'ref/resource', uri: 'docs://{slug}' },
+      argument: { name: 'slug', value: 'g' },
+    })
+    expect(completion.completion.values).toEqual(['getting-started', 'guide'])
   })
 
   it('passes a full result through untouched', async () => {

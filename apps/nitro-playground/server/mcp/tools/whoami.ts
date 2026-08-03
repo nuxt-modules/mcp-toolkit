@@ -2,7 +2,7 @@ import { defineMcpTool } from 'nitro-mcp-toolkit'
 
 /**
  * Exercises the no-input overload and every field of `McpContext`, so the H3
- * event really is threaded through the SDK rather than lost in its clone.
+ * event really is the one serving the request.
  */
 export default defineMcpTool({
   description: 'Report what the server sees about the current request',
@@ -12,10 +12,11 @@ export default defineMcpTool({
     path: ctx.event.url.pathname,
     userAgent: ctx.event.req.headers.get('user-agent'),
     accept: ctx.event.req.headers.get('accept'),
-    // Wave 3 fills this in; until then it proves the field is plumbed through.
-    auth: ctx.auth?.clientId ?? null,
+    // Whatever a middleware resolved for this request, auth included, is on the
+    // event rather than on a context of our own.
+    client: ctx.mcp.clientInfo?.name ?? null,
     // Wave 4 signs and reads this on every replayed round.
-    requestState: ctx.mcp.mcpReq.requestState() ?? null,
+    requestState: ctx.mcp.requestState ?? null,
     aborted: ctx.signal.aborted,
   }),
 })

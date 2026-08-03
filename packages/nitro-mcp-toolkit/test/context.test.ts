@@ -20,7 +20,7 @@ function inspector() {
 }
 
 describe('handler context', () => {
-  it('hands the handler the event, signal and raw SDK context', async () => {
+  it('hands the handler the event, the signal and the request', async () => {
     const { seen, tool } = inspector()
     await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
 
@@ -29,30 +29,22 @@ describe('handler context', () => {
     const ctx = seen.at(-1)
     expect(ctx?.event.req.url).toBe('http://localhost/mcp')
     expect(ctx?.signal).toBeInstanceOf(AbortSignal)
-    expect(ctx?.mcp.mcpReq).toBeDefined()
+    expect(ctx?.era).toBe('modern')
+    expect(ctx?.mcp.requestId).toBeDefined()
   })
 
-  it('carries the auth info the caller passed to fetch', async () => {
+  it('reaches the whole request, headers included', async () => {
     const { seen, tool } = inspector()
     await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }), {
-      auth: { token: 'tok', clientId: 'client-1', scopes: ['mcp'], expiresAt: 4e9 },
+      headers: { 'x-client': 'client-1' },
     })
 
     await client.callTool({ name: 'inspect' })
 
-    expect(seen.at(-1)?.auth).toMatchObject({ clientId: 'client-1', scopes: ['mcp'] })
+    expect(seen.at(-1)?.event.req.headers.get('x-client')).toBe('client-1')
   })
 
-  it('leaves auth undefined when the caller passed none', async () => {
-    const { seen, tool } = inspector()
-    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
-
-    await client.callTool({ name: 'inspect' })
-
-    expect(seen.at(-1)?.auth).toBeUndefined()
-  })
-
-  it('shares the event across concurrent requests without mixing them up', async () => {
+  it('keeps concurrent requests on their own event', async () => {
     const events: string[] = []
     const tool = defineMcpTool({
       name: 'slow',
@@ -65,15 +57,9 @@ describe('handler context', () => {
     const handler = createMcpHandler({ tools: [tool] })
 
     const call = (marker: string) =>
-      createMcpTestClient({
-        fetch: (request, options) => {
-          const tagged = new Request(request, {
-            headers: { ...Object.fromEntries(request.headers), 'x-marker': marker },
-          })
-          return handler.fetch(tagged, options)
-        },
-      }).then(async (client) => {
+      createMcpTestClient(handler, { headers: { 'x-marker': marker } }).then(async (client) => {
         await client.callTool({ name: 'slow' })
+        await client.close()
       })
 
     await Promise.all([call('a'), call('b')])

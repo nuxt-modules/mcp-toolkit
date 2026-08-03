@@ -114,6 +114,7 @@ describe('the mcp() module', () => {
           route: '/iconic',
           icons: [{ src: 'https://example.com/icon.png', mimeType: 'image/png' }],
           websiteUrl: 'https://example.com',
+          origin: { allow: ['http://localhost:3000'] },
         }),
       ],
     })
@@ -122,6 +123,7 @@ describe('the mcp() module', () => {
 
     expect(code).toContain('icons: [{"src":"https://example.com/icon.png","mimeType":"image/png"}]')
     expect(code).toContain('websiteUrl: "https://example.com"')
+    expect(code).toContain('origin: {"allow":["http://localhost:3000"]}')
 
     await iconic.close()
   })

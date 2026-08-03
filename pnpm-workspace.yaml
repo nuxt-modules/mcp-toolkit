@@ -49,4 +49,6 @@ minimumReleaseAgeExclude:
   - '@modelcontextprotocol/sdk@1.30.0'
   - '@modelcontextprotocol/client@2.0.0'
   - '@modelcontextprotocol/core@2.0.0'
-  - '@modelcontextprotocol/server@2.0.0'
+  # h3
+  - h3-mcp@0.1.0
+  - srvx@0.12.5
