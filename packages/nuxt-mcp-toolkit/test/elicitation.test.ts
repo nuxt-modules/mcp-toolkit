@@ -139,7 +139,7 @@ describe('useMcpElicitation', async () => {
     expect(Object.keys(params.requestedSchema.properties).sort()).toEqual(['channel', 'name'])
   })
 
-  it('form() returns the action without content when the user declines', { timeout: 15000 }, async () => {
+  it('form() returns the action without content when the user declines', async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'decline' }),
@@ -162,7 +162,7 @@ describe('useMcpElicitation', async () => {
     expect(parsed).toEqual({ error: 'unsupported' })
   })
 
-  it('url() succeeds when the client declares elicitation.url', { timeout: 15000 }, async () => {
+  it('url() succeeds when the client declares elicitation.url', async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: { url: {} } },
       initialResponder: () => ({ action: 'accept' }),
@@ -192,7 +192,7 @@ describe('useMcpElicitation', async () => {
     expect(parsed).toEqual({ error: 'unsupported' })
   })
 
-  it('confirm() returns true when the user accepts with confirm=true', { timeout: 15000 }, async () => {
+  it('confirm() returns true when the user accepts with confirm=true', async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'accept', content: { confirm: true } }),
@@ -203,7 +203,7 @@ describe('useMcpElicitation', async () => {
     expect(readText(result)).toBe('yes')
   })
 
-  it('confirm() returns false when the user accepts with confirm=false', { timeout: 15000 }, async () => {
+  it('confirm() returns false when the user accepts with confirm=false', async () => {
     const conn = await createElicitClient({
       capabilities: { elicitation: {} },
       initialResponder: () => ({ action: 'accept', content: { confirm: false } }),
