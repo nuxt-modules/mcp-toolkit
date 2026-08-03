@@ -128,6 +128,15 @@ jobs:
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
 
+      # apps/mcp-starter deliberately depends on @nuxtjs/mcp-toolkit through a
+      # real semver range, not workspace:*, so it can be scaffolded outside
+      # this monorepo — which means it's invisible to Turborepo's dependency
+      # graph, and its ^build never waits for the module. Build packages
+      # first so it (and anything else affected by the same gap) finds a
+      # real dist instead of racing it.
+      - name: Build packages
+        run: pnpm exec turbo run build --filter='./packages/*'
+
       # --continue: one broken app must not cancel the others.
       # @nuxtjs/mcp-toolkit-playground is excluded: nuxt-hub tries to run
       # PGlite migrations at build time, which needs a real database binding
@@ -164,6 +173,14 @@ jobs:
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
+
+      # apps/mcp-starter deliberately depends on @nuxtjs/mcp-toolkit through a
+      # real semver range, not workspace:*, so it can be scaffolded outside
+      # this monorepo — which means it's invisible to Turborepo's dependency
+      # graph, and its own build never waits for the module. Build packages
+      # first so it finds a real dist instead of racing it.
+      - name: Build packages
+        run: pnpm exec turbo run build --filter='./packages/*'
 
       # nitro-mcp-toolkit runs once below, under coverage, which enforces its thresholds
       - name: Test affected packages
