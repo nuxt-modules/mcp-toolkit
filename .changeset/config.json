@@ -6,6 +6,10 @@
   "linked": [],
   "access": "public",
   "baseBranch": "main",
+  "privatePackages": false,
   "updateInternalDependencies": "patch",
-  "ignore": ["nitro-mcp-toolkit"]
+  "ignore": ["nitro-mcp-toolkit"],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

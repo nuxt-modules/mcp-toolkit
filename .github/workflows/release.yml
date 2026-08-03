@@ -19,19 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      # changesets/action pushes the release branch, so credentials stay
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - run: corepack enable
-
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/setup
         with:
-          node-version: latest
           registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: pnpm install
 
       - name: Prepare
         run: pnpm dev:prepare
@@ -41,31 +36,32 @@ jobs:
 
       - name: Create Release PR or Publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           title: "chore(repo): version packages"
           version: pnpm run version
           publish: pnpm run release
-          createGithubReleases: false
+          # Releases are created here, then their bodies are rewritten below.
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
+      # createGithubReleases gives us one release per package, tagged pkg@version — that part
+      # we keep. Its *body* is the CHANGELOG section, which for a dependent package is a wall of
+      # "Updated dependencies [<hash>, <hash>, …]" and is empty for packages with no changeset
+      # of their own. `--generate-notes` is not the answer either: GitHub builds those from a
+      # commit range, and if this repo ever ships more than one package through this flow,
+      # per-package tags would interleave and each package's notes would list everybody's PRs.
+      # So we rewrite each body from the PRs that actually touched that package's directory,
+      # grouped by the same categories as .github/release.yml.
       - name: Push tags
         if: steps.changesets.outputs.published == 'true'
         run: git push --tags
 
-      - name: Create GitHub Releases
+      - name: Rewrite release notes
         if: steps.changesets.outputs.published == 'true'
-        run: |
-          for pkg in $(echo '${{ steps.changesets.outputs.publishedPackages }}' | jq -r '.[] | .name + "@" + .version'); do
-            tag="$pkg"
-            if gh release view "$tag" > /dev/null 2>&1; then
-              echo "Release $tag already exists, skipping"
-            else
-              gh release create "$tag" --draft --generate-notes --title "$tag"
-            fi
-          done
+        run: node scripts/release-notes.mjs '${{ steps.changesets.outputs.publishedPackages }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
