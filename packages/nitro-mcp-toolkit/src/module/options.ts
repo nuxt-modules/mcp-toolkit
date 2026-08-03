@@ -31,6 +31,17 @@ export interface McpServerOptions {
    * @default 'auto'
    */
   responseMode?: PerRequestResponseMode
+  /**
+   * Browser origins allowed beyond the app's own loopback pages, which pass by
+   * default. Requests carrying no `Origin` — every MCP client proper — are
+   * unaffected. `false` drops the check.
+   *
+   * @example
+   * ```ts
+   * mcp({ origin: { allow: ['https://app.example.com'] } })
+   * ```
+   */
+  origin?: false | { allow?: string[]; allowMissing?: boolean }
 }
 
 export interface McpModuleOptions extends McpServerOptions {

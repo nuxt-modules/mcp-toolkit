@@ -89,10 +89,25 @@ mcp({
   websiteUrl: 'https://example.com',
   instructions: 'What the model is told about this server as a whole',
   legacy: 'stateless', // or 'reject', for a 2026-07-28-only endpoint
+  origin: { allow: ['https://app.example.com'] }, // browser clients, see below
 })
 ```
 
 These cross into generated code, so they are data only. A server that needs `bus` or `onError` mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
+
+### Browser clients
+
+MCP clients send no `Origin` header, so this decides one thing only: which **web pages** may drive your server. A page the app serves to itself over a loopback host is accepted, which is why a browser tool works in development with nothing to configure, and every other origin is refused — that is what stops a page on some other host from driving a server bound to localhost.
+
+Deployed elsewhere, that page's origin has to be named:
+
+```ts
+mcp({ origin: { allow: ['https://app.example.com'] } })
+```
+
+An origin is matched exactly, scheme and port included. Pass `origin: false` to drop the check — reasonable for a public endpoint where a token, not the origin, is the boundary.
+
+The loopback condition is the load-bearing part of the default: `Origin` can only be compared against the request's own origin when the host is a loopback address. Everywhere else the host comes from a header the caller sets, and DNS rebinding — the attack this check exists to stop — sends the attacker's hostname in both, so a bare same-origin comparison always agrees with itself.
 
 ### More than one server
 
