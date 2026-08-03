@@ -176,6 +176,8 @@ The runtime imports exactly one Node built-in, `node:async_hooks`, for the `Asyn
 
 Windows is covered by a dedicated `test-windows` CI job that runs this package's suite alone, since it is the only one whose behaviour depends on the OS. Its e2e test builds a real Nitro app, which is what proves the absolute paths in the generated registry resolve there.
 
+**The SDK does no `Origin` validation of its own, so `createMcpHandler` adds one** (`src/runtime/origin.ts`), checked ahead of `sdk.fetch` in both `handle` and `fetch`. The default accepts a page the app serves to itself on a loopback host and refuses every other origin; requests with no `Origin` — every MCP client proper — are unaffected. The loopback condition is not decoration: `event.url` reads the `Host` header, so a bare same-origin comparison is satisfied by DNS rebinding, where the attacker's own hostname lands in both `Host` and `Origin`. Do not drop it to "simplify" the check. `allow` adds explicit origins on top of the default; a user's own `allow` list does not cost the loopback case.
+
 ### MCP Definitions
 
 Use the helper functions:

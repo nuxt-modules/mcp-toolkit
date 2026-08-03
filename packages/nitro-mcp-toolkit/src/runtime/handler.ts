@@ -1,6 +1,7 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
 import { runWithRequest, setEra } from './context.ts'
+import { forbiddenOriginResponse, isOriginAllowed } from './origin.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
 import type {
   Icon,
@@ -10,6 +11,7 @@ import type {
   ServerNotifier,
 } from '@modelcontextprotocol/server'
 import type { McpDefinitionSummary, McpPrompt, McpResource, McpTool } from './definition.ts'
+import type { McpOriginOptions } from './origin.ts'
 
 export interface McpHandlerOptions {
   /** Advertised to clients during initialization. */
@@ -40,6 +42,17 @@ export interface McpHandlerOptions {
    * @default 'auto'
    */
   responseMode?: PerRequestResponseMode
+  /**
+   * Which browser origins may reach the endpoint, beyond the pages the app
+   * serves to itself over loopback, which are accepted by default. Requests
+   * carrying no `Origin` are unaffected. `false` drops the check.
+   *
+   * @example
+   * ```ts
+   * createMcpHandler({ origin: { allow: ['https://app.example.com'] } })
+   * ```
+   */
+  origin?: McpOriginOptions
   /**
    * The change-event bus backing `subscriptions/listen`. Supply a shared
    * implementation to notify clients from several processes.
@@ -92,7 +105,7 @@ export interface McpHandler {
  * ```
  */
 export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
-  const { tools = [], resources = [], prompts = [] } = options
+  const { tools = [], resources = [], prompts = [], origin } = options
   const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
 
   const sdk = createSdkHandler(
@@ -129,11 +142,18 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
 
   // Driven bare, there is no Nitro event to carry, so one is synthesized over
   // the request: handlers get a consistent `ctx.event` either way.
-  const fetch: McpHandler['fetch'] = (request, requestOptions) =>
-    runWithRequest(new H3Event(request), () => sdk.fetch(request, requestOptions))
+  const fetch: McpHandler['fetch'] = (request, requestOptions) => {
+    const event = new H3Event(request)
+    if (!isOriginAllowed(event, origin)) return Promise.resolve(forbiddenOriginResponse())
 
-  const handle = (event: H3Event): Promise<Response> =>
-    runWithRequest(event, () => sdk.fetch(event.req))
+    return runWithRequest(event, () => sdk.fetch(request, requestOptions))
+  }
+
+  const handle = (event: H3Event): Promise<Response> => {
+    if (!isOriginAllowed(event, origin)) return Promise.resolve(forbiddenOriginResponse())
+
+    return runWithRequest(event, () => sdk.fetch(event.req))
+  }
 
   return Object.assign(handle, {
     fetch,

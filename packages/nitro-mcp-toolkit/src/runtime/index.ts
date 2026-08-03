@@ -28,6 +28,7 @@ export type {
   McpResource,
   McpTool,
 } from './definition.ts'
+export type { McpOriginOptions } from './origin.ts'
 export type { McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 
