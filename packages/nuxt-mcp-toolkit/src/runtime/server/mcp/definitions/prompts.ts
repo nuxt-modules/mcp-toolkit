@@ -5,6 +5,7 @@ import type { McpServer, PromptCallback } from '@modelcontextprotocol/sdk/server
 import type { ShapeOutput } from '@modelcontextprotocol/sdk/server/zod-compat.js'
 import type { McpRequestExtra } from './sdk-extra'
 import { enrichNameTitle } from './utils'
+import { rememberRequestNotifier } from '../notifications'
 
 /**
  * Return type for MCP prompt handlers.
@@ -98,6 +99,7 @@ export function registerPromptFromDefinition<Args extends ZodRawShape | undefine
 
   const role = prompt.role ?? 'user'
   const wrappedHandler: PromptCallback<ZodRawShape> = async (...args: unknown[]) => {
+    rememberRequestNotifier(args)
     const result = await (prompt.handler as (...a: unknown[]) => unknown)(...args)
     return normalizePromptResult(result as McpPromptCallbackResult, role)
   }
