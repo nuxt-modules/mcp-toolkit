@@ -13,6 +13,7 @@ import { registerToolFromDefinition } from './definitions/tools'
 import type { CodeModeOptions } from './codemode'
 import { getHeader, getRequestMethod } from './compat'
 import { getEvlogLogger } from './internals'
+import { trackLoggingLevel } from './notifications'
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
 
 export type { McpTransportHandler } from './providers/types'
@@ -127,6 +128,8 @@ export async function createMcpServer(config: McpResolvedConfig): Promise<McpSer
       logging: {},
     },
   })
+
+  trackLoggingLevel(server)
 
   let toolsToRegister: McpToolDefinition[] = config.tools as McpToolDefinition[]
 

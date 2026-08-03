@@ -6,6 +6,7 @@ import { resolve, extname, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { enrichNameTitle } from './utils'
 import { type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
+import { rememberRequestNotifier } from '../notifications'
 
 /**
  * Optional annotations for a resource (from `@modelcontextprotocol/sdk` `Annotations`).
@@ -217,12 +218,18 @@ export function registerResourceFromDefinition(
     ) as ReadResourceCallback
   }
 
+  const readHandler = handler as (...args: unknown[]) => unknown
+  const tracked = (...args: unknown[]) => {
+    rememberRequestNotifier(args)
+    return readHandler(...args)
+  }
+
   if (typeof uri === 'string') {
     return server.registerResource(
       name,
       uri,
       metadata,
-      handler as ReadResourceCallback,
+      tracked as ReadResourceCallback,
     )
   }
   else {
@@ -230,7 +237,7 @@ export function registerResourceFromDefinition(
       name,
       uri,
       metadata,
-      handler as ReadResourceTemplateCallback,
+      tracked as ReadResourceTemplateCallback,
     )
   }
 }

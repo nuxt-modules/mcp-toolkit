@@ -7,6 +7,7 @@ import type { McpRequestExtra } from './sdk-extra'
 import { enrichNameTitle } from './utils'
 import { type MsCacheDuration, type McpCacheOptions, type McpCache, createCacheOptions, wrapWithCache } from './cache'
 import { type McpToolCallbackResult, normalizeToolResult } from './results'
+import { rememberRequestNotifier } from '../notifications'
 
 export type { McpToolCallbackResult }
 
@@ -154,6 +155,7 @@ export function registerToolFromDefinition(
 
   // Normalize returns and catch thrown errors into isError results
   const normalizedHandler: ToolCallback<ZodRawShape> = async (...args: unknown[]) => {
+    rememberRequestNotifier(args)
     try {
       const result = await (handler as (...a: unknown[]) => unknown)(...args)
       return normalizeToolResult(result as McpToolCallbackResult)

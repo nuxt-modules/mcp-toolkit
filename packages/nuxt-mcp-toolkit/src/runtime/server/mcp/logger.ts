@@ -4,11 +4,12 @@ import type { H3Event } from 'h3'
 import { getHeader } from './compat'
 import { useMcpServer } from './server'
 import { getEvlogLogger, getSdkServerFromHelper } from './internals'
+import { getRequestNotifier, isLevelEnabled } from './notifications'
 
 /**
  * Sends `notifications/message` to the connected MCP client. Honours the
- * client's `logging/setLevel` per session and never throws — disconnects
- * and filtered levels are silently dropped.
+ * client's `logging/setLevel` and never throws — disconnects and filtered
+ * levels are silently dropped.
  */
 export interface McpClientNotifier {
   (level: LoggingLevel, data: unknown, logger?: string): Promise<void>
@@ -98,11 +99,21 @@ export function useMcpLogger(prefix?: string): McpLogger {
 
   const sendNotify = async (level: LoggingLevel, data: unknown, logger?: string): Promise<void> => {
     try {
-      await sdkServer.sendLoggingMessage({
-        level,
-        data,
-        logger: logger ?? prefix,
-      }, sessionId)
+      if (!isLevelEnabled(helper.server, level)) return
+
+      const params = { level, data, logger: logger ?? prefix }
+
+      // Inside a handler, the request's own stream is the only one a client is
+      // guaranteed to be reading: the standalone SSE stream is opened after
+      // `connect()` returns, so a notification sent before then is dropped.
+      const notifyRequest = getRequestNotifier(event)
+
+      if (notifyRequest) {
+        await notifyRequest({ method: 'notifications/message', params })
+      }
+      else {
+        await sdkServer.sendLoggingMessage(params, sessionId)
+      }
     }
     catch (err) {
       if (requestLogger) {
