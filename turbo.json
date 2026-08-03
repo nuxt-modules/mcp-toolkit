@@ -18,7 +18,7 @@
   "globalDependencies": [".env"],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "dev:prepare"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".vercel/output/**", "dist/**", ".output/**", ".nuxt/**"]
     },
