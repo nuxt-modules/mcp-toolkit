@@ -18,9 +18,13 @@ concurrency:
 
 env:
   TURBO_TELEMETRY_DISABLED: 1
-  # Fork PRs get no OIDC token, so they fall back to the local cache
-  IS_INTERNAL: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-  TURBO_CACHE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'remote:rw' || 'local:rw' }}
+  # Fork PRs get no OIDC token, so they fall back to the local cache. Same for
+  # any repo that hasn't set up a Turborepo CLI OIDC policy on Vercel yet
+  # (Settings -> Build and Deployment -> OIDC Policies for CLI Access) and
+  # pointed the TURBO_TEAM repository variable at that team: remote:rw with no
+  # token doesn't fall back, it makes turbo fail every task outright.
+  IS_INTERNAL: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.TURBO_TEAM != '' }}
+  TURBO_CACHE: ${{ ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.TURBO_TEAM != '') && 'remote:rw' || 'local:rw' }}
   # Without this, turbo silently treats every package as affected
   TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
 
@@ -39,11 +43,18 @@ jobs:
           persist-credentials: false
 
       - parallel:
+          # Best-effort: remote caching is a speed optimization, not a
+          # correctness requirement, and its OIDC exchange depends on a
+          # Turborepo CLI policy configured on the Vercel team's dashboard,
+          # not on anything this repo controls. A failure here (missing
+          # policy, Vercel outage) must not fail the job — turbo runs fine
+          # without TURBO_TOKEN, just without the shared cache.
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
+            continue-on-error: true
             uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
             with:
-              team: ${{ secrets.TURBO_TEAM }}
+              team: ${{ vars.TURBO_TEAM }}
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
@@ -68,11 +79,18 @@ jobs:
           persist-credentials: false
 
       - parallel:
+          # Best-effort: remote caching is a speed optimization, not a
+          # correctness requirement, and its OIDC exchange depends on a
+          # Turborepo CLI policy configured on the Vercel team's dashboard,
+          # not on anything this repo controls. A failure here (missing
+          # policy, Vercel outage) must not fail the job — turbo runs fine
+          # without TURBO_TOKEN, just without the shared cache.
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
+            continue-on-error: true
             uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
             with:
-              team: ${{ secrets.TURBO_TEAM }}
+              team: ${{ vars.TURBO_TEAM }}
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
@@ -94,11 +112,18 @@ jobs:
           persist-credentials: false
 
       - parallel:
+          # Best-effort: remote caching is a speed optimization, not a
+          # correctness requirement, and its OIDC exchange depends on a
+          # Turborepo CLI policy configured on the Vercel team's dashboard,
+          # not on anything this repo controls. A failure here (missing
+          # policy, Vercel outage) must not fail the job — turbo runs fine
+          # without TURBO_TOKEN, just without the shared cache.
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
+            continue-on-error: true
             uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
             with:
-              team: ${{ secrets.TURBO_TEAM }}
+              team: ${{ vars.TURBO_TEAM }}
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
@@ -124,11 +149,18 @@ jobs:
           persist-credentials: false
 
       - parallel:
+          # Best-effort: remote caching is a speed optimization, not a
+          # correctness requirement, and its OIDC exchange depends on a
+          # Turborepo CLI policy configured on the Vercel team's dashboard,
+          # not on anything this repo controls. A failure here (missing
+          # policy, Vercel outage) must not fail the job — turbo runs fine
+          # without TURBO_TOKEN, just without the shared cache.
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
+            continue-on-error: true
             uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
             with:
-              team: ${{ secrets.TURBO_TEAM }}
+              team: ${{ vars.TURBO_TEAM }}
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
@@ -178,11 +210,18 @@ jobs:
           persist-credentials: false
 
       - parallel:
+          # Best-effort: remote caching is a speed optimization, not a
+          # correctness requirement, and its OIDC exchange depends on a
+          # Turborepo CLI policy configured on the Vercel team's dashboard,
+          # not on anything this repo controls. A failure here (missing
+          # policy, Vercel outage) must not fail the job — turbo runs fine
+          # without TURBO_TOKEN, just without the shared cache.
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
+            continue-on-error: true
             uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
             with:
-              team: ${{ secrets.TURBO_TEAM }}
+              team: ${{ vars.TURBO_TEAM }}
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
@@ -207,11 +246,18 @@ jobs:
           persist-credentials: false
 
       - parallel:
+          # Best-effort: remote caching is a speed optimization, not a
+          # correctness requirement, and its OIDC exchange depends on a
+          # Turborepo CLI policy configured on the Vercel team's dashboard,
+          # not on anything this repo controls. A failure here (missing
+          # policy, Vercel outage) must not fail the job — turbo runs fine
+          # without TURBO_TOKEN, just without the shared cache.
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
+            continue-on-error: true
             uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
             with:
-              team: ${{ secrets.TURBO_TEAM }}
+              team: ${{ vars.TURBO_TEAM }}
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
