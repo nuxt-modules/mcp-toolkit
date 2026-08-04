@@ -1,4 +1,4 @@
-import { buildContext } from './context.ts'
+import { attachContext } from './context.ts'
 import { noArguments } from './schema.ts'
 import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
@@ -7,7 +7,7 @@ import type {
   ServerContext,
   StandardSchemaWithJSON,
 } from '@modelcontextprotocol/server'
-import type { McpContext } from './context.ts'
+import type { McpEvent } from './context.ts'
 import type { McpPrompt } from './definition.ts'
 
 type Schema = StandardSchemaWithJSON
@@ -36,13 +36,13 @@ export interface McpPromptDefinition<Input extends Schema> extends McpPromptMeta
   inputSchema: Input
   handler: (
     args: StandardSchemaWithJSON.InferOutput<Input>,
-    ctx: McpContext,
+    event: McpEvent,
   ) => Awaitable<McpPromptReturn>
 }
 
 export interface McpPromptDefinitionWithoutInput extends McpPromptMetadata {
   inputSchema?: undefined
-  handler: (ctx: McpContext) => Awaitable<McpPromptReturn>
+  handler: (event: McpEvent) => Awaitable<McpPromptReturn>
 }
 
 function toPromptResult(value: McpPromptReturn): GetPromptResult {
@@ -94,7 +94,7 @@ export function defineMcpPrompt(
           resolved.name,
           { ...config, argsSchema: inputSchema },
           async (args, ctx: ServerContext) =>
-            toPromptResult(await handler(args, buildContext(ctx))),
+            toPromptResult(await handler(args, attachContext(ctx))),
         )
         return
       }
@@ -103,7 +103,7 @@ export function defineMcpPrompt(
       server.registerPrompt(
         resolved.name,
         { ...config, argsSchema: noArguments },
-        async (_args, ctx: ServerContext) => toPromptResult(await handler(buildContext(ctx))),
+        async (_args, ctx: ServerContext) => toPromptResult(await handler(attachContext(ctx))),
       )
     },
   }

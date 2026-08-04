@@ -90,6 +90,7 @@ mcp({
   instructions: 'What the model is told about this server as a whole',
   legacy: 'stateless', // or 'reject', for a 2026-07-28-only endpoint
   origin: { allow: ['https://app.example.com'] }, // browser clients, see below
+  auth: { tokens: [process.env.MCP_TOKEN!] }, // require a credential, see Authentication below
 })
 ```
 
@@ -189,6 +190,8 @@ export default defineMcpTool({
 })
 ```
 
+A return that doesn't actually satisfy a declared `outputSchema` becomes an `isError` result — the same in-band error model as a thrown error, not a transport failure.
+
 ### Errors
 
 Throw. A thrown error becomes an `isError` result rather than a transport failure, so the session survives and the model can read what went wrong. `HTTPError` from h3 keeps its status and data.
@@ -204,6 +207,8 @@ handler: async ({ id }) => {
   return order
 }
 ```
+
+Resources and prompts don't have an `isError` field on the wire, so a thrown error there surfaces as a JSON-RPC-level error instead — the client's `readResource`/`getPrompt` call rejects rather than returning a result.
 
 ## Resources
 
@@ -251,24 +256,88 @@ export default defineMcpPrompt({
 })
 ```
 
-## Request context
+## The event
 
-Every handler receives a context as its last argument — the only argument when there is no input schema.
+Every handler receives the `H3Event` serving the request as its last argument — the only argument when there is no input schema. It is the same event driving the rest of Nitro: headers, cookies, `waitUntil`, `event.context` as populated by your own middleware.
 
 ```ts
-handler: (ctx) => {
-  const token = ctx.event.req.headers.get('authorization')
-  return { path: ctx.event.url.pathname, era: ctx.era }
+handler: (event) => {
+  const token = event.req.headers.get('authorization')
+  return { path: event.url.pathname, era: event.context.mcp.era }
 }
 ```
 
-| Field    | What it is                                                           |
-| -------- | -------------------------------------------------------------------- |
-| `event`  | The `H3Event` serving the request: headers, cookies, `event.context` |
-| `auth`   | Verified token info, when a verifier is configured                   |
-| `signal` | Aborts when the client cancels                                       |
-| `era`    | `'modern'` or `'legacy'`, the revision this client negotiated        |
-| `mcp`    | The raw SDK context — the escape hatch for anything not wrapped yet  |
+Everything specific to this call — as opposed to the request in general — sits under `event.context.mcp`:
+
+| Field    | What it is                                                                                                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`   | An SDK `AuthInfo`, only when handed one through the low-level `.fetch(request, { authInfo })` escape hatch. The declarative `auth` option ([Authentication](#authentication)) stashes what it resolves on `event.context` directly instead. |
+| `signal` | Aborts when the client cancels                                                                                                                                                                                                              |
+| `era`    | `'modern'` or `'legacy'`, the revision this client negotiated                                                                                                                                                                               |
+| `notify` | Push a list-changed or resource-updated event — see [Change notifications](#change-notifications)                                                                                                                                           |
+| `mcpReq` | The SDK's own per-request object — the escape hatch for anything not wrapped yet                                                                                                                                                            |
+
+`H3Event['context']['mcp']` is optional in general — most events on the app never go through this package. A `defineMcpTool`/`defineMcpResource`/`defineMcpPrompt` handler's own `event` is typed narrower (`McpEvent`, exported for when you need to name it), so `event.context.mcp` needs no `!` or guard there. Reach for one only where the event is a plain `H3Event` instead — [wiring a route by hand](#wiring-it-by-hand) before the handler runs, or a route unrelated to this endpoint.
+
+### Multi-round-trip
+
+`event.context.mcp.mcpReq` is where a tool asks the client for something mid-call — confirmation, a sample, a root listing — and picks up where it left off once the answer arrives. `inputRequired`, `inputResponse` and `acceptedContent` (re-exported from `nitro-mcp-toolkit`) build and read that exchange; `mcpReq` carries the raw `requestState`/`inputResponses` for anything they don't cover.
+
+```ts
+import { acceptedContent, defineMcpTool, inputRequired } from 'nitro-mcp-toolkit'
+import { z } from 'zod'
+
+export default defineMcpTool({
+  inputSchema: z.object({ id: z.string() }),
+  handler: ({ id }, event) => {
+    const confirmed = acceptedContent<{ confirm: boolean }>(
+      event.context.mcp.mcpReq.inputResponses,
+      'confirm',
+    )
+    if (!confirmed?.confirm) {
+      return inputRequired({
+        inputRequests: {
+          confirm: inputRequired.elicit({
+            message: `Delete ${id}?`,
+            requestedSchema: {
+              type: 'object',
+              properties: { confirm: { type: 'boolean' } },
+              required: ['confirm'],
+            },
+          }),
+        },
+      })
+    }
+
+    return db.delete(id)
+  },
+})
+```
+
+`requestState` is opaque, server-minted state the client echoes back verbatim — treat it as attacker-controlled input on the way back in. The SDK applies no integrity protection by default, so a server that lets it drive authorization or business logic must sign it itself (HMAC or similar) and reject state that fails verification.
+
+## Change notifications
+
+`event.context.mcp.notify` tells clients a list changed or a resource updated, from inside a handler on the same server:
+
+```ts
+handler: ({ id }, event) => {
+  db.delete(id)
+  event.context.mcp.notify.resourcesChanged()
+  return 'done'
+}
+```
+
+`notify.toolsChanged()`, `promptsChanged()` and `resourcesChanged()` take no arguments; `resourceUpdated(uri)` names the one that changed. From outside a handler — a cron job, a webhook route — there is no `event.context.mcp` to reach: that event never passed through this MCP server, so it was never attached one. Import the handler directly instead; it carries the same methods as `handler.notify`, and its `handler.bus` is what they publish to, for wiring a shared bus across processes.
+
+```ts
+// server/routes/webhook.ts
+import mcp from '#mcp/mcp/handler'
+
+export default (event) => {
+  mcp.notify.resourcesChanged()
+}
+```
 
 ## Wiring it by hand
 
@@ -291,6 +360,78 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [g
 Handwritten definitions name themselves, since no filename is there to do it.
 
 The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime.
+
+## Authentication
+
+Off by default — many MCP endpoints sit behind a gateway that already authenticates. Turn it on and every request to the route, `POST`, `GET` and `DELETE` alike, must present a credential:
+
+```ts
+createMcpHandler({
+  name: 'my-server',
+  auth: { tokens: [process.env.MCP_TOKEN!] },
+  tools: [greet],
+})
+```
+
+With no `schemes` given, both are accepted: `Authorization: Bearer <token>` and `x-api-key: <token>`. Pass `schemes: ['api-key']` (with an optional `header`, default `x-api-key`) to accept only one form.
+
+For dynamic credentials — a JWT, a per-tenant key, a lookup — validate yourself. The callback receives the parsed credential and the event, and returns a boolean; stashing whatever you resolve directly on `event.context` is how it reaches your handlers, since auth runs before any of them:
+
+```ts
+createMcpHandler({
+  auth: {
+    schemes: ['bearer'],
+    validate: async (auth, event) => {
+      const claims = await verifyJwt(auth.token)
+      if (!claims) return false
+      event.context.tenant = claims.tenant
+      return true
+    },
+  },
+})
+```
+
+Enabling `auth` requires at least one of `tokens` or `validate` — a config with neither throws when the handler is built, rather than accepting everything. A missing or invalid credential gets a `401` with a `www-authenticate` header and no JSON-RPC body, since the request never reached the protocol layer.
+
+`auth` answers "may this caller talk to this endpoint" — nothing more. A valid credential still reaches every tool and resource the server declares; per-operation authorization belongs in your `validate` callback (check scopes there) or in your handlers.
+
+### Zero-config: `mcp()`
+
+`mcp()`'s options cross into generated code as JSON, so its `auth` is the JSON-serializable subset of what `createMcpHandler` accepts above — a static `tokens` list, no `validate` callback. Omit it and that server stays open, exactly like every other `mcp()` option:
+
+```ts
+// nitro.config.ts
+export default defineConfig({
+  modules: [
+    mcp({ name: 'my-server', version: '1.0.0' }), // no `auth`: open
+    mcp({
+      route: '/admin/mcp',
+      dir: 'server/mcp-admin',
+      auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] },
+    }),
+  ],
+})
+```
+
+For a `validate` callback, or anything else that is a live function rather than data, mount `createMcpHandler` yourself in a route file instead — the [Authentication](#authentication) examples above are exactly that.
+
+### Protected resource metadata
+
+If you act as an OAuth 2.1 resource server, point clients at your [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) metadata document — served by your own app, not this package — so a `401` is enough to discover your authorization server:
+
+```ts
+auth: {
+  schemes: ['bearer'],
+  validate: verifyToken,
+  resourceMetadataUrl: 'https://example.com/.well-known/oauth-protected-resource',
+}
+```
+
+Every `401` then answers with `WWW-Authenticate: Bearer realm="mcp", resource_metadata="https://example.com/.well-known/oauth-protected-resource"`.
+
+There is no token format, issuer or audience model here — `validate` is opaque credential comparison, so **audience validation belongs inside it**: verify that the presented token was issued for this server (its `aud` claim, or the equivalent introspection result) before returning `true`, or a token minted for another service is accepted, the confused-deputy attack the spec's authorization security considerations call out.
+
+In tests, drive a header through the handler's `fetch` directly, or forge one on the transport's `fetch` — `createMcpTestClient`'s own `{ auth }` option is unrelated, standing in for the SDK's `authInfo` passthrough rather than this gate.
 
 ## Testing
 

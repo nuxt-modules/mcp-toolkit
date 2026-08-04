@@ -66,4 +66,22 @@ describe('defineMcpPrompt', () => {
     expect(result.messages).toHaveLength(2)
     expect(result.messages[1]).toMatchObject({ role: 'assistant' })
   })
+
+  // Unlike a tool, `prompts/get` has no `isError` field: a thrown handler
+  // error must surface as a JSON-RPC-level error rather than an in-band result.
+  it('rejects cleanly when the handler throws, rather than an in-band result', async () => {
+    const handler = createMcpHandler({
+      prompts: [
+        defineMcpPrompt({
+          name: 'broken',
+          handler: () => {
+            throw new Error('it broke')
+          },
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+
+    await expect(client.getPrompt({ name: 'broken' })).rejects.toThrow(/it broke/)
+  })
 })

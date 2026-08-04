@@ -158,6 +158,23 @@ describe('defineMcpTool', () => {
     expect(result.structuredContent).toEqual({ content: ['a', 'b'] })
   })
 
+  it('reports a return that violates its own outputSchema as an error result', async () => {
+    await using client = await createMcpTestClient(
+      serve(
+        defineMcpTool({
+          name: 'bad-shape',
+          outputSchema: z.object({ bmi: z.number() }),
+          // `NaN` is a `number` to TypeScript but not to Zod, so this is a
+          // genuine runtime mismatch rather than a type-checking workaround.
+          handler: () => ({ bmi: Number.NaN }),
+        }),
+      ),
+    )
+
+    const result = await client.callTool({ name: 'bad-shape' })
+    expect(result.isError).toBe(true)
+  })
+
   it('turns a thrown error into an error result rather than failing the request', async () => {
     await using client = await createMcpTestClient(
       serve(

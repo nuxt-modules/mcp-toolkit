@@ -7,7 +7,8 @@ export { defineMcpResource } from './resource.ts'
 export { audioResult, imageResult } from './results.ts'
 export { defineMcpTool } from './tool.ts'
 
-export type { McpContext } from './context.ts'
+export type { McpAuthCredential, McpAuthOptions, McpAuthScheme } from './auth.ts'
+export type { McpEvent, McpEventContext } from './context.ts'
 export type { McpHandler, McpHandlerOptions } from './handler.ts'
 export type {
   McpPromptDefinition,

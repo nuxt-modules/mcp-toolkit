@@ -1,4 +1,4 @@
-import { buildContext } from './context.ts'
+import { attachContext } from './context.ts'
 import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
   CacheHint,
@@ -9,7 +9,7 @@ import type {
   ServerContext,
   Variables,
 } from '@modelcontextprotocol/server'
-import type { McpContext } from './context.ts'
+import type { McpEvent } from './context.ts'
 import type { McpResource } from './definition.ts'
 
 type Awaitable<T> = T | Promise<T>
@@ -38,13 +38,13 @@ interface McpResourceMetadata {
 export interface McpResourceDefinition extends McpResourceMetadata {
   /** A concrete URI, e.g. `docs://changelog`. */
   uri: string
-  handler: (uri: URL, ctx: McpContext) => Awaitable<McpResourceReturn>
+  handler: (uri: URL, event: McpEvent) => Awaitable<McpResourceReturn>
 }
 
 export interface McpResourceTemplateDefinition extends McpResourceMetadata {
   /** A `ResourceTemplate` whose placeholders are resolved per read. */
   uri: ResourceTemplate
-  handler: (uri: URL, variables: Variables, ctx: McpContext) => Awaitable<McpResourceReturn>
+  handler: (uri: URL, variables: Variables, event: McpEvent) => Awaitable<McpResourceReturn>
 }
 
 function toReadResult(uri: URL, value: McpResourceReturn): ReadResourceResult {
@@ -105,7 +105,7 @@ export function defineMcpResource(
           staticUri,
           config,
           async (url: URL, ctx: ServerContext) =>
-            toReadResult(url, await handler(url, buildContext(ctx))),
+            toReadResult(url, await handler(url, attachContext(ctx))),
         )
         return
       }
@@ -116,7 +116,7 @@ export function defineMcpResource(
         template,
         config,
         async (url: URL, variables: Variables, ctx: ServerContext) =>
-          toReadResult(url, await handler(url, variables, buildContext(ctx))),
+          toReadResult(url, await handler(url, variables, attachContext(ctx))),
       )
     },
   }

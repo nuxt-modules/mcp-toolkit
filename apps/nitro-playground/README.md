@@ -51,23 +51,30 @@ Point it elsewhere with `MCP_URL`.
 Each definition exercises exactly one feature, so a regression shows up as a
 single failing probe.
 
-| File                                    | Covers                                               |
-| --------------------------------------- | ---------------------------------------------------- |
-| `server/mcp/tools/greet.ts`             | Input schema, defaults                               |
-| `server/mcp/tools/bmi.ts`               | `outputSchema` routed into `structuredContent`       |
-| `server/mcp/tools/whoami.ts`            | No-input overload, every `McpContext` field          |
-| `server/mcp/tools/boom.ts`              | Thrown errors, including `HTTPError` status and data |
-| `server/mcp/tools/pixel.ts`             | Image content blocks                                 |
-| `server/mcp/resources/readme.ts`        | Static URI, string return                            |
-| `server/mcp/resources/doc-page.ts`      | `ResourceTemplate`, listing, completions             |
-| `server/mcp/prompts/review.ts`          | No arguments, string return                          |
-| `server/mcp/prompts/summarize.ts`       | Arguments, multi-message result                      |
-| `server/mcp-admin/tools/cache/purge.ts` | A second server, and a group from a subdirectory     |
+| File                                    | Covers                                                                |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| `server/mcp/tools/greet.ts`             | Input schema, defaults                                                |
+| `server/mcp/tools/bmi.ts`               | `outputSchema` routed into `structuredContent`                        |
+| `server/mcp/tools/whoami.ts`            | No-input overload, every `event.context.mcp` field                    |
+| `server/mcp/tools/boom.ts`              | Thrown errors, including `HTTPError` status and data                  |
+| `server/mcp/tools/pixel.ts`             | Image content blocks                                                  |
+| `server/mcp/resources/readme.ts`        | Static URI, string return                                             |
+| `server/mcp/resources/doc-page.ts`      | `ResourceTemplate`, listing, completions                              |
+| `server/mcp/prompts/review.ts`          | No arguments, string return                                           |
+| `server/mcp/prompts/summarize.ts`       | Arguments, multi-message result                                       |
+| `server/mcp-admin/tools/cache/purge.ts` | A second server, and a group from a subdirectory                      |
 
 Nothing collects these: `nitro.config.ts` installs `mcp()` twice, and each
 instance discovers its own directory. Adding a definition means dropping a file
 next to its siblings — no restart, and no name to invent, since the filename is
 the name.
 
-The second server answers on `/admin/mcp`; point either tool at it with
-`MCP_URL=http://localhost:3030/admin/mcp pnpm probe:nitro`.
+The second server answers on `/admin/mcp` and requires a bearer token, set
+inline on its `mcp()` call in `nitro.config.ts` (`auth: { tokens: [...] }`):
+
+```bash
+MCP_URL=http://localhost:3030/admin/mcp MCP_TOKEN=dev-admin-token pnpm probe:nitro
+```
+
+Omit `MCP_TOKEN` (or use the wrong one) to see the `401` challenge instead. The
+main `/mcp` server has no `auth` option, so it stays open.

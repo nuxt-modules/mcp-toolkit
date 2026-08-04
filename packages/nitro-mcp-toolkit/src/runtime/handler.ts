@@ -1,5 +1,6 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
+import { buildAuthGate } from './auth.ts'
 import { runWithRequest, setEra } from './context.ts'
 import { forbiddenOriginResponse, isOriginAllowed } from './origin.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
@@ -10,6 +11,7 @@ import type {
   ServerEventBus,
   ServerNotifier,
 } from '@modelcontextprotocol/server'
+import type { McpAuthOptions } from './auth.ts'
 import type { McpDefinitionSummary, McpPrompt, McpResource, McpTool } from './definition.ts'
 import type { McpOriginOptions } from './origin.ts'
 
@@ -53,6 +55,16 @@ export interface McpHandlerOptions {
    * ```
    */
   origin?: McpOriginOptions
+  /**
+   * Require a bearer token or API key on every request. Off by default —
+   * many MCP endpoints sit behind a gateway that already authenticates.
+   *
+   * @example
+   * ```ts
+   * createMcpHandler({ auth: { tokens: [process.env.MCP_TOKEN!] } })
+   * ```
+   */
+  auth?: McpAuthOptions
   /**
    * The change-event bus backing `subscriptions/listen`. Supply a shared
    * implementation to notify clients from several processes.
@@ -107,6 +119,9 @@ export interface McpHandler {
 export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
   const { tools = [], resources = [], prompts = [], origin } = options
   const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
+  // Built once, eagerly, so a misconfigured `auth` throws when the handler is
+  // created rather than on the first request.
+  const authGate = buildAuthGate(options.auth)
 
   const sdk = createSdkHandler(
     (requestCtx) => {
@@ -141,18 +156,24 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
   )
 
   // Driven bare, there is no Nitro event to carry, so one is synthesized over
-  // the request: handlers get a consistent `ctx.event` either way.
-  const fetch: McpHandler['fetch'] = (request, requestOptions) => {
+  // the request: handlers get a consistent `event` either way.
+  const fetch: McpHandler['fetch'] = async (request, requestOptions) => {
     const event = new H3Event(request)
-    if (!isOriginAllowed(event, origin)) return Promise.resolve(forbiddenOriginResponse())
+    if (!isOriginAllowed(event, origin)) return forbiddenOriginResponse()
 
-    return runWithRequest(event, () => sdk.fetch(request, requestOptions))
+    const denied = await authGate?.(event)
+    if (denied) return denied
+
+    return runWithRequest(event, sdk.notify, () => sdk.fetch(request, requestOptions))
   }
 
-  const handle = (event: H3Event): Promise<Response> => {
-    if (!isOriginAllowed(event, origin)) return Promise.resolve(forbiddenOriginResponse())
+  const handle = async (event: H3Event): Promise<Response> => {
+    if (!isOriginAllowed(event, origin)) return forbiddenOriginResponse()
 
-    return runWithRequest(event, () => sdk.fetch(event.req))
+    const denied = await authGate?.(event)
+    if (denied) return denied
+
+    return runWithRequest(event, sdk.notify, () => sdk.fetch(event.req))
   }
 
   return Object.assign(handle, {

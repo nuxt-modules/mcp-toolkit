@@ -4,7 +4,7 @@ import { defineMcpTool } from '../src/runtime/index.ts'
 import type { CallToolResult } from '@modelcontextprotocol/server'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
-import type { McpContext, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
+import type { McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 
@@ -14,19 +14,19 @@ describe('tool typing', () => {
     defineMcpTool({
       name: 'greet',
       inputSchema: z.object({ name: z.string(), times: z.number() }),
-      handler: (args, ctx) => {
+      handler: (args, event) => {
         expectTypeOf(args).toEqualTypeOf<{ name: string; times: number }>()
-        expectTypeOf(ctx).toEqualTypeOf<McpContext>()
+        expectTypeOf(event).toEqualTypeOf<McpEvent>()
         return 'ok'
       },
     })
   })
 
-  it('passes only the context when no input schema is declared', () => {
+  it('passes only the event when no input schema is declared', () => {
     defineMcpTool({
       name: 'ping',
-      handler: (ctx) => {
-        expectTypeOf(ctx).toEqualTypeOf<McpContext>()
+      handler: (event) => {
+        expectTypeOf(event).toEqualTypeOf<McpEvent>()
         return 'pong'
       },
     })

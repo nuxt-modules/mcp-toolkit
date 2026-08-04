@@ -128,6 +128,20 @@ describe('the mcp() module', () => {
     await iconic.close()
   })
 
+  it('passes a static auth config through, tokens and all', async () => {
+    const guarded = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [mcp({ route: '/guarded', auth: { tokens: ['secret'] } })],
+    })
+
+    const code = await render(guarded, '#mcp/guarded/handler')
+    expect(code).toContain('auth: {"tokens":["secret"]}')
+
+    await guarded.close()
+  })
+
   it('refuses two servers on one route', () => {
     expect(() => mcp().setup(nitro)).toThrow(/Two MCP servers are mounted on \/mcp/)
   })
