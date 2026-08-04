@@ -19,10 +19,11 @@ Here are the available types and scopes:
 - revert (reverts a previous commit) 🔄
 
 ### Scopes
-- docs (the documentation)
-- playground (the playground)
-- module (the module)
 - deps (dependencies of the project)
+- docs (the documentation)
+- module (@nuxtjs/mcp-toolkit)
+- nitro (nitro-mcp-toolkit)
+- playground (the playground)
 -->
 
 ### 🔗 Linked issue

@@ -32,11 +32,11 @@ jobs:
         id: lint_pr_title
         with:
           scopes: |
+            deps
             docs
-            playground
             module
             nitro
-            deps
+            playground
           types: |
             breaking
             feat

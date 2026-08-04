@@ -137,6 +137,25 @@ Both published packages go through the same flow: add a changeset, merge, and th
 
 A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtjs/mcp-toolkit/server` imports). Readers scaffold **only** this folder via giget/tiged (see [apps/mcp-starter/README.md](apps/mcp-starter/README.md)). Short blog paste: [PROMPT.md](apps/mcp-starter/PROMPT.md). In the monorepo, run **`pnpm build:module`** before `pnpm dev:starter` so `server` exports exist.
 
+## Changesets
+
+**Every user-facing change to a published package needs a changeset.** Before opening a PR that touches `packages/nuxt-mcp-toolkit` or `packages/nitro-mcp-toolkit`, run `pnpm changeset` and commit the generated `.changeset/*.md` file alongside the code.
+
+- **When to add one:** any change that affects the public API, adds a feature, fixes a bug, or introduces a breaking change in either package.
+- **When you can skip:** changes confined to `apps/*` (docs, playground, mcp-starter, nitro-playground) or repo tooling (CI config, lint config, test refactors) that don't touch a published package.
+- **Bump type:** `patch` for fixes, `minor` for features. Both packages are pre-1.0 (`0.x`), so a breaking change is also `minor`, not `major` — the conventional reading of semver below 1.0 (see [Releasing](#releasing)).
+- **Description:** write from the consumer's perspective — what changed and how to use it. Look at existing files in `.changeset/` for tone and depth.
+
+A PR without a changeset for a user-facing change should not be merged. For the rare change that genuinely needs no release note, run `pnpm changeset add --empty`.
+
+## Commits & PR Titles
+
+PR titles and commits follow [Conventional Commits](https://conventionalcommits.org). The CI source of truth is `.github/workflows/semantic-pull-request.yml` (lints PR titles via `amannn/action-semantic-pull-request`); `.github/pull_request_template.md` mirrors the same lists for contributors.
+
+- **Subject must not start with an uppercase letter.** `feat: add stream server` ✓ — `feat: Add stream server` ✗.
+- **Current scopes:** `deps`, `docs`, `module`, `nitro`, `playground`. Use `module` for `@nuxtjs/mcp-toolkit` changes and `nitro` for `nitro-mcp-toolkit` changes; omit the scope for cross-cutting changes (CI, root tooling, anything touching both packages).
+- **When you add a new scope**, add it to **both** `.github/workflows/semantic-pull-request.yml` and `.github/pull_request_template.md`, in alphabetical order. Title validation reads the base branch's scope list, so a scope introduced in the same PR that uses it won't validate — register it in a preceding PR, or omit the scope on the introducing PR.
+
 ## Code Style and Conventions
 
 ### General
@@ -152,6 +171,14 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 - **Paths in `packages/nitro-mcp-toolkit` go through `pathe`, never `node:path`.** Every path the module handles ends up in generated code, in a log line, or compared against a `tinyglobby` result — and glob results use `/` on Windows too. `pathe` normalizes everything to `/`, drive letters included, so the module produces the same strings on all three platforms and its tests can assert them. The runtime (`src/runtime`) touches no paths at all.
 
   **One exception, and it is not optional: `fs.watch` must be given the platform's own separators.** libuv compares the paths it reports against the one it was told to watch, and on a mismatch it calls `abort()` — the process dies on a native assertion (`!_wcsnicmp(filename, dir, dirlen)`, `src\win\fs-event.c`) that no `try` can catch. `watch.ts` therefore passes `node:path`'s `normalize` at that single call site and keeps `pathe` for everything it compares. The same assertion fires on an 8.3 short path, which is why tests take the `realpath` of their `mkdtemp` directory.
+
+### Code style — no slop
+
+- **No gratuitous defensive code.** Don't add try/catch, null checks, or input validation the surrounding file doesn't have — especially on paths already validated upstream (e.g. Zod-validated tool/resource/prompt input). Match the file's level of paranoia.
+- **No silent fallbacks.** No empty `catch`, no `?? default` that masks a bug. If something can fail, let it fail loudly or handle it explicitly.
+- **No speculative code.** No unrequested options or parameters, no "just in case" branches, no keeping an old code path alongside a new one. Delete dead code.
+- **Prefer deleting and simplifying over working around.** If a fix needs a workaround, question the design before adding the workaround.
+- **This extends to prose too**: test names, error messages, changeset descriptions, PR bodies. Factual and plain — no emoji, no superlatives, no filler.
 
 ### Platform support (`nitro-mcp-toolkit`)
 
@@ -272,6 +299,58 @@ describe('my feature', () => {
 })
 ```
 
+## Definition of Done
+
+A task is complete when **all** of the following pass:
+
+1. `pnpm lint`, `pnpm typecheck`, `pnpm test` exit 0
+2. The change has a matching test (bug fix → failing regression first, then the fix)
+3. New public APIs are documented (README and/or the docs site content under `apps/docs/`)
+4. A changeset is included for any user-facing change to either package (`pnpm changeset`)
+5. Any skill under `apps/docs/skills/` documenting the changed behavior was updated in the same PR
+
+## Boundaries
+
+**Always do:**
+- Run lint, typecheck, and test before reporting done
+- Follow existing code patterns — read neighboring files before writing new ones
+- Add a changeset (`pnpm changeset`) for every user-facing change to `packages/nuxt-mcp-toolkit` or `packages/nitro-mcp-toolkit`
+- Keep `AGENTS.md` and the skills under `apps/docs/skills/` in sync with the behavior they document
+
+**Ask first:**
+- Adding new dependencies
+- Changing package exports (`package.json#exports`) or build config
+- Architectural decisions that affect multiple packages (e.g. the definition contract shared between `nuxt-mcp-toolkit` and `nitro-mcp-toolkit`)
+
+**Never:**
+- Commit secrets, `.env` files, or API keys
+- Skip tests or lint to "fix later"
+- Loosen an assertion, widen a type, or delete a test to make it pass — a failing test is a signal; fix the cause
+- Add a type workaround (`as unknown as X`, `@ts-ignore`/`@ts-expect-error`, `any`) to silence an error — see [No type workarounds](#general)
+- Modify `node_modules/` or generated files (`.nuxt/`, `dist/`)
+- Open a PR for a user-facing change without a changeset
+
+## Git & PRs — Local Always OK, Remote on Explicit Instruction
+
+Default: anything that stays on the local clone is fine; anything that touches the remote or GitHub requires an explicit instruction in the task at hand. Don't act on assumption — if the request didn't ask for a push or a PR, prepare the branch locally and stop there.
+
+**OK (local-only, no ask needed):**
+- `git branch`, `git checkout`, `git switch`, `git checkout -b` — create and move between branches freely
+- `git add`, `git commit` — staging and local commits are fine
+- `git status`, `git diff`, `git log`, `git show`, `git stash`, `git restore`, `git reset` (local only) — read and rearrange the working tree
+- `gh pr view`, `gh pr list`, `gh pr diff`, `gh issue view`, `gh run view` — read-only GitHub queries
+
+**OK when explicitly asked (in the current task):**
+- `git push -u origin <feature-branch>` — push a feature branch you just prepared
+- `git push --force-with-lease origin <feature-branch>` — only on a feature branch you authored, after a clean rebase
+- `gh pr create --base main --head <feature-branch>` — open a PR
+- Write a PR title (Conventional Commits, see above) and a factual PR body
+
+**Never (no exceptions, even when asked):**
+- Push directly to `main` — always goes through a PR
+- `git push --force` without `--with-lease`, `git push --tags`
+- `gh pr merge`, `gh pr close`, `gh release create` — releases are automated (see [Releasing](#releasing))
+
 ## MCP Reference Documentation
 
 ### Official MCP Resources
@@ -372,3 +451,17 @@ npx skills add https://mcp-toolkit.nuxt.dev
 ```
 
 Discovery catalog: [https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json](https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json)
+
+## When Stuck
+
+- Unsure about a design decision → read the relevant section of this file before guessing; several sections above document *why*, not just *what*
+- Unclear requirements → ask a clarifying question before making large speculative changes
+
+## Feedback & Self-Maintenance
+
+**This file is living documentation — keep it true.** If it contradicts the repo (a command that doesn't exist, a path that moved, a described workflow that isn't real), flag it and propose the fix, even if unrelated to the current task. Update it when you encounter:
+- A recurring mistake or easy-to-get-wrong pattern
+- Explicit guidance from the maintainer
+- A new convention that should be applied consistently
+
+A correction is a few lines, not a rewrite — keep this file lean.
