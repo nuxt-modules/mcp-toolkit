@@ -1,5 +1,5 @@
 import { isInputRequiredResult } from '@modelcontextprotocol/server'
-import { buildContext } from './context.ts'
+import { attachContext } from './context.ts'
 import { toCallToolResult, toErrorResult } from './results.ts'
 import { resolveIdentity, resolveMeta } from './validate.ts'
 import type {
@@ -10,7 +10,7 @@ import type {
   StandardSchemaWithJSON,
   ToolAnnotations,
 } from '@modelcontextprotocol/server'
-import type { McpContext } from './context.ts'
+import type { McpEvent } from './context.ts'
 import type { McpTool } from './definition.ts'
 import type { McpToolValue } from './results.ts'
 
@@ -50,7 +50,7 @@ export interface McpToolDefinition<
   outputSchema?: Output
   handler: (
     args: StandardSchemaWithJSON.InferOutput<Input>,
-    ctx: McpContext,
+    event: McpEvent,
   ) => Awaitable<McpToolReturn<Output>>
 }
 
@@ -59,7 +59,7 @@ export interface McpToolDefinitionWithoutInput<
 > extends McpToolMetadata {
   inputSchema?: undefined
   outputSchema?: Output
-  handler: (ctx: McpContext) => Awaitable<McpToolReturn<Output>>
+  handler: (event: McpEvent) => Awaitable<McpToolReturn<Output>>
 }
 
 async function settle(
@@ -85,7 +85,7 @@ async function settle(
  *   description: 'Fetch a user by id',
  *   inputSchema: z.object({ id: z.string() }),
  *   outputSchema: z.object({ name: z.string() }),
- *   handler: async ({ id }, ctx) => getUser(id, ctx.event),
+ *   handler: async ({ id }, event) => getUser(id, event),
  * })
  * ```
  */
@@ -124,14 +124,14 @@ export function defineMcpTool(
       if (definition.inputSchema) {
         const { inputSchema, handler } = definition
         server.registerTool(resolved.name, { ...config, inputSchema }, (args, ctx: ServerContext) =>
-          settle(() => handler(args, buildContext(ctx)), hasOutputSchema),
+          settle(() => handler(args, attachContext(ctx)), hasOutputSchema),
         )
         return
       }
 
       const { handler } = definition
       server.registerTool(resolved.name, config, (ctx: ServerContext) =>
-        settle(() => handler(buildContext(ctx)), hasOutputSchema),
+        settle(() => handler(attachContext(ctx)), hasOutputSchema),
       )
     },
   }

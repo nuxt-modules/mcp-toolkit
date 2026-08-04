@@ -23,6 +23,10 @@ export default defineConfig({
       dir: 'server/mcp-admin',
       name: 'nitro-mcp-playground-admin',
       version: '0.0.0',
+      // The main `/mcp` server has no `auth`, so it stays open; only the admin
+      // one asks for a credential. A static list is all `mcp()` can take —
+      // a `validate` callback would need `createMcpHandler` in a route file.
+      auth: { tokens: [process.env.MCP_ADMIN_TOKEN ?? 'dev-admin-token'] },
     }),
   ],
   devServer: {

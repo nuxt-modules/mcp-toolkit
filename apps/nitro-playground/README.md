@@ -55,7 +55,7 @@ single failing probe.
 | --------------------------------------- | ---------------------------------------------------- |
 | `server/mcp/tools/greet.ts`             | Input schema, defaults                               |
 | `server/mcp/tools/bmi.ts`               | `outputSchema` routed into `structuredContent`       |
-| `server/mcp/tools/whoami.ts`            | No-input overload, every `McpContext` field          |
+| `server/mcp/tools/whoami.ts`            | No-input overload, every `event.context.mcp` field   |
 | `server/mcp/tools/boom.ts`              | Thrown errors, including `HTTPError` status and data |
 | `server/mcp/tools/pixel.ts`             | Image content blocks                                 |
 | `server/mcp/resources/readme.ts`        | Static URI, string return                            |
@@ -69,5 +69,12 @@ instance discovers its own directory. Adding a definition means dropping a file
 next to its siblings — no restart, and no name to invent, since the filename is
 the name.
 
-The second server answers on `/admin/mcp`; point either tool at it with
-`MCP_URL=http://localhost:3030/admin/mcp pnpm probe:nitro`.
+The second server answers on `/admin/mcp` and requires a bearer token, set
+inline on its `mcp()` call in `nitro.config.ts` (`auth: { tokens: [...] }`):
+
+```bash
+MCP_URL=http://localhost:3030/admin/mcp MCP_TOKEN=dev-admin-token pnpm probe:nitro
+```
+
+Omit `MCP_TOKEN` (or use the wrong one) to see the `401` challenge instead. The
+main `/mcp` server has no `auth` option, so it stays open.

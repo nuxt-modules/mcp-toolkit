@@ -50,6 +50,39 @@ describe('defineMcpResource', () => {
     expect(read.contents).toEqual([{ uri: 'docs://getting-started', text: 'page getting-started' }])
   })
 
+  it('lists instances and completes arguments through the template callbacks', async () => {
+    const pages: Record<string, string> = { install: 'Install docs', tools: 'Tools docs' }
+    const handler = createMcpHandler({
+      resources: [
+        defineMcpResource({
+          name: 'page',
+          uri: new ResourceTemplate('docs://{slug}', {
+            list: () => ({
+              resources: Object.keys(pages).map((slug) => ({ name: slug, uri: `docs://${slug}` })),
+            }),
+            complete: {
+              slug: (value) => Object.keys(pages).filter((slug) => slug.startsWith(value)),
+            },
+          }),
+          handler: (_uri, { slug }) => pages[String(slug)] ?? '',
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+
+    const { resources } = await client.listResources()
+    expect(resources).toEqual([
+      { name: 'install', uri: 'docs://install' },
+      { name: 'tools', uri: 'docs://tools' },
+    ])
+
+    const completion = await client.complete({
+      ref: { type: 'ref/resource', uri: 'docs://{slug}' },
+      argument: { name: 'slug', value: 'to' },
+    })
+    expect(completion.completion.values).toEqual(['tools'])
+  })
+
   it('passes a full result through untouched', async () => {
     const handler = createMcpHandler({
       resources: [
@@ -66,5 +99,24 @@ describe('defineMcpResource', () => {
 
     const read = await client.readResource({ uri: 'blob://logo' })
     expect(read.contents).toEqual([{ uri: 'blob://logo', blob: 'AAA=', mimeType: 'image/png' }])
+  })
+
+  // Unlike a tool, `resources/read` has no `isError` field: a thrown handler
+  // error must surface as a JSON-RPC-level error rather than an in-band result.
+  it('rejects cleanly when the handler throws, rather than an in-band result', async () => {
+    const handler = createMcpHandler({
+      resources: [
+        defineMcpResource({
+          name: 'broken',
+          uri: 'docs://broken',
+          handler: () => {
+            throw new Error('it broke')
+          },
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+
+    await expect(client.readResource({ uri: 'docs://broken' })).rejects.toThrow(/it broke/)
   })
 })

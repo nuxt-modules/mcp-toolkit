@@ -1,23 +1,15 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { AuthInfo, ServerContext } from '@modelcontextprotocol/server'
+import type { AuthInfo, ServerContext, ServerNotifier } from '@modelcontextprotocol/server'
 import type { H3Event } from 'h3'
 
 /**
- * Context handed to every tool, resource and prompt handler.
+ * What the toolkit attaches to `event.context.mcp` for the duration of a
+ * tool, resource or prompt call.
  */
-export interface McpContext {
-  /**
-   * The H3 event serving this request, giving handlers the whole Nitro
-   * surface: `event.context` as populated by middleware, cookies, `waitUntil`.
-   */
-  event: H3Event
-  /**
-   * Authentication info for this request, when the caller supplied one.
-   */
+export interface McpEventContext {
+  /** Authentication info for this request, when the caller supplied one. */
   auth?: AuthInfo
-  /**
-   * Aborts when the client cancels the request.
-   */
+  /** Aborts when the client cancels the request. */
   signal: AbortSignal
   /**
    * The protocol revision serving this request: `modern` for 2026-07-28,
@@ -25,16 +17,37 @@ export interface McpContext {
    */
   era: 'legacy' | 'modern'
   /**
-   * The raw SDK context, for everything the toolkit does not wrap — including
-   * the multi-round-trip primitives (`mcp.mcpReq.requestState`,
-   * `mcp.mcpReq.inputResponses`).
+   * The same object as `handler.notify` — push a list-changed or
+   * resource-updated event without importing the handler this definition is
+   * already registered on.
    */
-  mcp: ServerContext
+  notify: ServerNotifier
+  /**
+   * The SDK's own per-request object — `id`, `method`, `signal`, and the
+   * multi-round-trip primitives (`mcpReq.requestState`,
+   * `mcpReq.inputResponses`), for everything the toolkit does not wrap under
+   * a shorter name of its own.
+   */
+  mcpReq: ServerContext['mcpReq']
 }
+
+declare module 'h3' {
+  interface H3EventContext {
+    mcp?: McpEventContext
+  }
+}
+
+/**
+ * The event a tool, resource or prompt handler is called with: a plain
+ * `H3Event` whose `context.mcp` is guaranteed present, rather than the
+ * optional field every other event on the app carries.
+ */
+export type McpEvent = H3Event & { context: H3Event['context'] & { mcp: McpEventContext } }
 
 interface RequestStore {
   event: H3Event
   era: 'legacy' | 'modern'
+  notify: ServerNotifier
 }
 
 const storage = new AsyncLocalStorage<RequestStore>()
@@ -42,8 +55,8 @@ const storage = new AsyncLocalStorage<RequestStore>()
 /**
  * @internal
  */
-export function runWithRequest<T>(event: H3Event, fn: () => T): T {
-  return storage.run({ event, era: 'modern' }, fn)
+export function runWithRequest<T>(event: H3Event, notify: ServerNotifier, fn: () => T): T {
+  return storage.run({ event, era: 'modern', notify }, fn)
 }
 
 /**
@@ -60,9 +73,13 @@ export function setEra(era: 'legacy' | 'modern'): void {
 }
 
 /**
+ * Attach this call's `McpEventContext` to `event.context.mcp` and hand back
+ * the same event — handlers read everything off it directly, rather than a
+ * wrapper object.
+ *
  * @internal
  */
-export function buildContext(mcp: ServerContext): McpContext {
+export function attachContext(mcp: ServerContext): McpEvent {
   const store = storage.getStore()
   if (!store) {
     throw new Error(
@@ -70,11 +87,15 @@ export function buildContext(mcp: ServerContext): McpContext {
     )
   }
 
-  return {
-    event: store.event,
-    era: store.era,
+  store.event.context.mcp = {
     auth: mcp.http?.authInfo,
     signal: mcp.mcpReq.signal,
-    mcp,
+    era: store.era,
+    notify: store.notify,
+    mcpReq: mcp.mcpReq,
   }
+
+  // `context.mcp` was just set above, satisfying `McpEvent`'s guarantee — the
+  // assertion encodes that invariant, not a gap the type checker missed.
+  return store.event as McpEvent
 }

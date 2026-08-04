@@ -3,19 +3,35 @@ import type { Client } from '@modelcontextprotocol/client'
 
 // Port 3030 keeps the playground clear of the Nuxt playground and the docs app.
 const url = process.env.MCP_URL ?? 'http://localhost:3030/mcp'
+// The admin server's `auth.ts` asks for this; unset when probing the open `/mcp`.
+const token = process.env.MCP_TOKEN
 
 const usage = `Usage
   probe                            list every definition, on both protocol eras
   probe <tool> [json]              call a tool
   probe --resource <uri>           read a resource
-  probe --prompt <name> [json]     render a prompt`
+  probe --prompt <name> [json]     render a prompt
+
+Set MCP_URL=http://localhost:3030/admin/mcp and MCP_TOKEN=dev-admin-token to
+probe the protected server instead.`
 
 /**
  * `createMcpTestClient` only needs something fetch-shaped, so the same helper
  * the unit tests drive in memory also works against a live dev server.
  */
 const connect = (era: 'modern' | 'legacy' = 'modern'): Promise<Client> =>
-  createMcpTestClient({ fetch: (request) => globalThis.fetch(request) }, { era, url })
+  createMcpTestClient(
+    {
+      fetch: (request) => {
+        if (!token) return globalThis.fetch(request)
+
+        const headers = new Headers(request.headers)
+        headers.set('authorization', `Bearer ${token}`)
+        return globalThis.fetch(new Request(request, { headers }))
+      },
+    },
+    { era, url },
+  )
 
 async function withClient(run: (client: Client) => Promise<void>, era?: 'modern' | 'legacy') {
   const client = await connect(era)

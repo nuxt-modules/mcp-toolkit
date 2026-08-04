@@ -10,7 +10,7 @@ const greet = defineMcpTool({
   name: 'greet',
   description: 'Greet someone by name',
   inputSchema: z.object({ name: z.string() }),
-  handler: ({ name }, ctx) => `Hello ${name} from ${ctx.event.url.pathname}`,
+  handler: ({ name }, event) => `Hello ${name} from ${event.url.pathname}`,
 })
 
 const readme = defineMcpResource({

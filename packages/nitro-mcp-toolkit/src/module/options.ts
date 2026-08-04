@@ -42,6 +42,23 @@ export interface McpServerOptions {
    * ```
    */
   origin?: false | { allow?: string[]; allowMissing?: boolean }
+  /**
+   * Require a bearer token or API key on every request — the
+   * JSON-serializable subset of `McpAuthOptions`: a static `tokens` list, no
+   * `validate` callback. A live function cannot cross into generated code,
+   * so dynamic verification means mounting `createMcpHandler` by hand.
+   *
+   * @example
+   * ```ts
+   * mcp({ auth: { tokens: [process.env.MCP_TOKEN!] } })
+   * ```
+   */
+  auth?: {
+    schemes?: ('bearer' | 'api-key')[]
+    header?: string
+    tokens: string[]
+    resourceMetadataUrl?: string
+  }
 }
 
 export interface McpModuleOptions extends McpServerOptions {

@@ -16,8 +16,8 @@ describe('protocol eras', () => {
         defineMcpTool({
           name: 'greet',
           inputSchema: z.object({ name: z.string() }),
-          handler: ({ name }, ctx) => {
-            seenEras.push(ctx.era)
+          handler: ({ name }, event) => {
+            seenEras.push(event.context.mcp.era)
             return `Hello ${name}`
           },
         }),
