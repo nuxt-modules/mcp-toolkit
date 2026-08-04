@@ -51,18 +51,18 @@ Point it elsewhere with `MCP_URL`.
 Each definition exercises exactly one feature, so a regression shows up as a
 single failing probe.
 
-| File                                    | Covers                                                                |
-| --------------------------------------- | --------------------------------------------------------------------- |
-| `server/mcp/tools/greet.ts`             | Input schema, defaults                                                |
-| `server/mcp/tools/bmi.ts`               | `outputSchema` routed into `structuredContent`                        |
-| `server/mcp/tools/whoami.ts`            | No-input overload, every `event.context.mcp` field                    |
-| `server/mcp/tools/boom.ts`              | Thrown errors, including `HTTPError` status and data                  |
-| `server/mcp/tools/pixel.ts`             | Image content blocks                                                  |
-| `server/mcp/resources/readme.ts`        | Static URI, string return                                             |
-| `server/mcp/resources/doc-page.ts`      | `ResourceTemplate`, listing, completions                              |
-| `server/mcp/prompts/review.ts`          | No arguments, string return                                           |
-| `server/mcp/prompts/summarize.ts`       | Arguments, multi-message result                                       |
-| `server/mcp-admin/tools/cache/purge.ts` | A second server, and a group from a subdirectory                      |
+| File                                    | Covers                                               |
+| --------------------------------------- | ---------------------------------------------------- |
+| `server/mcp/tools/greet.ts`             | Input schema, defaults                               |
+| `server/mcp/tools/bmi.ts`               | `outputSchema` routed into `structuredContent`       |
+| `server/mcp/tools/whoami.ts`            | No-input overload, every `event.context.mcp` field   |
+| `server/mcp/tools/boom.ts`              | Thrown errors, including `HTTPError` status and data |
+| `server/mcp/tools/pixel.ts`             | Image content blocks                                 |
+| `server/mcp/resources/readme.ts`        | Static URI, string return                            |
+| `server/mcp/resources/doc-page.ts`      | `ResourceTemplate`, listing, completions             |
+| `server/mcp/prompts/review.ts`          | No arguments, string return                          |
+| `server/mcp/prompts/summarize.ts`       | Arguments, multi-message result                      |
+| `server/mcp-admin/tools/cache/purge.ts` | A second server, and a group from a subdirectory     |
 
 Nothing collects these: `nitro.config.ts` installs `mcp()` twice, and each
 instance discovers its own directory. Adding a definition means dropping a file
