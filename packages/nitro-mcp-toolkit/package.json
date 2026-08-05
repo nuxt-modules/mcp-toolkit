@@ -71,7 +71,7 @@
     "oxfmt": "^0.60.0",
     "oxlint": "^1.75.0",
     "publint": "^0.3.22",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "vitest": "^4.1.10",
     "zod": "^4.2.0"
   },
