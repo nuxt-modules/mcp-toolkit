@@ -22,7 +22,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@nuxt/eslint-config": "^1.16.0",
-    "eslint": "^10.8.0"
+    "@nuxt/eslint-config": "^1.17.0",
+    "eslint": "^10.8.1"
   }
 }

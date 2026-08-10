@@ -65,19 +65,19 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@modelcontextprotocol/client": "2.0.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "h3": "2.0.1-rc.22",
+    "h3": "2.0.1-rc.26",
     "nitro": "3.0.260610-beta",
     "obuild": "^0.4.38",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
-    "publint": "^0.3.22",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "publint": "^0.3.23",
     "typescript": "~6.0.3",
     "vitest": "^4.1.10",
     "zod": "^4.2.0"
   },
   "peerDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
-    "h3": "^2.0.1-rc.22",
+    "h3": "^2.0.1-rc.26",
     "nitro": "^3.0.0"
   },
   "peerDependenciesMeta": {

@@ -20,15 +20,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "h3": "2.0.1-rc.22",
+    "h3": "2.0.1-rc.26",
     "nitro-mcp-toolkit": "workspace:*",
     "zod": "^4.2.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.0.0",
     "nitro": "3.0.260610-beta",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
     "typescript": "~6.0.3"
   }
 }
