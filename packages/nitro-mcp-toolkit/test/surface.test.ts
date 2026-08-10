@@ -26,6 +26,7 @@ describe('public exports', () => {
         "inputRequired",
         "mcpElicit",
         "mcpElicitUrl",
+        "toolResult",
       ]
     `)
   })

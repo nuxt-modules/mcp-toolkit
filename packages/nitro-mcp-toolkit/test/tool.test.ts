@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
+import { createMcpHandler, defineMcpTool, toolResult } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 import type { CallToolResult } from '../src/runtime/index.ts'
 
@@ -137,6 +137,35 @@ describe('defineMcpTool', () => {
     const result = await client.callTool({ name: 'bmi', arguments: { weightKg: 70, heightM: 2 } })
     expect(result.structuredContent).toEqual({ bmi: 17.5 })
     expect(result.content).toEqual([{ type: 'text', text: '{\n  "bmi": 17.5\n}' }])
+  })
+
+  it('passes an explicit tool result through when an output schema is declared', async () => {
+    const structuredContent = {
+      success: false,
+      message: 'The setting was not found.',
+      error_code: 'setting_not_found',
+    }
+    await using client = await createMcpTestClient(
+      serve(
+        defineMcpTool({
+          name: 'setting',
+          outputSchema: z.object({
+            success: z.boolean(),
+            message: z.string().min(1).regex(/\S/),
+            error_code: z
+              .string()
+              .regex(/^[a-z][a-z0-9_]*$/)
+              .optional(),
+          }),
+          handler: () => toolResult({ structuredContent, isError: true }),
+        }),
+      ),
+    )
+
+    const result = await client.callTool({ name: 'setting' })
+    expect(result.isError).toBe(true)
+    expect(result.structuredContent).toEqual(structuredContent)
+    expect(result.content).toEqual([{ type: 'text', text: JSON.stringify(structuredContent) }])
   })
 
   // An output schema is a promise about the return shape, so it must win over
