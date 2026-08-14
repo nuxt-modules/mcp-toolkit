@@ -24,6 +24,8 @@ overrides:
   '@unhead/vue': ^3.3.1
   # 2.0.0 is the first stable 2.x and still has CVEs patched in 2.0.1-rc.15+.
   'h3@2.0.0': 2.0.1-rc.26
+  # @ai-sdk/provider-utils@4 still pulls undici 5.29.0 (WebSocket DoS CVEs).
+  'undici@5.29.0': 6.28.0
 
 minimumReleaseAge: 2880
 
