@@ -35,6 +35,7 @@ dist
 # Testing
 reports
 coverage
+.tmp-bundle-*
 *.lcov
 .nyc_output
 

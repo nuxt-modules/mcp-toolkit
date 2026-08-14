@@ -20,10 +20,15 @@ export async function bundleAppHtml(
   const localSfc = resolvePath(entryDir, 'App.vue')
   await writeFile(localSfc, bundleSource, 'utf-8')
 
-  // Self-contained tsconfig so Vite/esbuild doesn't walk up to the host project's tsconfig.
+  const isolatedTsconfig = resolvePath(entryDir, 'tsconfig.json')
+  // Vite 8's oxc transform skips a tsconfig that doesn't list the .vue file and
+  // walks up to the host app's tsconfig, which extends .nuxt/tsconfig.json before Nuxt writes it.
   await writeFile(
-    resolvePath(entryDir, 'tsconfig.json'),
-    JSON.stringify({ compilerOptions: { target: 'esnext', module: 'esnext', jsx: 'preserve', moduleResolution: 'bundler', strict: false, isolatedModules: true } }, null, 2),
+    isolatedTsconfig,
+    JSON.stringify({
+      compilerOptions: { target: 'esnext', module: 'esnext', jsx: 'preserve', moduleResolution: 'bundler', strict: false, isolatedModules: true },
+      files: ['App.vue', 'entry.ts'],
+    }, null, 2),
     'utf-8',
   )
 
@@ -47,7 +52,7 @@ import App from './App.vue'
 createApp(App).mount('#mcp-app')
 `, 'utf-8')
 
-  const [{ build: viteBuild }, { default: vue }, { viteSingleFile }] = await Promise.all([
+  const [{ build: viteBuild, transformWithOxc }, { default: vue }, { viteSingleFile }] = await Promise.all([
     import('vite'),
     import('@vitejs/plugin-vue'),
     import('vite-plugin-singlefile'),
@@ -56,11 +61,17 @@ createApp(App).mount('#mcp-app')
   // Absolute source path so the bundle works when the toolkit is stub-built (dist/ empty).
   const runtimeAppEntry = resolver.resolve('runtime/app/index')
 
+  // Vite 8 turns `esbuild.tsconfigRaw` into oxc options and still auto-discovers
+  // tsconfig from imported files that live outside this entry dir (e.g. `./stay-format`).
+  const vite8 = typeof transformWithOxc === 'function'
+
   await viteBuild({
     root: entryDir,
     logLevel: 'silent',
     configFile: false,
-    esbuild: { tsconfigRaw: '{}' },
+    ...(vite8
+      ? { oxc: false }
+      : { esbuild: { tsconfigRaw: '{}' } }),
     resolve: {
       alias: [
         { find: '@nuxtjs/mcp-toolkit/app', replacement: runtimeAppEntry },
@@ -71,6 +82,7 @@ createApp(App).mount('#mcp-app')
       outDir,
       emptyOutDir: true,
       assetsInlineLimit: 100 * 1024 * 1024,
+      ...(vite8 ? { rolldownOptions: { tsconfig: false } } : {}),
       rollupOptions: {
         input: resolvePath(entryDir, 'index.html'),
       },
