@@ -110,6 +110,25 @@ An origin is matched exactly, scheme and port included. Pass `origin: false` to 
 
 The loopback condition is the load-bearing part of the default: `Origin` can only be compared against the request's own origin when the host is a loopback address. Everywhere else the host comes from a header the caller sets, and DNS rebinding — the attack this check exists to stop — sends the attacker's hostname in both, so a bare same-origin comparison always agrees with itself.
 
+### Limit available tools
+
+Clients can send `X-MCP-Tools` with a comma-separated list of tool names to expose only those tools. Names must match `tools/list`. Unknown names return HTTP 400. Omit the header to keep the full catalog. Resources and prompts are unaffected.
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "url": "https://example.com/mcp",
+      "headers": {
+        "X-MCP-Tools": "search-icons, get-component"
+      }
+    }
+  }
+}
+```
+
+`handler.definitions` is the full catalog either way — filter that array yourself for a JSON route; the header only changes what this request's MCP server registers.
+
 ### More than one server
 
 Install the module again. Nitro only dedupes modules given as a path, so each call is its own server, with its own definitions.
