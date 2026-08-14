@@ -1,7 +1,9 @@
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { setup, url } from '@nuxt/test-utils/e2e'
-import { setupMcpClient, cleanupMcpTests, getMcpClient } from './helpers/mcp-setup.js'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { setupMcpClient, cleanupMcpTests, getMcpClient, createMcpUrl } from './helpers/mcp-setup.js'
 
 describe('Tools', async () => {
   await setup({
@@ -177,5 +179,46 @@ describe('Tools', async () => {
     expect(result.isError).toBe(true)
     const content = result.content as Array<{ type: string, text?: string }>
     expect(content[0]?.text).toBe('Something went wrong')
+  })
+
+  it('limits tools/list to names in the X-MCP-Tools header', async () => {
+    const client = new Client({ name: 'header-filter-client', version: '1.0.0' })
+    await client.connect(new StreamableHTTPClientTransport(createMcpUrl(), {
+      requestInit: {
+        headers: { 'X-MCP-Tools': 'test_tool, string_tool' },
+      },
+    }))
+
+    try {
+      const { tools } = await client.listTools()
+      expect(tools.map(tool => tool.name).sort()).toEqual(['string_tool', 'test_tool'])
+    }
+    finally {
+      await client.close()
+    }
+  })
+
+  it('returns HTTP 400 when X-MCP-Tools names an unknown tool', async () => {
+    const response = await fetch(url('/mcp'), {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json, text/event-stream',
+        'Content-Type': 'application/json',
+        'X-MCP-Tools': 'does-not-exist',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-03-26',
+          capabilities: {},
+          clientInfo: { name: 'header-filter-client', version: '1.0.0' },
+        },
+      }),
+    })
+
+    expect(response.status).toBe(400)
+    expect(await response.text()).toContain('Unknown MCP tool: does-not-exist')
   })
 })

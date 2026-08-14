@@ -253,3 +253,4 @@ Requires `mcp.sessions: true` in `nuxt.config.ts`.
 - [Annotations & input examples](https://mcp-toolkit.nuxt.dev/tools/annotations)
 - [Errors & response caching](https://mcp-toolkit.nuxt.dev/tools/errors-caching)
 - [Groups, files & dynamic registration](https://mcp-toolkit.nuxt.dev/tools/groups-organization)
+- [Limit available tools (`X-MCP-Tools`)](https://mcp-toolkit.nuxt.dev/getting-started/connection#limit-available-tools)
