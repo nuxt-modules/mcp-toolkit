@@ -22,6 +22,8 @@ overrides:
   '@nuxtjs/mcp-toolkit': workspace:*
   unhead: ^3.3.1
   '@unhead/vue': ^3.3.1
+  # 2.0.0 is the first stable 2.x and still has CVEs patched in 2.0.1-rc.15+.
+  'h3@2.0.0': 2.0.1-rc.26
 
 minimumReleaseAge: 2880
 
