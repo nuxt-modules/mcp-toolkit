@@ -5,10 +5,18 @@
   ],
   "schedule": ["before 3am on Monday"],
   "timezone": "UTC",
-  "packageRules": [{
-    "matchDepTypes": ["resolutions"],
-    "enabled": false
-  }],
+  "packageRules": [
+    {
+      "matchDepTypes": ["resolutions"],
+      "enabled": false
+    },
+    {
+      "description": "vue-tsc and the rest of the Vue toolchain still need the TypeScript 6 programmatic API",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    }
+  ],
   "ignoreDeps": ["zod"],
   "postUpdateOptions": ["pnpmDedupe"]
 }
