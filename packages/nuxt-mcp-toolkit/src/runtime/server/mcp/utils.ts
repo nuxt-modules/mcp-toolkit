@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { eventHandler, readBody, sendRedirect } from 'h3'
+import { createError, eventHandler, readBody, sendRedirect } from 'h3'
 import type { H3Event } from 'h3'
 import { useNitroApp } from 'nitropack/runtime'
 import { consola } from 'consola'
@@ -12,6 +12,7 @@ import type { McpToolDefinition, McpToolDefinitionListItem } from './definitions
 import { registerToolFromDefinition } from './definitions/tools'
 import type { CodeModeOptions } from './codemode'
 import { getHeader, getRequestMethod } from './compat'
+import { filterToolsByRequestedNames, parseMcpToolsHeader } from './filter-tools-header'
 import { getEvlogLogger } from './internals'
 import { trackLoggingLevel } from './notifications'
 import handleMcpRequest from '#nuxt-mcp-toolkit/transport.mjs'
@@ -252,6 +253,22 @@ async function tagEvlogContext(event: H3Event, route: string) {
   log.set({ mcp })
 }
 
+function applyMcpToolsHeader(config: McpResolvedConfig, event: H3Event): void {
+  const requested = parseMcpToolsHeader(getHeader(event, 'x-mcp-tools'))
+  if (!requested) {
+    return
+  }
+
+  const { tools, unknownNames } = filterToolsByRequestedNames(config.tools, requested)
+  if (unknownNames.length) {
+    throw createError({
+      statusCode: 400,
+      message: `Unknown MCP tool${unknownNames.length > 1 ? 's' : ''}: ${unknownNames.join(', ')}`,
+    })
+  }
+  config.tools = tools
+}
+
 function asString(value: unknown): string | undefined {
   if (typeof value === 'string') return value
   if (typeof value === 'number') return String(value)
@@ -316,6 +333,7 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
       tagAuthContext(event)
       const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
       await callMcpHook('mcp:config:resolved', { config: staticConfig, event })
+      applyMcpToolsHeader(staticConfig, event)
       const server = await createMcpServer(staticConfig)
       await callMcpHook('mcp:server:created', { server, event })
       return handleMcpRequest(() => server, event)

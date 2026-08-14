@@ -79,6 +79,8 @@ export default defineMcpHandler({
 
 `getMcpTools`, `getMcpResources`, `getMcpPrompts` return **raw** definitions (with handlers and Zod schemas intact) — exactly what `defineMcpHandler` expects.
 
+Clients can subset the catalog per connection with `X-MCP-Tools` (comma-separated names matching `tools/list`). Unknown names return HTTP 400. Applied after custom `tools:` callbacks, `enabled()`, and `mcp:config:resolved`. No custom handler required.
+
 ## All `defineMcpHandler` Options
 
 ```typescript

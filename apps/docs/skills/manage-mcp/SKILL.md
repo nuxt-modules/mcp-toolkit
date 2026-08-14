@@ -418,6 +418,8 @@ export default defineMcpHandler({
 })
 ```
 
+Clients can further subset whatever this endpoint would have served by sending `X-MCP-Tools` (comma-separated names matching `tools/list`). Unknown names return HTTP 400. Applied automatically after `enabled()` and `mcp:config:resolved` — no custom handler needed.
+
 See [handlers reference →](./references/handlers.md).
 
 ---
@@ -472,12 +474,12 @@ See [middleware patterns →](./references/middleware.md).
 Two per-request Nitro hooks fire during the MCP request lifecycle. Subscribe from a `server/plugins/*.ts` plugin to mutate the resolved config or reach the SDK `McpServer` instance from anywhere — no need to own a `defineMcpHandler`. Listeners that throw are logged and the request continues.
 
 ```
-defineMcpHandler middleware → mcp:config:resolved → createMcpServer → mcp:server:created → transport
+defineMcpHandler middleware → mcp:config:resolved → X-MCP-Tools allowlist → createMcpServer → mcp:server:created → transport
 ```
 
 ### `mcp:config:resolved` — mutate tools/resources/prompts per request
 
-Fires after dynamic resolvers and `enabled(event)` guards, before the per-request `McpServer` is built. Mutate `ctx.config` in place.
+Fires after dynamic resolvers and `enabled(event)` guards, before the `X-MCP-Tools` allowlist and the per-request `McpServer` is built. Mutate `ctx.config` in place.
 
 ```typescript [server/plugins/mcp-filter.ts]
 export default defineNitroPlugin((nitroApp) => {
@@ -979,7 +981,7 @@ export default defineNuxtConfig({
 
 | Hook | Fires |
 | --- | --- |
-| `mcp:config:resolved` | Per request, after dynamic resolvers — mutate `config.tools / resources / prompts / instructions / icons / name`. |
+| `mcp:config:resolved` | Per request, after dynamic resolvers — mutate `config.tools / resources / prompts / instructions / icons / name`. `X-MCP-Tools` is applied after this hook. |
 | `mcp:server:created` | Per request, after every definition is registered — call `server.registerTool(...)`, `getSdkServer(server).setRequestHandler(...)`, etc. |
 
 ### Debug

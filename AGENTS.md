@@ -250,6 +250,10 @@ export default defineMcpPrompt({
 If `name` and `title` are omitted, they are auto-generated from the filename:
 - `list-documentation.ts` → name: `list-documentation`, title: `List Documentation`
 
+### Client tool allowlist
+
+Clients can send `X-MCP-Tools` (comma-separated names matching `tools/list`) to subset the catalog. Unknown names return HTTP 400. Applied after `enabled()` and `mcp:config:resolved`. No `server/mcp/index.ts` required.
+
 ### Return Types
 
 - **Tools**: Return `string`, `number`, `boolean`, object, array (auto-wrapped), or full `CallToolResult`. Use `imageResult` / `audioResult` for image and audio content blocks. Thrown errors become `isError` results.
