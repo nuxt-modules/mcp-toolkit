@@ -1,5 +1,19 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.19.0
+
+### Minor Changes
+
+- [#319](https://github.com/nuxt-modules/mcp-toolkit/pull/319) [`d33e0ca`](https://github.com/nuxt-modules/mcp-toolkit/commit/d33e0ca7e55a3aec357a9e16820d3d8122ed3394) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Clients can send an `X-MCP-Tools` header with a comma-separated list of tool names to limit what `tools/list` exposes. Names must match the catalog (including filename-generated kebab-case); unknown names return HTTP 400. No `server/mcp/index.ts` is required.
+
+### Patch Changes
+
+- [`620cc8a`](https://github.com/nuxt-modules/mcp-toolkit/commit/620cc8a868920053b1f35f0deff8f0d692e9dc68) Thanks [@HugoRCD](https://github.com/HugoRCD)! - MCP Apps with `<script setup lang="ts">` bundle again on Vite 8. The isolated app build no longer inherits the host `tsconfig.json` (which extends `.nuxt/tsconfig.json` before Nuxt has written it).
+
+- [#322](https://github.com/nuxt-modules/mcp-toolkit/pull/322) [`7503516`](https://github.com/nuxt-modules/mcp-toolkit/commit/7503516e5e421b6179e36240f119ff6d15fe5757) Thanks [@HugoRCD](https://github.com/HugoRCD)! - The DevTools MCP Inspector launch always fetches `@modelcontextprotocol/inspector` from registry.npmjs.org, so a private npmrc can no longer 401 the download. Override with `MCP_INSPECTOR_REGISTRY` if you need a mirror.
+
+  The inspector now opens in a new browser tab instead of an iframe inside DevTools — the official UI is a full-page app and does not fit that panel. The MCP URL uses `localhost` so the inspector can reach Nuxt on either IPv4 or IPv6 loopback.
+
 ## 0.18.1
 
 ### Patch Changes
