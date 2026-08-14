@@ -25,6 +25,53 @@ const ERROR_PATTERNS = [
   /port \d+ is already in use/i,
 ]
 
+const NPMJS_REGISTRY = 'https://registry.npmjs.org'
+
+export function inspectorNpxSpec(
+  mcpServerUrl: string,
+  processEnv: NodeJS.ProcessEnv = process.env,
+): { command: string, args: string[], env: NodeJS.ProcessEnv } {
+  const registry = processEnv.MCP_INSPECTOR_REGISTRY || NPMJS_REGISTRY
+  return {
+    command: 'npx',
+    args: [
+      '--registry',
+      registry,
+      '-y',
+      '@modelcontextprotocol/inspector',
+      '--transport',
+      'http',
+      '--server-url',
+      mcpServerUrl,
+    ],
+    env: {
+      ...processEnv,
+      npm_config_registry: registry,
+      NPM_CONFIG_REGISTRY: registry,
+    },
+  }
+}
+
+/**
+ * MCP URL handed to the inspector. Loopback hosts become `localhost` so the
+ * inspector's Node fetch can hit whichever stack Nuxt bound (`::1` or
+ * `127.0.0.1`). Rewriting to `127.0.0.1` breaks the default IPv6 listen.
+ */
+export function inspectorMcpUrl(
+  devServerUrl: string | undefined,
+  route: string,
+  https: boolean,
+  port: number,
+): string {
+  const protocol = https ? 'https' : 'http'
+  const parsed = new URL(devServerUrl || `${protocol}://localhost:${port}`)
+  if (parsed.hostname === '::1' || parsed.hostname === '[::1]' || parsed.hostname === '127.0.0.1') {
+    parsed.hostname = 'localhost'
+  }
+  const origin = `${parsed.origin}${parsed.pathname}`.replace(/\/$/, '')
+  return `${origin}${route}`
+}
+
 let inspectorProcess: ChildProcess | null = null
 let inspectorUrl: string | null = null
 let isReady = false
@@ -162,15 +209,13 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
     return
   }
 
-  const devServerUrl = nuxt.options.devServer?.url
-  let mcpServerUrl: string
-  if (devServerUrl) {
-    mcpServerUrl = `${devServerUrl.replace(/\/$/, '')}${options.route || '/mcp'}`
-  }
-  else {
-    const protocol = nuxt.options.devServer?.https ? 'https' : 'http'
-    mcpServerUrl = `${protocol}://localhost:${nuxt.options.devServer?.port || 3000}${options.route || '/mcp'}`
-  }
+  const route = options.route || '/mcp'
+  const mcpServerUrl = inspectorMcpUrl(
+    nuxt.options.devServer?.url,
+    route,
+    Boolean(nuxt.options.devServer?.https),
+    nuxt.options.devServer?.port || 3000,
+  )
   const inspectorClientPort = getInspectorClientPort()
   const inspectorServerPort = getInspectorServerPort()
   const inspectorBaseUrl = buildInspectorBaseUrl(inspectorClientPort)
@@ -178,21 +223,15 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
   log.info('🚀 Launching MCP Inspector...')
 
   try {
-    const env = {
-      ...globalThis.process.env,
-      MCP_AUTO_OPEN_ENABLED: 'false',
-      CLIENT_PORT: String(inspectorClientPort),
-      SERVER_PORT: String(inspectorServerPort),
-    }
-
-    inspectorProcess = spawn('npx', [
-      '-y',
-      '@modelcontextprotocol/inspector',
-      '--transport', 'http',
-      '--server-url', mcpServerUrl,
-    ], {
+    const spec = inspectorNpxSpec(mcpServerUrl)
+    inspectorProcess = spawn(spec.command, spec.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env,
+      env: {
+        ...spec.env,
+        MCP_AUTO_OPEN_ENABLED: 'true',
+        CLIENT_PORT: String(inspectorClientPort),
+        SERVER_PORT: String(inspectorServerPort),
+      },
       shell: globalThis.process.platform === 'win32',
     })
 
@@ -405,16 +444,15 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
       name: 'mcp-inspector',
       title: 'MCP Inspector',
       icon: 'i-lucide-circuit-board',
-      view: isReady && inspectorUrl
-        ? {
-            type: 'iframe',
-            src: inspectorUrl,
-          }
-        : {
-            type: 'launch',
-            description: 'Launch MCP Inspector to test/debug your MCP server',
-            actions: [
-              {
+      view: {
+        type: 'launch',
+        description: isReady && inspectorUrl
+          ? 'The official inspector is a full-page app, so it opens in a new tab rather than inside this panel.'
+          : 'Launch MCP Inspector to test/debug your MCP server',
+        actions: [
+          ...(isReady && inspectorUrl
+            ? [{ label: 'Open Inspector', src: inspectorUrl }]
+            : [{
                 label: promise ? 'Starting...' : 'Launch Inspector',
                 pending: !!promise,
                 handle() {
@@ -425,18 +463,18 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
                   })
                   return promise
                 },
-              },
-              ...(inspectorProcess
-                ? [{
-                    label: 'Stop Inspector',
-                    handle() {
-                      stopMcpInspector()
-                      promise = null
-                    },
-                  }]
-                : []),
-            ],
-          },
+              }]),
+          ...(inspectorProcess
+            ? [{
+                label: 'Stop Inspector',
+                handle() {
+                  stopMcpInspector()
+                  promise = null
+                },
+              }]
+            : []),
+        ],
+      },
     })
   })
 

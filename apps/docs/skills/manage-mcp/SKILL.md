@@ -83,7 +83,7 @@ app/mcp/                   # Optional: MCP Apps (interactive Vue widgets)
 
 1. Start the dev server: `pnpm dev`
 2. Hit the endpoint: `curl http://localhost:3000/mcp` (responds to MCP JSON-RPC)
-3. Open Nuxt DevTools (Shift+Alt+D) → **MCP** tab — bundled MCP Inspector for live testing.
+3. Open Nuxt DevTools (Shift+Alt+D) → **MCP Inspector** tab → Launch Inspector (opens in a new browser tab).
 
 ---
 
@@ -986,7 +986,7 @@ export default defineNuxtConfig({
 
 ### Debug
 
-- **DevTools**: Shift+Alt+D → MCP tab (bundled MCP Inspector).
+- **DevTools**: Shift+Alt+D → MCP Inspector tab → Launch Inspector (opens in a new browser tab).
 - **CLI Inspector**: `npx @modelcontextprotocol/inspector http://localhost:3000/mcp`
 - **curl smoke test**: `curl -X POST … -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
 

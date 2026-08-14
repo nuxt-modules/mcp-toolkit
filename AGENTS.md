@@ -415,7 +415,7 @@ This module uses `@modelcontextprotocol/sdk` version 1.23.0+. When referencing S
 
 ### MCP Inspector
 
-The module includes a built-in inspector in Nuxt DevTools for debugging MCP definitions. Access it via the DevTools panel when running in development mode.
+The module includes a built-in inspector in Nuxt DevTools for debugging MCP definitions. Access it via the DevTools **MCP Inspector** tab when running in development mode; it opens in a new browser tab.
 
 ## Agent Skills
 
