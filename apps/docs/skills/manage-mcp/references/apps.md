@@ -245,7 +245,7 @@ Type-only references are stripped from the browser bundle by esbuild — nothing
 
 ### Local dev
 
-Run `pnpm dev` and connect Cursor / Claude / ChatGPT to `http://localhost:3000/mcp` (or your custom route). The DevTools MCP Inspector also previews each app inline.
+Run `pnpm dev` and connect Cursor / Claude / ChatGPT to `http://localhost:3000/mcp` (or your custom route). The DevTools MCP Inspector also opens in a new tab to call each app's tool.
 
 ### Production
 
