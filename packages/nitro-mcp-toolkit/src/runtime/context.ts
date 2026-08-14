@@ -48,6 +48,8 @@ interface RequestStore {
   event: H3Event
   era: 'legacy' | 'modern'
   notify: ServerNotifier
+  /** Set when the request sent `X-MCP-Tools`; the factory registers only those tools. */
+  toolAllowlist?: Set<string>
 }
 
 const storage = new AsyncLocalStorage<RequestStore>()
@@ -55,8 +57,20 @@ const storage = new AsyncLocalStorage<RequestStore>()
 /**
  * @internal
  */
-export function runWithRequest<T>(event: H3Event, notify: ServerNotifier, fn: () => T): T {
-  return storage.run({ event, era: 'modern', notify }, fn)
+export function runWithRequest<T>(
+  event: H3Event,
+  notify: ServerNotifier,
+  fn: () => T,
+  toolAllowlist?: Set<string>,
+): T {
+  return storage.run({ event, era: 'modern', notify, toolAllowlist }, fn)
+}
+
+/**
+ * @internal
+ */
+export function getToolAllowlist(): Set<string> | undefined {
+  return storage.getStore()?.toolAllowlist
 }
 
 /**

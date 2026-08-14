@@ -1,9 +1,15 @@
 import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
 import { H3Event } from 'h3'
 import { buildAuthGate } from './auth.ts'
-import { runWithRequest, setEra } from './context.ts'
+import { getToolAllowlist, runWithRequest, setEra } from './context.ts'
 import { forbiddenOriginResponse, isOriginAllowed } from './origin.ts'
+import {
+  filterRegistrationsByToolAllowlist,
+  parseMcpToolsHeader,
+  unknownToolsResponse,
+} from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
+import type { McpRegistration } from './validate.ts'
 import type {
   Icon,
   McpHandlerRequestOptions,
@@ -87,8 +93,8 @@ export interface McpHandler {
    */
   fetch: (request: Request, options?: McpHandlerRequestOptions) => Promise<Response>
   /**
-   * Everything this endpoint serves, as plain JSON — a catalog of the same set
-   * every client sees.
+   * Everything this endpoint serves, as plain JSON — the full catalog, not the
+   * per-request `X-MCP-Tools` subset.
    *
    * @example
    * ```ts
@@ -105,6 +111,17 @@ export interface McpHandler {
   notify: ServerNotifier
   bus: ServerEventBus
   close: () => Promise<void>
+}
+
+function gateToolsHeader(
+  registrations: readonly McpRegistration[],
+  event: H3Event,
+): Set<string> | Response | undefined {
+  const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
+  if (!requested) return undefined
+  const { unknownNames } = filterRegistrationsByToolAllowlist(registrations, requested)
+  if (unknownNames.length) return unknownToolsResponse(unknownNames)
+  return requested
 }
 
 /**
@@ -141,7 +158,14 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
         { instructions: options.instructions },
       )
 
-      for (const { definition, identity } of registrations) {
+      const allowlist = getToolAllowlist()
+      const toRegister = allowlist
+        ? registrations.filter(
+            (entry) => entry.definition.kind !== 'tool' || allowlist.has(entry.identity.name),
+          )
+        : registrations
+
+      for (const { definition, identity } of toRegister) {
         definition.register(server, identity)
       }
 
@@ -164,7 +188,10 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
     const denied = await authGate?.(event)
     if (denied) return denied
 
-    return runWithRequest(event, sdk.notify, () => sdk.fetch(request, requestOptions))
+    const toolsHeader = gateToolsHeader(registrations, event)
+    if (toolsHeader instanceof Response) return toolsHeader
+
+    return runWithRequest(event, sdk.notify, () => sdk.fetch(request, requestOptions), toolsHeader)
   }
 
   const handle = async (event: H3Event): Promise<Response> => {
@@ -173,7 +200,10 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
     const denied = await authGate?.(event)
     if (denied) return denied
 
-    return runWithRequest(event, sdk.notify, () => sdk.fetch(event.req))
+    const toolsHeader = gateToolsHeader(registrations, event)
+    if (toolsHeader instanceof Response) return toolsHeader
+
+    return runWithRequest(event, sdk.notify, () => sdk.fetch(event.req), toolsHeader)
   }
 
   return Object.assign(handle, {

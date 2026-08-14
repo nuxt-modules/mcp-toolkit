@@ -190,6 +190,8 @@ Windows is covered by a dedicated `test-windows` CI job that runs this package's
 
 **The SDK does no `Origin` validation of its own, so `createMcpHandler` adds one** (`src/runtime/origin.ts`), checked ahead of `sdk.fetch` in both `handle` and `fetch`. The default accepts a page the app serves to itself on a loopback host and refuses every other origin; requests with no `Origin` — every MCP client proper — are unaffected. The loopback condition is not decoration: `event.url` reads the `Host` header, so a bare same-origin comparison is satisfied by DNS rebinding, where the attacker's own hostname lands in both `Host` and `Origin`. Do not drop it to "simplify" the check. `allow` adds explicit origins on top of the default; a user's own `allow` list does not cost the loopback case.
 
+**`X-MCP-Tools` is the same kind of gate** (`src/runtime/tools-header.ts`): allowlist of tool names, HTTP 400 on unknowns, applied before `sdk.fetch`. `handler.definitions` stays the full catalog.
+
 ### MCP Definitions
 
 Use the helper functions:
@@ -252,7 +254,7 @@ If `name` and `title` are omitted, they are auto-generated from the filename:
 
 ### Client tool allowlist
 
-Clients can send `X-MCP-Tools` (comma-separated names matching `tools/list`) to subset the catalog. Unknown names return HTTP 400. Applied after `enabled()` and `mcp:config:resolved`. No `server/mcp/index.ts` required.
+Clients can send `X-MCP-Tools` (comma-separated names matching `tools/list`) to subset the catalog. Unknown names return HTTP 400. On `@nuxtjs/mcp-toolkit` this runs after `enabled()` and `mcp:config:resolved`. On `nitro-mcp-toolkit` it runs ahead of `sdk.fetch` (same place as origin/auth) and does not change `handler.definitions`.
 
 ### Return Types
 
