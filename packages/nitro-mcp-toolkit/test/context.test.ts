@@ -1,4 +1,6 @@
+import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
+import { attachNotify } from '../src/runtime/context.ts'
 import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 import type { McpEvent } from '../src/runtime/index.ts'
@@ -61,5 +63,16 @@ describe('handler event', () => {
     await Promise.all([call('a'), call('b')])
 
     expect([...events].sort()).toEqual(['a', 'b'])
+  })
+
+  it('refuses to attach notify when no MCP request is in scope', () => {
+    expect(() =>
+      attachNotify(new H3Event(new Request('http://localhost/mcp')), {
+        toolsChanged: () => {},
+        promptsChanged: () => {},
+        resourcesChanged: () => {},
+        resourceUpdated: () => {},
+      }),
+    ).toThrow(/No MCP request in scope/)
   })
 })

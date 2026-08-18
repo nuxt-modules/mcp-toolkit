@@ -33,6 +33,11 @@ describe('prompt arguments reach the engine', () => {
     })
 
     expect(completion.completion.values).toEqual(['apple', 'apricot'])
+
+    const result = await client.getPrompt({ name: 'pick', arguments: { fruit: 'apple' } })
+    expect(result.messages).toEqual([
+      { role: 'user', content: { type: 'text', text: 'You picked apple' } },
+    ])
   })
 
   it('advertises a stable schema, call after call', async () => {

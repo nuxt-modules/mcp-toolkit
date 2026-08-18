@@ -1,3 +1,4 @@
+import { McpJsonRpcError } from 'h3-mcp'
 import { attachNotify } from './context.ts'
 import { isInputRequired, toCallToolResult, toErrorResult } from './results.ts'
 import { resolveMeta } from './validate.ts'
@@ -69,6 +70,7 @@ async function settle(
     const result = await run()
     return isInputRequired(result) ? result : toCallToolResult(result, hasOutputSchema)
   } catch (error) {
+    if (McpJsonRpcError.isMcpJsonRpcError(error)) throw error
     return toErrorResult(error)
   }
 }

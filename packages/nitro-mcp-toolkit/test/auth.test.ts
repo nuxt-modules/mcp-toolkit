@@ -56,7 +56,15 @@ describe('auth config', () => {
   it('throws on a resourceMetadataUrl that is not absolute', () => {
     expect(() =>
       createMcpHandler({ auth: { tokens: ['x'], resourceMetadataUrl: '/meta' } }),
-    ).toThrow()
+    ).toThrow(/Invalid URL/)
+  })
+
+  it('throws on a resourceMetadataUrl that cannot sit in a quoted parameter', () => {
+    expect(() =>
+      createMcpHandler({
+        auth: { tokens: ['x'], resourceMetadataUrl: 'https://example.com/meta"oops' },
+      }),
+    ).toThrow(/cannot contain a `"`/)
   })
 })
 

@@ -30,16 +30,23 @@ describe('handler.notify', () => {
     client.setNotificationHandler('notifications/resources/list_changed', () => {
       seen.push('resources')
     })
+    client.setNotificationHandler('notifications/resources/updated', (notification) => {
+      seen.push(`updated:${String(notification.params?.uri ?? '')}`)
+    })
     const subscription = await client.listen({
       toolsListChanged: true,
       promptsListChanged: true,
       resourcesListChanged: true,
+      resourceSubscriptions: ['docs://readme'],
     })
 
     handler.notify.toolsChanged()
     handler.notify.promptsChanged()
     handler.notify.resourcesChanged()
-    await vi.waitFor(() => expect(seen.sort()).toEqual(['prompts', 'resources', 'tools']))
+    handler.notify.resourceUpdated('docs://readme')
+    await vi.waitFor(() =>
+      expect(seen.sort()).toEqual(['prompts', 'resources', 'tools', 'updated:docs://readme']),
+    )
 
     await subscription.close()
   })
