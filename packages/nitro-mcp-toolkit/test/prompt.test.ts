@@ -82,6 +82,6 @@ describe('defineMcpPrompt', () => {
     })
     await using client = await createMcpTestClient(handler)
 
-    await expect(client.getPrompt({ name: 'broken' })).rejects.toThrow(/it broke/)
+    await expect(client.getPrompt({ name: 'broken' })).rejects.toThrow(/Internal error/)
   })
 })

@@ -10,17 +10,16 @@ describe('public exports', () => {
     expect(Object.keys(runtime).sort()).toMatchInlineSnapshot(`
       [
         "MODERN_PROTOCOL_VERSION",
-        "ResourceTemplate",
-        "acceptedContent",
         "audioResult",
-        "completable",
         "createMcpHandler",
         "defineMcpPrompt",
         "defineMcpResource",
         "defineMcpTool",
+        "getElicitedContent",
         "imageResult",
         "inputRequired",
-        "inputResponse",
+        "mcpElicit",
+        "mcpElicitUrl",
       ]
     `)
   })

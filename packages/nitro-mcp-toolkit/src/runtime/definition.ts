@@ -1,4 +1,19 @@
-import type { McpServer } from '@modelcontextprotocol/server'
+import type { McpHandlerOptions as EngineOptions } from 'h3-mcp'
+import type { McpNotifier } from './context.ts'
+
+/**
+ * The four arrays the engine takes its definitions from, derived from its own
+ * options so the element types stay whatever it accepts. Each `defineMcp*`
+ * knows which one it belongs in, so a definition is built by pushing itself.
+ *
+ * @internal
+ */
+export interface McpDefinitionBuckets {
+  tools: NonNullable<EngineOptions['tools']>
+  resources: NonNullable<EngineOptions['resources']>
+  resourceTemplates: NonNullable<EngineOptions['resourceTemplates']>
+  prompts: NonNullable<EngineOptions['prompts']>
+}
 
 /**
  * Where a definition was found, for definitions the module discovered on disk.
@@ -24,7 +39,7 @@ export interface McpIdentity {
 /**
  * A definition as returned by the `defineMcp*` helpers: its schema generics are
  * erased so definitions can be collected in one array, while it keeps enough
- * metadata to be listed without constructing a server.
+ * metadata to be listed without serving a request.
  */
 export interface McpDefinition {
   readonly kind: 'tool' | 'resource' | 'prompt'
@@ -39,12 +54,12 @@ export interface McpDefinition {
   /** Set for discovered definitions; absent for hand-written ones. */
   readonly source?: McpDefinitionSource
   /**
-   * Registers this definition on the per-request SDK server instance, under
-   * `identity` when the definition does not name itself.
+   * Adds this definition to what the endpoint serves, under `identity` when the
+   * definition does not name itself.
    *
    * @internal
    */
-  readonly register: (server: McpServer, identity?: McpIdentity) => void
+  readonly build: (identity: McpIdentity, into: McpDefinitionBuckets, notify: McpNotifier) => void
 }
 
 /**
@@ -71,8 +86,8 @@ export interface McpTool extends McpDefinition {
 export interface McpResource extends McpDefinition {
   readonly kind: 'resource'
   /**
-   * The URI clients read, or the template pattern it answers when the
-   * definition was given a `ResourceTemplate` — e.g. `docs://{slug}`.
+   * The URI clients read, or the pattern the definition answers when it
+   * declared a `uriTemplate` — e.g. `docs://{slug}`.
    */
   readonly uri: string
 }

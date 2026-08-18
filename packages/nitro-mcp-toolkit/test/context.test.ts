@@ -20,7 +20,7 @@ function inspector() {
 }
 
 describe('handler event', () => {
-  it('hands the handler the event, signal, notifier and raw SDK context', async () => {
+  it('hands the handler the event, signal, notifier and engine context', async () => {
     const { seen, tool } = inspector()
     const handler = createMcpHandler({ tools: [tool] })
     await using client = await createMcpTestClient(handler)
@@ -30,28 +30,8 @@ describe('handler event', () => {
     const event = seen.at(-1)
     expect(event?.req.url).toBe('http://localhost/mcp')
     expect(event?.context.mcp.signal).toBeInstanceOf(AbortSignal)
-    expect(event?.context.mcp.mcpReq).toBeDefined()
+    expect(event?.context.mcp.era).toBe('modern')
     expect(event?.context.mcp.notify).toBe(handler.notify)
-  })
-
-  it('carries the auth info the caller passed to fetch', async () => {
-    const { seen, tool } = inspector()
-    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }), {
-      auth: { token: 'tok', clientId: 'client-1', scopes: ['mcp'], expiresAt: 4e9 },
-    })
-
-    await client.callTool({ name: 'inspect' })
-
-    expect(seen.at(-1)?.context.mcp.auth).toMatchObject({ clientId: 'client-1', scopes: ['mcp'] })
-  })
-
-  it('leaves auth undefined when the caller passed none', async () => {
-    const { seen, tool } = inspector()
-    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
-
-    await client.callTool({ name: 'inspect' })
-
-    expect(seen.at(-1)?.context.mcp.auth).toBeUndefined()
   })
 
   it('shares the event across concurrent requests without mixing them up', async () => {
@@ -68,11 +48,11 @@ describe('handler event', () => {
 
     const call = (marker: string) =>
       createMcpTestClient({
-        fetch: (request, options) => {
+        fetch: (request) => {
           const tagged = new Request(request, {
             headers: { ...Object.fromEntries(request.headers), 'x-marker': marker },
           })
-          return handler.fetch(tagged, options)
+          return handler.fetch(tagged)
         },
       }).then(async (client) => {
         await client.callTool({ name: 'slow' })

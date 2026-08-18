@@ -17,10 +17,10 @@ function withOrigin(
 
   return createMcpTestClient(
     {
-      fetch: (request, options) => {
+      fetch: (request) => {
         const headers = new Headers(request.headers)
         if (origin) headers.set('origin', origin)
-        return handler.fetch(new Request(request, { headers }), options)
+        return handler.fetch(new Request(request, { headers }))
       },
     },
     { url },

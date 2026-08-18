@@ -1,7 +1,7 @@
 {
   "name": "nitro-mcp-toolkit",
   "version": "0.2.0",
-  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
+  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and h3-mcp.",
   "keywords": [
     "ai",
     "h3",
@@ -57,7 +57,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
+    "h3-mcp": "0.1.0",
     "pathe": "^2.0.3",
     "tinyglobby": "^0.2.17"
   },

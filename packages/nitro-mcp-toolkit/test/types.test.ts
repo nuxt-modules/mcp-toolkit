@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import { defineMcpTool } from '../src/runtime/index.ts'
-import type { CallToolResult } from '@modelcontextprotocol/server'
+import type { CallToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
 import type { McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'

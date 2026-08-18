@@ -100,9 +100,8 @@ export function summarize(registrations: readonly McpRegistration[]): McpDefinit
  * Check a definition set before it ever serves a request, and pair each
  * definition with the identity it registers under.
  *
- * The SDK registers definitions per request, so a clash would otherwise first
- * surface as an HTTP 500 on the first call, with the real cause nowhere in the
- * message the client receives.
+ * A clash would otherwise first surface as an HTTP 500 on the first call,
+ * with the real cause nowhere in the message the client receives.
  *
  * @internal
  */

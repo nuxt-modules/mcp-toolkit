@@ -1,9 +1,9 @@
-import type { Icon, PerRequestResponseMode } from '@modelcontextprotocol/server'
+import type { McpEra, McpIcon } from 'h3-mcp'
 
 /**
  * What the server advertises and how it answers — everything a definition file
  * cannot express. These cross into generated code, so they are data only:
- * a server needing `bus` or `onError` mounts `createMcpHandler` by hand.
+ * a server needing `validate` or `onListen` mounts `createMcpHandler` by hand.
  */
 export interface McpServerOptions {
   /** Advertised to clients during initialization. */
@@ -13,24 +13,18 @@ export interface McpServerOptions {
   /** What this server is, for a human reading a client's server list. */
   description?: string
   /** Shown beside the server's name by clients that render one. */
-  icons?: Icon[]
+  icons?: McpIcon[]
   /** Where a human can read more about this server. */
   websiteUrl?: string
   /** Guidance the client shows to the model about this server as a whole. */
   instructions?: string
   /**
-   * How 2025-era clients are served: through the SDK's stateless fallback, or
-   * refused outright for a 2026-07-28-only endpoint.
+   * Which protocol eras to serve. `dual` answers both 2026-07-28 and the
+   * 2025 revisions; `modern` is 2026-07-28 only.
    *
-   * @default 'stateless'
+   * @default 'dual'
    */
-  legacy?: 'stateless' | 'reject'
-  /**
-   * Whether modern exchanges answer with a single JSON body or an SSE stream.
-   *
-   * @default 'auto'
-   */
-  responseMode?: PerRequestResponseMode
+  era?: McpEra
   /**
    * Browser origins allowed beyond the app's own loopback pages, which pass by
    * default. Requests carrying no `Origin` — every MCP client proper — are

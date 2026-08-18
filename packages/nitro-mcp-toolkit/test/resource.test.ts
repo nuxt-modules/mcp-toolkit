@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createMcpHandler, defineMcpResource, ResourceTemplate } from '../src/runtime/index.ts'
+import { createMcpHandler, defineMcpResource } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 
 describe('defineMcpResource', () => {
@@ -36,7 +36,7 @@ describe('defineMcpResource', () => {
       resources: [
         defineMcpResource({
           name: 'page',
-          uri: new ResourceTemplate('docs://{slug}', { list: undefined }),
+          uriTemplate: 'docs://{slug}',
           handler: (_uri, variables) => `page ${String(variables.slug)}`,
         }),
       ],
@@ -56,13 +56,10 @@ describe('defineMcpResource', () => {
       resources: [
         defineMcpResource({
           name: 'page',
-          uri: new ResourceTemplate('docs://{slug}', {
-            list: () => ({
-              resources: Object.keys(pages).map((slug) => ({ name: slug, uri: `docs://${slug}` })),
-            }),
-            complete: {
-              slug: (value) => Object.keys(pages).filter((slug) => slug.startsWith(value)),
-            },
+          uriTemplate: 'docs://{slug}',
+          list: () => Object.keys(pages).map((slug) => ({ name: slug, uri: `docs://${slug}` })),
+          complete: (ctx) => ({
+            values: Object.keys(pages).filter((slug) => slug.startsWith(ctx.argument.value)),
           }),
           handler: (_uri, { slug }) => pages[String(slug)] ?? '',
         }),
@@ -117,6 +114,6 @@ describe('defineMcpResource', () => {
     })
     await using client = await createMcpTestClient(handler)
 
-    await expect(client.readResource({ uri: 'docs://broken' })).rejects.toThrow(/it broke/)
+    await expect(client.readResource({ uri: 'docs://broken' })).rejects.toThrow(/Internal error/)
   })
 })

@@ -6,12 +6,13 @@ export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
 export { defineMcpResource } from './resource.ts'
 export { audioResult, imageResult } from './results.ts'
 export { defineMcpTool } from './tool.ts'
+export { getElicitedContent, inputRequired, mcpElicit, mcpElicitUrl } from './mrtr.ts'
 
-export type { McpAuthCredential, McpAuthOptions, McpAuthScheme } from './auth.ts'
-export type { McpEvent, McpEventContext } from './context.ts'
-export type { McpHandler, McpHandlerOptions } from './handler.ts'
+export type { McpEvent, McpNotifier } from './context.ts'
+export type { McpHandler, McpHandlerOptions, McpAuthOptions } from './handler.ts'
 export type {
   McpPromptDefinition,
+  McpPromptDefinitionWithArguments,
   McpPromptDefinitionWithoutInput,
   McpPromptReturn,
 } from './prompt.ts'
@@ -29,29 +30,19 @@ export type {
   McpResource,
   McpTool,
 } from './definition.ts'
-export type { McpOriginOptions } from './origin.ts'
 export type { McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 
-// Re-exported so a definition file only ever imports from this entry: the
-// multi-round-trip builders, the resource-template class, and the result types
-// a handler may need to name.
-export {
-  acceptedContent,
-  completable,
-  inputRequired,
-  inputResponse,
-  ResourceTemplate,
-} from '@modelcontextprotocol/server'
 export type {
-  AuthInfo,
-  CacheHint,
-  CallToolResult,
-  ContentBlock,
-  GetPromptResult,
-  Icon,
-  InputRequiredResult,
-  ReadResourceResult,
-  ServerNotifier,
-  ToolAnnotations,
-} from '@modelcontextprotocol/server'
+  McpAuthCredentials,
+  McpAuthScheme,
+  McpCallToolResult as CallToolResult,
+  McpContentBlock as ContentBlock,
+  McpGetPromptResult as GetPromptResult,
+  McpIcon as Icon,
+  McpInputRequiredResult as InputRequiredResult,
+  McpOriginOptions,
+  McpReadResourceResult as ReadResourceResult,
+  McpToolAnnotations as ToolAnnotations,
+  McpCacheHints as CacheHint,
+} from 'h3-mcp'

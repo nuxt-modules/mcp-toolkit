@@ -120,7 +120,7 @@ The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/
 
 **Discovery generates two Nitro virtual modules per instance** — `#mcp/<slug>/registry`, which imports each definition file, and `#mcp/<slug>/handler`, which is what `options.handlers` mounts. Three things about this were established empirically and are easy to break:
 
-- A bare `nitro-mcp-toolkit` import inside a virtual module resolves fine, in dev and in a production build, so the generated handler imports the toolkit exactly as a user's file does — one module instance, one `AsyncLocalStorage`.
+- A bare `nitro-mcp-toolkit` import inside a virtual module resolves fine, in dev and in a production build, so the generated handler imports the toolkit exactly as a user's file does — one module instance.
 - The registry inlines its own `fromFile` helper rather than importing one, which keeps build-time naming out of the runtime bundle and the runtime free of an export that only generated code would call.
 - A route may import `#mcp/<slug>/handler` to read `handler.definitions`, and that id is typed with nothing to configure: `src/runtime/virtual.d.ts` declares the pattern `#mcp/*/handler`, and the app pulls it in through its own import of the toolkit. Three constraints hold it together, all established by experiment. The declaration must be a **global** file — the same lines inside a `.d.ts` that has a top-level export are read as an augmentation of a module that does not exist, and silently do nothing. The **dts pass drops triple-slash references**, so `build.config.ts` re-attaches the one in `src/runtime/index.ts` and ships the declaration next to the built types, rewriting its inline import from `./index.ts` to `./index.mjs`; do not point that import at the package's own name, since `typecheck` does not depend on a build and would then fail on a fresh clone. Nitro's own answer, a `paths` entry in a generated `tsconfig.json`, is not usable here: `generateTsConfig` is off by default, so it would leave every bare Nitro app mapping the id by hand.
 - **Dev pickup needs `nitro.hooks.callHook('rollup:reload')`.** A new file is imported by nothing, so neither the bundler's graph nor `devServer.watch` (which reloads the worker without rebuilding) can notice it; only a rebuild re-renders the registry. The module therefore watches the definitions directory itself with `fs.watch` and calls that hook. Note the vite builder does not listen to it — an upstream gap, not something to work around here.
@@ -182,15 +182,13 @@ PR titles and commits follow [Conventional Commits](https://conventionalcommits.
 
 ### Platform support (`nitro-mcp-toolkit`)
 
-The runtime imports exactly one Node built-in, `node:async_hooks`, for the `AsyncLocalStorage` that carries the request context; the SDK, h3 and zod add none, so a built bundle is otherwise web-standard. Keep it that way: a second built-in would cost the edge story.
-
-`AsyncLocalStorage` cannot be swapped for a `WeakMap` keyed by the request — the SDK does not hand back the same `Request` object it was given, which was measured, not assumed. Cloudflare therefore needs `nodejs_compat`; that is documented in the README rather than worked around.
+The runtime imports no Node built-ins: h3-mcp owns the protocol, and the toolkit is otherwise web-standard. Keep it that way — a Node built-in would cost the edge story, including Cloudflare without `nodejs_compat`.
 
 Windows is covered by a dedicated `test-windows` CI job that runs this package's suite alone, since it is the only one whose behaviour depends on the OS. Its e2e test builds a real Nitro app, which is what proves the absolute paths in the generated registry resolve there.
 
-**The SDK does no `Origin` validation of its own, so `createMcpHandler` adds one** (`src/runtime/origin.ts`), checked ahead of `sdk.fetch` in both `handle` and `fetch`. The default accepts a page the app serves to itself on a loopback host and refuses every other origin; requests with no `Origin` — every MCP client proper — are unaffected. The loopback condition is not decoration: `event.url` reads the `Host` header, so a bare same-origin comparison is satisfied by DNS rebinding, where the attacker's own hostname lands in both `Host` and `Origin`. Do not drop it to "simplify" the check. `allow` adds explicit origins on top of the default; a user's own `allow` list does not cost the loopback case.
+**h3-mcp owns origin allow-listing; the toolkit supplies the loopback default** via `origin.validate`. The default accepts a page the app serves to itself on a loopback host and refuses every other origin; requests with no `Origin` — every MCP client proper — are unaffected. The loopback condition is not decoration: `event.url` reads the `Host` header, so a bare same-origin comparison is satisfied by DNS rebinding, where the attacker's own hostname lands in both `Host` and `Origin`. Do not drop it to "simplify" the check. `allow` adds explicit origins on top of the default; a user's own `allow` list does not cost the loopback case.
 
-**`X-MCP-Tools` is the same kind of gate** (`src/runtime/tools-header.ts`): allowlist of tool names, HTTP 400 on unknowns, applied before `sdk.fetch`. `handler.definitions` stays the full catalog.
+**`X-MCP-Tools` is the same kind of gate** (`src/runtime/tools-header.ts`): allowlist of tool names, HTTP 400 on unknowns, applied before the engine runs. `handler.definitions` stays the full catalog.
 
 ### MCP Definitions
 
@@ -254,7 +252,7 @@ If `name` and `title` are omitted, they are auto-generated from the filename:
 
 ### Client tool allowlist
 
-Clients can send `X-MCP-Tools` (comma-separated names matching `tools/list`) to subset the catalog. Unknown names return HTTP 400. On `@nuxtjs/mcp-toolkit` this runs after `enabled()` and `mcp:config:resolved`. On `nitro-mcp-toolkit` it runs ahead of `sdk.fetch` (same place as origin/auth) and does not change `handler.definitions`.
+Clients can send `X-MCP-Tools` (comma-separated names matching `tools/list`) to subset the catalog. Unknown names return HTTP 400. On `@nuxtjs/mcp-toolkit` this runs after `enabled()` and `mcp:config:resolved`. On `nitro-mcp-toolkit` it runs ahead of the engine (same place as origin/auth) and does not change `handler.definitions`.
 
 ### Return Types
 

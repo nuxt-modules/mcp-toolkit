@@ -1,24 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { completable, createMcpHandler, defineMcpPrompt } from '../src/runtime/index.ts'
+import { createMcpHandler, defineMcpPrompt } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 
-// Completions rely on the SDK walking the schema object to find `completable()`
-// fields, which is why a definition must hand it the schema untouched. Wrapping
-// or spreading one drops prototype getters such as Zod's `shape`, and this test
-// is what catches that.
-describe('schemas reach the SDK intact', () => {
-  it('serves completions declared with completable()', async () => {
+describe('prompt arguments reach the engine', () => {
+  it('serves completions declared on an argument', async () => {
     const handler = createMcpHandler({
       name: 'completions',
       prompts: [
         defineMcpPrompt({
           name: 'pick',
-          inputSchema: z.object({
-            fruit: completable(z.string(), (value) =>
-              ['apple', 'apricot', 'banana'].filter((fruit) => fruit.startsWith(value)),
-            ),
-          }),
+          arguments: [
+            {
+              name: 'fruit',
+              complete: (ctx) => ({
+                values: ['apple', 'apricot', 'banana'].filter((fruit) =>
+                  fruit.startsWith(ctx.argument.value),
+                ),
+              }),
+            },
+          ],
           handler: ({ fruit }) => `You picked ${fruit}`,
         }),
       ],

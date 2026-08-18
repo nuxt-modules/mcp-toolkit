@@ -20,10 +20,10 @@ function withHeader(auth: McpAuthOptions, header?: string, value?: string) {
   })
 
   return createMcpTestClient({
-    fetch: (req, options) => {
+    fetch: (req) => {
       const headers = new Headers(req.headers)
       if (header && value) headers.set(header, value)
-      return handler.fetch(new Request(req, { headers }), options)
+      return handler.fetch(new Request(req, { headers }))
     },
   })
 }
@@ -31,13 +31,13 @@ function withHeader(auth: McpAuthOptions, header?: string, value?: string) {
 describe('auth config', () => {
   it('throws building a handler with neither tokens nor validate', () => {
     expect(() => createMcpHandler({ auth: {} })).toThrow(
-      /needs at least one of `tokens` or `validate`/,
+      /Auth requires at least one token or validate callback/,
     )
   })
 
   it('throws on an invalid header name', () => {
     expect(() => createMcpHandler({ auth: { tokens: ['x'], header: 'not a header' } })).toThrow(
-      /not a valid header name/,
+      /Invalid auth header name/,
     )
   })
 
@@ -66,7 +66,9 @@ describe('a bearer/api-key gate', () => {
     const response = await handler.fetch(request())
 
     expect(response.status).toBe(401)
-    expect(response.headers.get('www-authenticate')).toBe('Bearer realm="mcp"')
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer realm="mcp", ApiKey realm="mcp", header="x-api-key"',
+    )
   })
 
   it('refuses a bearer token that is not on the list', async () => {
@@ -79,9 +81,9 @@ describe('a bearer/api-key gate', () => {
   it('carries no JSON-RPC body on a refusal', async () => {
     const handler = createMcpHandler({ auth: { tokens: ['secret'] } })
     const response = await handler.fetch(request())
-    const text = await response.text()
+    const body = JSON.parse(await response.text()) as { jsonrpc?: string }
 
-    expect(() => JSON.parse(text)).toThrow()
+    expect(body.jsonrpc).toBeUndefined()
   })
 
   it('accepts a listed bearer token', async () => {
@@ -121,35 +123,69 @@ describe('a bearer/api-key gate', () => {
     await expect(client.callTool({ name: 'ping' })).resolves.toBeDefined()
   })
 
-  it('carries resourceMetadataUrl on the challenge', async () => {
+  it('carries resourceMetadataUrl on the Bearer challenge', async () => {
+    const url = 'https://example.com/.well-known/oauth-protected-resource'
     const handler = createMcpHandler({
-      auth: {
-        tokens: ['secret'],
-        resourceMetadataUrl: 'https://example.com/.well-known/oauth-protected-resource',
-      },
+      auth: { tokens: ['secret'], resourceMetadataUrl: url },
     })
     const response = await handler.fetch(request())
 
     expect(response.headers.get('www-authenticate')).toBe(
-      'Bearer realm="mcp", resource_metadata="https://example.com/.well-known/oauth-protected-resource"',
+      `Bearer realm="mcp", resource_metadata="${url}", ApiKey realm="mcp", header="x-api-key"`,
     )
+  })
+
+  it('gates GET and DELETE the same way as POST', async () => {
+    const handler = createMcpHandler({ auth: { tokens: ['secret'] } })
+
+    for (const method of ['GET', 'DELETE'] as const) {
+      const response = await handler.fetch(new Request('http://localhost/mcp', { method }))
+      expect(response.status).toBe(401)
+    }
+  })
+
+  it('advertises only the schemes that are enabled', async () => {
+    const handler = createMcpHandler({
+      auth: { tokens: ['secret'], schemes: ['bearer'] },
+    })
+    const response = await handler.fetch(request())
+
+    expect(response.headers.get('www-authenticate')).toBe('Bearer realm="mcp"')
   })
 })
 
 describe('a custom validate callback', () => {
-  it('runs for every credential, and can stash identity on event.context', async () => {
+  it('runs for every credential, and the handler can read what validate stashed', async () => {
     const seen: unknown[] = []
-    const auth: McpAuthOptions = {
-      validate: (credential, event) => {
-        seen.push(credential)
-        event.context.tenant = 'acme'
-        return credential.token === 'good'
+    const handler = createMcpHandler({
+      auth: {
+        validate: (credential, event) => {
+          seen.push(credential)
+          event.context.tenant = 'acme'
+          return credential.token === 'good'
+        },
       },
-    }
+      tools: [
+        defineMcpTool({
+          name: 'who',
+          handler: (event) => {
+            const tenant = event.context.tenant
+            return typeof tenant === 'string' ? tenant : ''
+          },
+        }),
+      ],
+    })
 
-    await using client = await withHeader(auth, 'authorization', 'Bearer good')
-    await expect(client.callTool({ name: 'ping' })).resolves.toBeDefined()
-    expect(seen.length).toBeGreaterThan(0)
+    await using client = await createMcpTestClient({
+      fetch: (req) => {
+        const headers = new Headers(req.headers)
+        headers.set('authorization', 'Bearer good')
+        return handler.fetch(new Request(req, { headers }))
+      },
+    })
+
+    const result = await client.callTool({ name: 'who' })
+    expect(result.content).toEqual([{ type: 'text', text: 'acme' }])
     expect(seen).toContainEqual({ scheme: 'bearer', token: 'good' })
   })
 

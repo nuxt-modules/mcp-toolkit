@@ -28,10 +28,10 @@ function handler() {
 function withToolsHeader(value: string | undefined) {
   const mcp = handler()
   return createMcpTestClient({
-    fetch: (request, options) => {
+    fetch: (request) => {
       const headers = new Headers(request.headers)
       if (value !== undefined) headers.set('x-mcp-tools', value)
-      return mcp.fetch(new Request(request, { headers }), options)
+      return mcp.fetch(new Request(request, { headers }))
     },
   })
 }
@@ -124,6 +124,67 @@ describe('X-MCP-Tools', () => {
         method: 'POST',
         headers: {
           accept: 'application/json',
+          'content-type': 'application/json',
+          'x-mcp-tools': 'does-not-exist',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.text()).toContain('Unknown MCP tool: does-not-exist')
+  })
+
+  it('does not reveal unknown names before auth', async () => {
+    const guarded = createMcpHandler({
+      auth: { tokens: ['secret'] },
+      tools: [defineMcpTool({ name: 'search-icons', handler: () => 'icons' })],
+    })
+    const response = await guarded.fetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'x-mcp-tools': 'does-not-exist',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(await response.text()).not.toContain('does-not-exist')
+  })
+
+  it('does not reveal unknown names before origin', async () => {
+    const response = await handler().fetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://evil.example',
+          'x-mcp-tools': 'does-not-exist',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      }),
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.text()).not.toContain('does-not-exist')
+  })
+
+  it('returns HTTP 400 for unknown names once the caller is allowed through', async () => {
+    const guarded = createMcpHandler({
+      auth: { tokens: ['secret'] },
+      tools: [defineMcpTool({ name: 'search-icons', handler: () => 'icons' })],
+    })
+    const response = await guarded.fetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          authorization: 'Bearer secret',
           'content-type': 'application/json',
           'x-mcp-tools': 'does-not-exist',
         },
