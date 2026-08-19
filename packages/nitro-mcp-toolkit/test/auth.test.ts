@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
-import type { McpAuthOptions } from '../src/runtime/index.ts'
+import type { AuthOptions } from '../src/runtime/index.ts'
 
 /** A request the handler sees directly, bypassing the SDK client. */
 function request(headers: Record<string, string> = {}): Request {
@@ -13,7 +13,7 @@ function request(headers: Record<string, string> = {}): Request {
 }
 
 /** A real SDK client, so the happy path is proven end to end, not just per-response. */
-function withHeader(auth: McpAuthOptions, header?: string, value?: string) {
+function withHeader(auth: AuthOptions, header?: string, value?: string) {
   const handler = createMcpHandler({
     auth,
     tools: [defineMcpTool({ name: 'ping', handler: () => 'pong' })],
@@ -50,13 +50,13 @@ describe('auth config', () => {
           resourceMetadataUrl: 'https://example.com/meta',
         },
       }),
-    ).toThrow(/needs the `bearer` scheme/)
+    ).toThrow(/requires the bearer scheme/)
   })
 
   it('throws on a resourceMetadataUrl that is not absolute', () => {
     expect(() =>
       createMcpHandler({ auth: { tokens: ['x'], resourceMetadataUrl: '/meta' } }),
-    ).toThrow(/Invalid URL/)
+    ).toThrow(/Invalid auth resourceMetadataUrl/)
   })
 
   it('throws on a resourceMetadataUrl that cannot sit in a quoted parameter', () => {
@@ -64,7 +64,7 @@ describe('auth config', () => {
       createMcpHandler({
         auth: { tokens: ['x'], resourceMetadataUrl: 'https://example.com/meta"oops' },
       }),
-    ).toThrow(/cannot contain a `"`/)
+    ).toThrow(/Invalid auth resourceMetadataUrl/)
   })
 })
 
@@ -198,13 +198,13 @@ describe('a custom validate callback', () => {
   })
 
   it('refuses when it returns false', async () => {
-    const auth: McpAuthOptions = { validate: () => false }
+    const auth: AuthOptions = { validate: () => false }
 
     await expect(withHeader(auth, 'authorization', 'Bearer anything')).rejects.toThrow()
   })
 
   it('falls through to validate when the token is not on the list', async () => {
-    const auth: McpAuthOptions = {
+    const auth: AuthOptions = {
       tokens: ['static'],
       validate: (credential) => credential.token === 'dynamic',
     }

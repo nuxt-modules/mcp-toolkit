@@ -1,5 +1,5 @@
 import { HTTPError } from 'h3'
-import type { McpCallToolResult, McpContentBlock, McpInputRequiredResult } from 'h3-mcp'
+import type { CallToolResult, ContentBlock, InputRequiredResult } from 'h3-mcp'
 
 /**
  * A plain value a handler may return instead of a full `CallToolResult`.
@@ -19,19 +19,19 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * @internal
  */
-export function isInputRequired(value: unknown): value is McpInputRequiredResult {
+export function isInputRequired(value: unknown): value is InputRequiredResult {
   return isObject(value) && value.resultType === 'input_required'
 }
 
-function isCallToolResult(value: object): value is McpCallToolResult {
+function isCallToolResult(value: object): value is CallToolResult {
   return (
-    ('content' in value && Array.isArray((value as McpCallToolResult).content)) ||
+    ('content' in value && Array.isArray((value as CallToolResult).content)) ||
     'structuredContent' in value ||
     'isError' in value
   )
 }
 
-function textBlock(text: string): McpContentBlock[] {
+function textBlock(text: string): ContentBlock[] {
   return [{ type: 'text', text }]
 }
 
@@ -45,7 +45,7 @@ function textBlock(text: string): McpContentBlock[] {
  *
  * @internal
  */
-export function toCallToolResult(value: unknown, hasOutputSchema: boolean): McpCallToolResult {
+export function toCallToolResult(value: unknown, hasOutputSchema: boolean): CallToolResult {
   if (hasOutputSchema && isObject(value)) {
     return { content: textBlock(JSON.stringify(value, null, 2)), structuredContent: value }
   }
@@ -86,7 +86,7 @@ export function toCallToolResult(value: unknown, hasOutputSchema: boolean): McpC
  *
  * @internal
  */
-export function toErrorResult(error: unknown): McpCallToolResult {
+export function toErrorResult(error: unknown): CallToolResult {
   if (error instanceof HTTPError) {
     let text = `[${error.status}] ${error.message}`
     if (error.data != null) {
@@ -107,7 +107,7 @@ export function toErrorResult(error: unknown): McpCallToolResult {
  * @param data Base64-encoded image data
  * @param mimeType e.g. `image/png`
  */
-export function imageResult(data: string, mimeType: string): McpCallToolResult {
+export function imageResult(data: string, mimeType: string): CallToolResult {
   return { content: [{ type: 'image', data, mimeType }] }
 }
 
@@ -117,6 +117,6 @@ export function imageResult(data: string, mimeType: string): McpCallToolResult {
  * @param data Base64-encoded audio data
  * @param mimeType e.g. `audio/mp3`
  */
-export function audioResult(data: string, mimeType: string): McpCallToolResult {
+export function audioResult(data: string, mimeType: string): CallToolResult {
   return { content: [{ type: 'audio', data, mimeType }] }
 }

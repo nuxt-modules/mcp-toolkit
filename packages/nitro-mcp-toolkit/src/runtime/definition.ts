@@ -1,4 +1,4 @@
-import type { McpHandlerOptions as EngineOptions } from 'h3-mcp'
+import type { HandlerOptions as EngineOptions } from 'h3-mcp'
 import type { McpNotifier } from './context.ts'
 
 /**

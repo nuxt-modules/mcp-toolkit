@@ -6,10 +6,16 @@ export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
 export { defineMcpResource } from './resource.ts'
 export { audioResult, imageResult } from './results.ts'
 export { defineMcpTool } from './tool.ts'
-export { getElicitedContent, inputRequired, mcpElicit, mcpElicitUrl } from './mrtr.ts'
+export {
+  defineRequestState,
+  getElicitedContent,
+  inputRequired,
+  mcpElicit,
+  mcpElicitUrl,
+} from 'h3-mcp'
 
 export type { McpEvent, McpNotifier } from './context.ts'
-export type { McpHandler, McpHandlerOptions, McpAuthOptions } from './handler.ts'
+export type { McpHandler, McpHandlerOptions } from './handler.ts'
 export type {
   McpPromptDefinition,
   McpPromptDefinitionWithArguments,
@@ -34,15 +40,16 @@ export type { McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 
 export type {
-  McpAuthCredentials,
-  McpAuthScheme,
-  McpCallToolResult as CallToolResult,
-  McpContentBlock as ContentBlock,
-  McpGetPromptResult as GetPromptResult,
-  McpIcon as Icon,
-  McpInputRequiredResult as InputRequiredResult,
-  McpOriginOptions,
-  McpReadResourceResult as ReadResourceResult,
-  McpToolAnnotations as ToolAnnotations,
-  McpCacheHints as CacheHint,
+  AuthCredentials,
+  AuthOptions,
+  AuthScheme,
+  CacheHints,
+  CallToolResult,
+  ContentBlock,
+  GetPromptResult,
+  Icon,
+  InputRequiredResult,
+  OriginOptions,
+  ReadResourceResult,
+  ToolAnnotations,
 } from 'h3-mcp'

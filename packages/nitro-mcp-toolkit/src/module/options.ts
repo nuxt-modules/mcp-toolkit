@@ -1,4 +1,4 @@
-import type { McpEra, McpIcon } from 'h3-mcp'
+import type { Era, Icon } from 'h3-mcp'
 
 /**
  * What the server advertises and how it answers — everything a definition file
@@ -13,7 +13,7 @@ export interface McpServerOptions {
   /** What this server is, for a human reading a client's server list. */
   description?: string
   /** Shown beside the server's name by clients that render one. */
-  icons?: McpIcon[]
+  icons?: Icon[]
   /** Where a human can read more about this server. */
   websiteUrl?: string
   /** Guidance the client shows to the model about this server as a whole. */
@@ -24,7 +24,7 @@ export interface McpServerOptions {
    *
    * @default 'dual'
    */
-  era?: McpEra
+  era?: Era
   /**
    * Browser origins allowed beyond the app's own loopback pages, which pass by
    * default. Requests carrying no `Origin` — every MCP client proper — are
@@ -38,7 +38,7 @@ export interface McpServerOptions {
   origin?: false | { allow?: string[]; allowMissing?: boolean }
   /**
    * Require a bearer token or API key on every request — the
-   * JSON-serializable subset of `McpAuthOptions`: a static `tokens` list, no
+   * JSON-serializable subset of `AuthOptions`: a static `tokens` list, no
    * `validate` callback. A live function cannot cross into generated code,
    * so dynamic verification means mounting `createMcpHandler` by hand.
    *

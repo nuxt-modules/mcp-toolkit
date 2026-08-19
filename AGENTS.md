@@ -188,6 +188,8 @@ Windows is covered by a dedicated `test-windows` CI job that runs this package's
 
 **h3-mcp owns origin allow-listing; the toolkit supplies the loopback default** via `origin.validate`. The default accepts a page the app serves to itself on a loopback host and refuses every other origin; requests with no `Origin` — every MCP client proper — are unaffected. The loopback condition is not decoration: `event.url` reads the `Host` header, so a bare same-origin comparison is satisfied by DNS rebinding, where the attacker's own hostname lands in both `Host` and `Origin`. Do not drop it to "simplify" the check. `allow` adds explicit origins on top of the default; a user's own `allow` list does not cost the loopback case.
 
+The runtime is written against a pinned `h3-mcp` (currently 0.2.0). That release dropped the `Mcp` prefix on types, owns MRTR helpers and RFC 9728 `resourceMetadataUrl`, and requires URI templates to pass through `defineResourceTemplate` so RFC 6570 matching is in the bundle — `defineMcpResource` already does that. Re-export `inputRequired` / `mcpElicit` / `getElicitedContent` / `defineRequestState` from the engine; do not reimplement them. `createMcpHandler`'s second argument is h3-mcp's `{ extensionPlugins }`.
+
 **`X-MCP-Tools` is the same kind of gate** (`src/runtime/tools-header.ts`): allowlist of tool names, HTTP 400 on unknowns, applied before the engine runs. `handler.definitions` stays the full catalog.
 
 ### MCP Definitions

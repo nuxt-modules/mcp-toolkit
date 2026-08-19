@@ -4,11 +4,11 @@ import { isInputRequired, toCallToolResult, toErrorResult } from './results.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type {
-  McpCallToolResult,
-  McpIcon,
-  McpInputRequiredResult,
-  McpToolAnnotations,
+  CallToolResult,
+  Icon,
+  InputRequiredResult,
   StandardTypedV1,
+  ToolAnnotations,
 } from 'h3-mcp'
 import type { McpEvent } from './context.ts'
 import type { McpTool } from './definition.ts'
@@ -22,8 +22,8 @@ type Awaitable<T> = T | Promise<T>
  * one is declared, any plain value otherwise, or a full protocol result.
  */
 export type McpToolReturn<Output extends Schema | undefined> =
-  | McpCallToolResult
-  | McpInputRequiredResult
+  | CallToolResult
+  | InputRequiredResult
   | (Output extends Schema ? StandardTypedV1.InferInput<Output> : McpToolValue)
 
 interface McpToolMetadata {
@@ -36,8 +36,8 @@ interface McpToolMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
-  annotations?: McpToolAnnotations
-  icons?: McpIcon[]
+  annotations?: ToolAnnotations
+  icons?: Icon[]
 }
 
 export interface McpToolDefinition<
@@ -65,7 +65,7 @@ export interface McpToolDefinitionWithoutInput<
 async function settle(
   run: () => Awaitable<unknown>,
   hasOutputSchema: boolean,
-): Promise<McpCallToolResult | McpInputRequiredResult> {
+): Promise<CallToolResult | InputRequiredResult> {
   try {
     const result = await run()
     return isInputRequired(result) ? result : toCallToolResult(result, hasOutputSchema)

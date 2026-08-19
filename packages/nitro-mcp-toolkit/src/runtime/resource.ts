@@ -1,13 +1,14 @@
+import { defineResourceTemplate } from 'h3-mcp'
 import { attachNotify } from './context.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type {
-  McpCacheHints,
-  McpCompleteCallback,
-  McpIcon,
-  McpReadResourceResult,
-  McpResourceDescriptor,
-  McpResourceTemplateListCallback,
+  CacheHints,
+  CompleteCallback,
+  Icon,
+  ReadResourceResult,
+  ResourceDescriptor,
+  ResourceTemplateListCallback,
 } from 'h3-mcp'
 import type { McpEvent } from './context.ts'
 import type { McpResource } from './definition.ts'
@@ -18,7 +19,7 @@ type Awaitable<T> = T | Promise<T>
  * What a resource handler may return: the text of the resource, or a full
  * protocol result when it carries several contents or binary data.
  */
-export type McpResourceReturn = McpReadResourceResult | string
+export type McpResourceReturn = ReadResourceResult | string
 
 interface McpResourceMetadata {
   /** Derived from the filename when discovered. */
@@ -30,9 +31,9 @@ interface McpResourceMetadata {
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
   mimeType?: string
-  icons?: McpIcon[]
+  icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
-  cache?: McpCacheHints
+  cache?: CacheHints
 }
 
 export interface McpResourceDefinition extends McpResourceMetadata {
@@ -45,9 +46,9 @@ export interface McpResourceTemplateDefinition extends McpResourceMetadata {
   /** An RFC 6570 URI template, e.g. `docs://{slug}`. */
   uriTemplate: string
   /** Enumerate current members into `resources/list`. */
-  list?: McpResourceTemplateListCallback
+  list?: ResourceTemplateListCallback
   /** Autocomplete a template variable. */
-  complete?: McpCompleteCallback
+  complete?: CompleteCallback
   handler: (
     uri: URL,
     variables: Record<string, string>,
@@ -55,7 +56,7 @@ export interface McpResourceTemplateDefinition extends McpResourceMetadata {
   ) => Awaitable<McpResourceReturn>
 }
 
-function toReadResult(uri: URL, value: McpResourceReturn): McpReadResourceResult {
+function toReadResult(uri: URL, value: McpResourceReturn): ReadResourceResult {
   return typeof value === 'string' ? { contents: [{ uri: uri.href, text: value }] } : value
 }
 
@@ -116,16 +117,19 @@ export function defineMcpResource(
       }
 
       const { uriTemplate, list, complete, handler } = definition
-      into.resourceTemplates.push({
-        ...advertised,
-        uriTemplate,
-        list,
-        complete,
-        handler: async (url: URL, variables: Record<string, string>, event: H3Event) =>
-          toReadResult(url, await handler(url, variables, attachNotify(event, notify))),
-      })
+      into.resourceTemplates.push(
+        defineResourceTemplate({
+          ...advertised,
+          name: identity.name,
+          uriTemplate,
+          list,
+          complete,
+          handler: async (url: URL, variables: Record<string, string>, event: H3Event) =>
+            toReadResult(url, await handler(url, variables, attachNotify(event, notify))),
+        }),
+      )
     },
   }
 }
 
-export type { McpResourceDescriptor }
+export type { ResourceDescriptor }

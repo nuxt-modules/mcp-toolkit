@@ -15,6 +15,7 @@ describe('public exports', () => {
         "defineMcpPrompt",
         "defineMcpResource",
         "defineMcpTool",
+        "defineRequestState",
         "getElicitedContent",
         "imageResult",
         "inputRequired",

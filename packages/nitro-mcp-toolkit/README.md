@@ -322,7 +322,7 @@ export default defineMcpTool({
         },
       }),
     }
-    const confirmed = getElicitedContent<{ confirm: boolean }>(event, requests, 'confirm')
+    const confirmed = getElicitedContent(event, requests, 'confirm')
     if (!confirmed?.confirm) {
       return inputRequired(event, { inputRequests: requests })
     }
@@ -332,7 +332,7 @@ export default defineMcpTool({
 })
 ```
 
-`requestState` is opaque, server-minted state the client echoes back verbatim — treat it as attacker-controlled input on the way back in. Sign it yourself (HMAC or similar) if it drives authorization or business logic, and reject state that fails verification.
+`requestState` is opaque, server-minted state the client echoes back verbatim — treat it as attacker-controlled input on the way back in. `defineRequestState` is an HMAC-SHA256 codec for that: seal on the way out, open on the way back, and reject anything that fails verification.
 
 ## Change notifications
 
@@ -377,7 +377,7 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [g
 
 Handwritten definitions name themselves, since no filename is there to do it.
 
-The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime.
+The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps.
 
 ## Authentication
 

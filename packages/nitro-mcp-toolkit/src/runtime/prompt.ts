@@ -1,7 +1,7 @@
 import { attachNotify } from './context.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
-import type { McpGetPromptResult, McpIcon, McpPromptArgument, StandardTypedV1 } from 'h3-mcp'
+import type { GetPromptResult, Icon, PromptArgument, StandardTypedV1 } from 'h3-mcp'
 import type { McpEvent } from './context.ts'
 import type { McpPrompt } from './definition.ts'
 
@@ -12,7 +12,7 @@ type Awaitable<T> = T | Promise<T>
  * What a prompt handler may return: the text of a single user message, or a
  * full result for multi-message conversations.
  */
-export type McpPromptReturn = McpGetPromptResult | string
+export type McpPromptReturn = GetPromptResult | string
 
 interface McpPromptMetadata {
   /** Derived from the filename when discovered. */
@@ -23,7 +23,7 @@ interface McpPromptMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
-  icons?: McpIcon[]
+  icons?: Icon[]
 }
 
 export interface McpPromptDefinition<Input extends Schema> extends McpPromptMetadata {
@@ -37,7 +37,7 @@ export interface McpPromptDefinitionWithArguments extends McpPromptMetadata {
    * The wire argument list. Use this instead of `inputSchema` when an
    * argument needs a `complete` callback.
    */
-  arguments: McpPromptArgument[]
+  arguments: PromptArgument[]
   handler: (args: Record<string, string>, event: McpEvent) => Awaitable<McpPromptReturn>
 }
 
@@ -47,7 +47,7 @@ export interface McpPromptDefinitionWithoutInput extends McpPromptMetadata {
   handler: (event: McpEvent) => Awaitable<McpPromptReturn>
 }
 
-function toPromptResult(value: McpPromptReturn): McpGetPromptResult {
+function toPromptResult(value: McpPromptReturn): GetPromptResult {
   return typeof value === 'string'
     ? { messages: [{ role: 'user', content: { type: 'text', text: value } }] }
     : value

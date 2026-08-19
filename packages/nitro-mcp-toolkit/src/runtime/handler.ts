@@ -6,7 +6,7 @@ import {
   unknownToolsResponse,
 } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
-import type { McpHandlerOptions as EngineOptions, McpSubscription } from 'h3-mcp'
+import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
 import type { McpNotifier } from './context.ts'
 import type {
   McpDefinitionBuckets,
@@ -26,16 +26,6 @@ type EngineWiring = Omit<
   'name' | 'version' | 'tools' | 'resources' | 'resourceTemplates' | 'prompts'
 >
 
-type EngineAuth = Exclude<EngineWiring['auth'], false | undefined>
-
-export type McpAuthOptions = EngineAuth & {
-  /**
-   * Where clients can discover this server's authorization server (RFC 9728).
-   * Carried on every `401` challenge. Requires the `bearer` scheme.
-   */
-  resourceMetadataUrl?: string
-}
-
 export interface McpHandlerOptions extends EngineWiring {
   /** Advertised to clients during initialization. */
   name?: string
@@ -44,7 +34,6 @@ export interface McpHandlerOptions extends EngineWiring {
   /** Static resources and URI templates alike. */
   resources?: McpResource[]
   prompts?: McpPrompt[]
-  auth?: false | McpAuthOptions
   /**
    * Which browser origins may reach the endpoint, beyond the pages the app
    * serves to itself over loopback, which are accepted by default. Requests
@@ -73,59 +62,11 @@ function resolveOrigin(origin: McpHandlerOptions['origin']): EngineOptions['orig
   return { ...origin, validate: origin?.validate ?? sameLoopbackOrigin }
 }
 
-function splitAuth(auth: McpHandlerOptions['auth']): {
-  engine: EngineWiring['auth']
-  resourceMetadataUrl?: string
-} {
-  if (!auth) return { engine: auth }
-
-  const { resourceMetadataUrl, ...engine } = auth
-  return { engine, resourceMetadataUrl }
-}
-
-function assertResourceMetadataUrl(
-  resourceMetadataUrl: string | undefined,
-  auth: McpAuthOptions,
-): void {
-  if (resourceMetadataUrl === undefined) return
-
-  if (auth.schemes && !auth.schemes.includes('bearer')) {
-    throw new Error(
-      '[nitro-mcp-toolkit] `auth.resourceMetadataUrl` needs the `bearer` scheme, which `auth.schemes` excludes.',
-    )
-  }
-
-  if (resourceMetadataUrl.includes('"')) {
-    throw new Error(
-      '[nitro-mcp-toolkit] `auth.resourceMetadataUrl` cannot contain a `"` — it is carried inside a quoted challenge parameter.',
-    )
-  }
-
-  new URL(resourceMetadataUrl)
-}
-
-function applyResourceMetadata(response: Response, resourceMetadataUrl?: string): Response {
-  if (!resourceMetadataUrl || response.status !== 401) return response
-
-  const existing = response.headers.get('www-authenticate') ?? 'Bearer realm="mcp"'
-  const headers = new Headers(response.headers)
-  headers.set(
-    'www-authenticate',
-    existing.includes('resource_metadata=')
-      ? existing
-      : existing.replace(
-          /Bearer realm="mcp"/,
-          `Bearer realm="mcp", resource_metadata="${resourceMetadataUrl}"`,
-        ),
-  )
-  return new Response(response.body, { status: response.status, headers })
-}
-
 function createNotifier(): {
   notify: McpNotifier
   onListen: NonNullable<EngineWiring['onListen']>
 } {
-  const listeners = new Set<McpSubscription>()
+  const listeners = new Set<Subscription>()
 
   const notify: McpNotifier = {
     toolsChanged: () => {
@@ -192,7 +133,10 @@ export interface McpHandler {
  * export default createMcpHandler({ name: 'my-app', tools: [greet] })
  * ```
  */
-export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
+export function createMcpHandler(
+  options: McpHandlerOptions = {},
+  setup?: PluginOptions,
+): McpHandler {
   const {
     name = 'nitro-mcp-server',
     version = '0.0.0',
@@ -205,19 +149,19 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
     ...wiring
   } = options
 
-  const { engine: engineAuth, resourceMetadataUrl } = splitAuth(auth)
-  if (auth) assertResourceMetadataUrl(resourceMetadataUrl, auth)
-
   const resolvedOrigin = resolveOrigin(origin)
 
   // Static resolve throws on a bad `auth` / `origin` when the handler is
   // created, rather than on the first request.
-  defineMcpHandler({
-    name,
-    version,
-    ...(engineAuth !== undefined ? { auth: engineAuth } : {}),
-    origin: resolvedOrigin,
-  })
+  defineMcpHandler(
+    {
+      name,
+      version,
+      ...(auth !== undefined ? { auth } : {}),
+      origin: resolvedOrigin,
+    },
+    setup,
+  )
 
   const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
   const { notify, onListen } = createNotifier()
@@ -242,7 +186,7 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
       ...wiring,
       name,
       version,
-      ...(engineAuth !== undefined ? { auth: engineAuth } : {}),
+      ...(auth !== undefined ? { auth } : {}),
       origin: resolvedOrigin,
       tools: servedTools,
       resources: buckets.resources,
@@ -253,7 +197,7 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
         return userOnListen?.(subscription, listenEvent)
       },
     }
-  })
+  }, setup)
 
   const run = async (event: H3Event): Promise<Response> => {
     const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
@@ -270,15 +214,12 @@ export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
           }),
         )
         const gated = await toResponse(await engine(probe), probe)
-        if (gated.status === 401 || gated.status === 403) {
-          return applyResourceMetadata(gated, resourceMetadataUrl)
-        }
+        if (gated.status === 401 || gated.status === 403) return gated
         return unknownToolsResponse(unknownNames)
       }
     }
 
-    const response = await toResponse(await engine(event), event)
-    return applyResourceMetadata(response, resourceMetadataUrl)
+    return toResponse(await engine(event), event)
   }
 
   return Object.assign(run, {

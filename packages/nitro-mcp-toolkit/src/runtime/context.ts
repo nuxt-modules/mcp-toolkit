@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { McpRequestContext } from 'h3-mcp'
+import type { RequestContext } from 'h3-mcp'
 
 /**
  * Push list-changed and resource-updated events to every client currently
@@ -19,7 +19,7 @@ export interface McpNotifier {
  */
 export type McpEvent = H3Event & {
   context: H3Event['context'] & {
-    mcp: McpRequestContext & { notify: McpNotifier }
+    mcp: RequestContext & { notify: McpNotifier }
   }
 }
 
