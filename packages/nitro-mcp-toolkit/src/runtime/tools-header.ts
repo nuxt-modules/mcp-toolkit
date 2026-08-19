@@ -22,28 +22,21 @@ export function parseMcpToolsHeader(value: string | null | undefined): Set<strin
 }
 
 /**
- * Keep tools whose registered name is in `requested`. Resources and prompts
- * are untouched. Unknown names are reported so the handler can 400 before
- * the protocol layer starts.
+ * Names in `requested` that are not a registered tool. Resources and prompts
+ * do not count: `X-MCP-Tools` is a tool allowlist.
  *
  * @internal
  */
-export function filterRegistrationsByToolAllowlist<T extends NamedRegistration>(
-  registrations: readonly T[],
+export function unknownToolNames(
+  registrations: readonly NamedRegistration[],
   requested: Set<string>,
-): { registrations: T[]; unknownNames: string[] } {
+): string[] {
   const toolNames = new Set(
     registrations
       .filter((entry) => entry.definition.kind === 'tool')
       .map((entry) => entry.identity.name),
   )
-  const unknownNames = [...requested].filter((name) => !toolNames.has(name))
-  return {
-    registrations: registrations.filter(
-      (entry) => entry.definition.kind !== 'tool' || requested.has(entry.identity.name),
-    ),
-    unknownNames,
-  }
+  return [...requested].filter((name) => !toolNames.has(name))
 }
 
 /** @internal */

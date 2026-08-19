@@ -5,10 +5,7 @@ import {
   defineMcpResource,
   defineMcpTool,
 } from '../src/runtime/index.ts'
-import {
-  filterRegistrationsByToolAllowlist,
-  parseMcpToolsHeader,
-} from '../src/runtime/tools-header.ts'
+import { parseMcpToolsHeader, unknownToolNames } from '../src/runtime/tools-header.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 
 function handler() {
@@ -26,14 +23,10 @@ function handler() {
 }
 
 function withToolsHeader(value: string | undefined) {
-  const mcp = handler()
-  return createMcpTestClient({
-    fetch: (request, options) => {
-      const headers = new Headers(request.headers)
-      if (value !== undefined) headers.set('x-mcp-tools', value)
-      return mcp.fetch(new Request(request, { headers }), options)
-    },
-  })
+  return createMcpTestClient(
+    handler(),
+    value === undefined ? {} : { headers: { 'x-mcp-tools': value } },
+  )
 }
 
 describe('parseMcpToolsHeader', () => {
@@ -55,25 +48,20 @@ describe('parseMcpToolsHeader', () => {
   })
 })
 
-describe('filterRegistrationsByToolAllowlist', () => {
+describe('unknownToolNames', () => {
   const registrations = [
     { definition: { kind: 'tool' }, identity: { name: 'search-icons' } },
     { definition: { kind: 'tool' }, identity: { name: 'get-component' } },
     { definition: { kind: 'resource' }, identity: { name: 'readme' } },
   ]
 
-  it('keeps requested tools and every non-tool', () => {
-    const result = filterRegistrationsByToolAllowlist(registrations, new Set(['search-icons']))
-    expect(result.unknownNames).toEqual([])
-    expect(result.registrations.map((entry) => entry.identity.name)).toEqual([
-      'search-icons',
-      'readme',
-    ])
+  it('reports names that are not a registered tool', () => {
+    expect(unknownToolNames(registrations, new Set(['search-icons']))).toEqual([])
+    expect(unknownToolNames(registrations, new Set(['nope']))).toEqual(['nope'])
   })
 
-  it('reports unknown names', () => {
-    const result = filterRegistrationsByToolAllowlist(registrations, new Set(['nope']))
-    expect(result.unknownNames).toEqual(['nope'])
+  it('does not treat a resource name as a tool', () => {
+    expect(unknownToolNames(registrations, new Set(['readme']))).toEqual(['readme'])
   })
 })
 
@@ -124,6 +112,67 @@ describe('X-MCP-Tools', () => {
         method: 'POST',
         headers: {
           accept: 'application/json',
+          'content-type': 'application/json',
+          'x-mcp-tools': 'does-not-exist',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.text()).toContain('Unknown MCP tool: does-not-exist')
+  })
+
+  it('does not reveal unknown names before auth', async () => {
+    const guarded = createMcpHandler({
+      auth: { tokens: ['secret'] },
+      tools: [defineMcpTool({ name: 'search-icons', handler: () => 'icons' })],
+    })
+    const response = await guarded.fetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'x-mcp-tools': 'does-not-exist',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      }),
+    )
+
+    expect(response.status).toBe(401)
+    expect(await response.text()).not.toContain('does-not-exist')
+  })
+
+  it('does not reveal unknown names before origin', async () => {
+    const response = await handler().fetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          origin: 'https://evil.example',
+          'x-mcp-tools': 'does-not-exist',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      }),
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.text()).not.toContain('does-not-exist')
+  })
+
+  it('returns HTTP 400 for unknown names once the caller is allowed through', async () => {
+    const guarded = createMcpHandler({
+      auth: { tokens: ['secret'] },
+      tools: [defineMcpTool({ name: 'search-icons', handler: () => 'icons' })],
+    })
+    const response = await guarded.fetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          authorization: 'Bearer secret',
           'content-type': 'application/json',
           'x-mcp-tools': 'does-not-exist',
         },

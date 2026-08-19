@@ -1,4 +1,6 @@
+import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
+import { attachNotify } from '../src/runtime/context.ts'
 import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 import type { McpEvent } from '../src/runtime/index.ts'
@@ -20,7 +22,7 @@ function inspector() {
 }
 
 describe('handler event', () => {
-  it('hands the handler the event, signal, notifier and raw SDK context', async () => {
+  it('hands the handler the event, signal, notifier and engine context', async () => {
     const { seen, tool } = inspector()
     const handler = createMcpHandler({ tools: [tool] })
     await using client = await createMcpTestClient(handler)
@@ -30,28 +32,8 @@ describe('handler event', () => {
     const event = seen.at(-1)
     expect(event?.req.url).toBe('http://localhost/mcp')
     expect(event?.context.mcp.signal).toBeInstanceOf(AbortSignal)
-    expect(event?.context.mcp.mcpReq).toBeDefined()
+    expect(event?.context.mcp.era).toBe('modern')
     expect(event?.context.mcp.notify).toBe(handler.notify)
-  })
-
-  it('carries the auth info the caller passed to fetch', async () => {
-    const { seen, tool } = inspector()
-    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }), {
-      auth: { token: 'tok', clientId: 'client-1', scopes: ['mcp'], expiresAt: 4e9 },
-    })
-
-    await client.callTool({ name: 'inspect' })
-
-    expect(seen.at(-1)?.context.mcp.auth).toMatchObject({ clientId: 'client-1', scopes: ['mcp'] })
-  })
-
-  it('leaves auth undefined when the caller passed none', async () => {
-    const { seen, tool } = inspector()
-    await using client = await createMcpTestClient(createMcpHandler({ tools: [tool] }))
-
-    await client.callTool({ name: 'inspect' })
-
-    expect(seen.at(-1)?.context.mcp.auth).toBeUndefined()
   })
 
   it('shares the event across concurrent requests without mixing them up', async () => {
@@ -68,11 +50,11 @@ describe('handler event', () => {
 
     const call = (marker: string) =>
       createMcpTestClient({
-        fetch: (request, options) => {
+        fetch: (request) => {
           const tagged = new Request(request, {
             headers: { ...Object.fromEntries(request.headers), 'x-marker': marker },
           })
-          return handler.fetch(tagged, options)
+          return handler.fetch(tagged)
         },
       }).then(async (client) => {
         await client.callTool({ name: 'slow' })
@@ -81,5 +63,16 @@ describe('handler event', () => {
     await Promise.all([call('a'), call('b')])
 
     expect([...events].sort()).toEqual(['a', 'b'])
+  })
+
+  it('refuses to attach notify when no MCP request is in scope', () => {
+    expect(() =>
+      attachNotify(new H3Event(new Request('http://localhost/mcp')), {
+        toolsChanged: () => {},
+        promptsChanged: () => {},
+        resourcesChanged: () => {},
+        resourceUpdated: () => {},
+      }),
+    ).toThrow(/No MCP request in scope/)
   })
 })

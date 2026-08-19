@@ -1,7 +1,7 @@
 {
   "name": "nitro-mcp-toolkit",
   "version": "0.2.0",
-  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and the MCP SDK v2.",
+  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and h3-mcp.",
   "keywords": [
     "ai",
     "h3",
@@ -57,7 +57,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.0.0",
+    "h3-mcp": "0.2.0",
     "pathe": "^2.0.3",
     "tinyglobby": "^0.2.17"
   },
@@ -65,7 +65,7 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@modelcontextprotocol/client": "2.0.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "h3": "2.0.1-rc.26",
+    "h3": "2.0.1-rc.27",
     "nitro": "3.0.260610-beta",
     "obuild": "^0.4.38",
     "oxfmt": "^0.62.0",
@@ -77,11 +77,14 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
-    "h3": "^2.0.1-rc.26",
+    "h3": "^2.0.1-rc.27",
     "nitro": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "@modelcontextprotocol/client": {
+      "optional": true
+    },
+    "nitro": {
       "optional": true
     }
   },

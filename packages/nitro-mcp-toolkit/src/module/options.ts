@@ -1,9 +1,9 @@
-import type { Icon, PerRequestResponseMode } from '@modelcontextprotocol/server'
+import type { Era, Icon } from 'h3-mcp'
 
 /**
  * What the server advertises and how it answers — everything a definition file
  * cannot express. These cross into generated code, so they are data only:
- * a server needing `bus` or `onError` mounts `createMcpHandler` by hand.
+ * a server needing `validate` or `onListen` mounts `createMcpHandler` by hand.
  */
 export interface McpServerOptions {
   /** Advertised to clients during initialization. */
@@ -19,18 +19,12 @@ export interface McpServerOptions {
   /** Guidance the client shows to the model about this server as a whole. */
   instructions?: string
   /**
-   * How 2025-era clients are served: through the SDK's stateless fallback, or
-   * refused outright for a 2026-07-28-only endpoint.
+   * Which protocol eras to serve. `dual` answers both 2026-07-28 and the
+   * 2025 revisions; `modern` is 2026-07-28 only.
    *
-   * @default 'stateless'
+   * @default 'dual'
    */
-  legacy?: 'stateless' | 'reject'
-  /**
-   * Whether modern exchanges answer with a single JSON body or an SSE stream.
-   *
-   * @default 'auto'
-   */
-  responseMode?: PerRequestResponseMode
+  era?: Era
   /**
    * Browser origins allowed beyond the app's own loopback pages, which pass by
    * default. Requests carrying no `Origin` — every MCP client proper — are
@@ -44,7 +38,7 @@ export interface McpServerOptions {
   origin?: false | { allow?: string[]; allowMissing?: boolean }
   /**
    * Require a bearer token or API key on every request — the
-   * JSON-serializable subset of `McpAuthOptions`: a static `tokens` list, no
+   * JSON-serializable subset of `AuthOptions`: a static `tokens` list, no
    * `validate` callback. A live function cannot cross into generated code,
    * so dynamic verification means mounting `createMcpHandler` by hand.
    *

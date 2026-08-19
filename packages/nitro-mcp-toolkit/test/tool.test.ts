@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
-import type { CallToolResult } from '@modelcontextprotocol/server'
+import type { CallToolResult } from '../src/runtime/index.ts'
 
 function serve(...tools: ReturnType<typeof defineMcpTool>[]) {
   return createMcpHandler({ name: 'test', version: '1.0.0', tools })
@@ -158,7 +158,7 @@ describe('defineMcpTool', () => {
     expect(result.structuredContent).toEqual({ content: ['a', 'b'] })
   })
 
-  it('reports a return that violates its own outputSchema as an error result', async () => {
+  it('rejects a return that violates its own outputSchema as a protocol error', async () => {
     await using client = await createMcpTestClient(
       serve(
         defineMcpTool({
@@ -171,8 +171,9 @@ describe('defineMcpTool', () => {
       ),
     )
 
-    const result = await client.callTool({ name: 'bad-shape' })
-    expect(result.isError).toBe(true)
+    await expect(client.callTool({ name: 'bad-shape' })).rejects.toThrow(
+      /does not match its outputSchema/,
+    )
   })
 
   it('turns a thrown error into an error result rather than failing the request', async () => {

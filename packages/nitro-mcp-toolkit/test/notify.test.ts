@@ -30,16 +30,23 @@ describe('handler.notify', () => {
     client.setNotificationHandler('notifications/resources/list_changed', () => {
       seen.push('resources')
     })
+    client.setNotificationHandler('notifications/resources/updated', (notification) => {
+      seen.push(`updated:${String(notification.params?.uri ?? '')}`)
+    })
     const subscription = await client.listen({
       toolsListChanged: true,
       promptsListChanged: true,
       resourcesListChanged: true,
+      resourceSubscriptions: ['docs://readme'],
     })
 
     handler.notify.toolsChanged()
     handler.notify.promptsChanged()
     handler.notify.resourcesChanged()
-    await vi.waitFor(() => expect(seen.sort()).toEqual(['prompts', 'resources', 'tools']))
+    handler.notify.resourceUpdated('docs://readme')
+    await vi.waitFor(() =>
+      expect(seen.sort()).toEqual(['prompts', 'resources', 'tools', 'updated:docs://readme']),
+    )
 
     await subscription.close()
   })
@@ -70,28 +77,5 @@ describe('event.context.mcp.notify', () => {
     await vi.waitFor(() => expect(seen).toEqual(['resources']))
 
     await subscription.close()
-  })
-})
-
-describe('handler.bus', () => {
-  // `resourceUpdated` has no wire-level test: the SDK's `McpServer` never
-  // registers `resources/subscribe`, so no client can honor a per-uri filter
-  // today — the facade-to-event mapping below is the boundary this package
-  // does own.
-  it('is what notify publishes to, one event per call', () => {
-    const handler = serve()
-
-    const events: unknown[] = []
-    const unsubscribe = handler.bus.subscribe((event) => events.push(event))
-
-    handler.notify.resourcesChanged()
-    handler.notify.resourceUpdated('docs://readme')
-    unsubscribe()
-    handler.notify.promptsChanged() // published after unsubscribing, so it must not show up
-
-    expect(events).toEqual([
-      { kind: 'resources_list_changed' },
-      { kind: 'resource_updated', uri: 'docs://readme' },
-    ])
   })
 })

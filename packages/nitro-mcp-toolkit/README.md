@@ -2,6 +2,8 @@
 
 Build a [Model Context Protocol](https://modelcontextprotocol.io) server inside any [Nitro](https://nitro.build) v3 app.
 
+[h3-mcp](https://mcp.h3.dev) owns the protocol. This package is discovery and DX on top: drop a file under `server/mcp/{tools,resources,prompts}` and it is served.
+
 Targets protocol revision **2026-07-28** and falls back to the 2025 revisions automatically, so one endpoint serves both generations of clients.
 
 > [!NOTE]
@@ -12,6 +14,8 @@ Targets protocol revision **2026-07-28** and falls back to the 2025 revisions au
 ```bash
 npm install nitro-mcp-toolkit zod
 ```
+
+`h3` is a peer. `nitro` is only needed if you install the module (`nitro-mcp-toolkit/module`); `createMcpHandler` runs on h3 alone.
 
 Any [Standard Schema](https://standardschema.dev) library works — Zod, Valibot, ArkType. Nothing is auto-imported: every helper is imported explicitly.
 
@@ -88,13 +92,13 @@ mcp({
   icons: [{ src: 'https://example.com/icon.png', mimeType: 'image/png', sizes: ['64x64'] }],
   websiteUrl: 'https://example.com',
   instructions: 'What the model is told about this server as a whole',
-  legacy: 'stateless', // or 'reject', for a 2026-07-28-only endpoint
+  era: 'dual', // or 'modern', for a 2026-07-28-only endpoint
   origin: { allow: ['https://app.example.com'] }, // browser clients, see below
   auth: { tokens: [process.env.MCP_TOKEN!] }, // require a credential, see Authentication below
 })
 ```
 
-These cross into generated code, so they are data only. A server that needs `bus` or `onError` mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
+These cross into generated code, so they are data only. A server that needs `validate` or `onListen` mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
 
 ### Browser clients
 
@@ -209,7 +213,7 @@ export default defineMcpTool({
 })
 ```
 
-A return that doesn't actually satisfy a declared `outputSchema` becomes an `isError` result — the same in-band error model as a thrown error, not a transport failure.
+A return that doesn't actually satisfy a declared `outputSchema` is a protocol error (`-32602`), not an `isError` result — the engine validates the advertised shape after the handler returns.
 
 ### Errors
 
@@ -243,15 +247,16 @@ export default defineMcpResource({
 })
 ```
 
-Pass a `ResourceTemplate` for a family of URIs. `list` powers discovery and `complete` powers argument autocompletion in clients.
+Pass a `uriTemplate` for a family of URIs. `list` powers discovery and `complete` powers argument autocompletion in clients.
 
 ```ts
-import { defineMcpResource, ResourceTemplate } from 'nitro-mcp-toolkit'
+import { defineMcpResource } from 'nitro-mcp-toolkit'
 
 export default defineMcpResource({
-  uri: new ResourceTemplate('docs://{slug}', {
-    list: () => ({ resources: pages.map((slug) => ({ name: slug, uri: `docs://${slug}` })) }),
-    complete: { slug: (value) => pages.filter((page) => page.startsWith(value)) },
+  uriTemplate: 'docs://{slug}',
+  list: () => pages.map((slug) => ({ name: slug, uri: `docs://${slug}` })),
+  complete: (ctx) => ({
+    values: pages.filter((page) => page.startsWith(ctx.argument.value)),
   }),
   handler: (uri, { slug }) => renderPage(String(slug)),
 })
@@ -288,44 +293,44 @@ handler: (event) => {
 
 Everything specific to this call — as opposed to the request in general — sits under `event.context.mcp`:
 
-| Field    | What it is                                                                                                                                                                                                                                  |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`   | An SDK `AuthInfo`, only when handed one through the low-level `.fetch(request, { authInfo })` escape hatch. The declarative `auth` option ([Authentication](#authentication)) stashes what it resolves on `event.context` directly instead. |
-| `signal` | Aborts when the client cancels                                                                                                                                                                                                              |
-| `era`    | `'modern'` or `'legacy'`, the revision this client negotiated                                                                                                                                                                               |
-| `notify` | Push a list-changed or resource-updated event — see [Change notifications](#change-notifications)                                                                                                                                           |
-| `mcpReq` | The SDK's own per-request object — the escape hatch for anything not wrapped yet                                                                                                                                                            |
+| Field            | What it is                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| `signal`         | Aborts when the client cancels                                                                    |
+| `era`            | `'modern'` or `'legacy'`, the revision this client negotiated                                     |
+| `notify`         | Push a list-changed or resource-updated event — see [Change notifications](#change-notifications) |
+| `inputResponses` | Answers the client echoed back on a multi-round-trip retry                                        |
+| `requestState`   | Opaque server state the client echoed back — treat it as attacker-controlled                      |
 
 `H3Event['context']['mcp']` is optional in general — most events on the app never go through this package. A `defineMcpTool`/`defineMcpResource`/`defineMcpPrompt` handler's own `event` is typed narrower (`McpEvent`, exported for when you need to name it), so `event.context.mcp` needs no `!` or guard there. Reach for one only where the event is a plain `H3Event` instead — [wiring a route by hand](#wiring-it-by-hand) before the handler runs, or a route unrelated to this endpoint.
 
 ### Multi-round-trip
 
-`event.context.mcp.mcpReq` is where a tool asks the client for something mid-call — confirmation, a sample, a root listing — and picks up where it left off once the answer arrives. `inputRequired`, `inputResponse` and `acceptedContent` (re-exported from `nitro-mcp-toolkit`) build and read that exchange; `mcpReq` carries the raw `requestState`/`inputResponses` for anything they don't cover.
+A tool can pause mid-call and ask the client for something — confirmation, a sample, a root listing — then pick up where it left off once the answer arrives. `inputRequired` and `mcpElicit` build that exchange; `getInputResponses` / `getMissingInputs` read it back. `getElicitedContent` is the shortcut for an idempotent form (it collapses missing, declined, and cancelled into `undefined`, so a refusal looks like a first visit and is asked again).
 
 ```ts
-import { acceptedContent, defineMcpTool, inputRequired } from 'nitro-mcp-toolkit'
+import { defineMcpTool, getInputResponses, inputRequired, mcpElicit } from 'nitro-mcp-toolkit'
 import { z } from 'zod'
+
+const requests = {
+  confirm: mcpElicit({
+    message: 'Delete this?',
+    requestedSchema: {
+      type: 'object',
+      properties: { confirm: { type: 'boolean' } },
+      required: ['confirm'],
+    },
+  }),
+}
 
 export default defineMcpTool({
   inputSchema: z.object({ id: z.string() }),
   handler: ({ id }, event) => {
-    const confirmed = acceptedContent<{ confirm: boolean }>(
-      event.context.mcp.mcpReq.inputResponses,
-      'confirm',
-    )
-    if (!confirmed?.confirm) {
-      return inputRequired({
-        inputRequests: {
-          confirm: inputRequired.elicit({
-            message: `Delete ${id}?`,
-            requestedSchema: {
-              type: 'object',
-              properties: { confirm: { type: 'boolean' } },
-              required: ['confirm'],
-            },
-          }),
-        },
-      })
+    const answer = getInputResponses(event, requests).confirm
+    if (answer === undefined) {
+      return inputRequired(event, { inputRequests: requests })
+    }
+    if (answer.action !== 'accept' || !answer.content?.confirm) {
+      return 'cancelled'
     }
 
     return db.delete(id)
@@ -333,7 +338,9 @@ export default defineMcpTool({
 })
 ```
 
-`requestState` is opaque, server-minted state the client echoes back verbatim — treat it as attacker-controlled input on the way back in. The SDK applies no integrity protection by default, so a server that lets it drive authorization or business logic must sign it itself (HMAC or similar) and reject state that fails verification.
+`canRequestInput` / `getSupportedInputs` are the same capability check `inputRequired` runs, without the throw — use them when the handler can degrade instead of erroring. `event.context.mcp.inputResponses` and `requestState` are the raw fields for anything the helpers don't cover.
+
+`requestState` is opaque, server-minted state the client echoes back verbatim — treat it as attacker-controlled input on the way back in. `defineRequestState` is an HMAC-SHA256 codec for that: seal on the way out, open on the way back, and reject anything that fails verification.
 
 ## Change notifications
 
@@ -347,7 +354,7 @@ handler: ({ id }, event) => {
 }
 ```
 
-`notify.toolsChanged()`, `promptsChanged()` and `resourcesChanged()` take no arguments; `resourceUpdated(uri)` names the one that changed. From outside a handler — a cron job, a webhook route — there is no `event.context.mcp` to reach: that event never passed through this MCP server, so it was never attached one. Import the handler directly instead; it carries the same methods as `handler.notify`, and its `handler.bus` is what they publish to, for wiring a shared bus across processes.
+`notify.toolsChanged()`, `promptsChanged()` and `resourcesChanged()` take no arguments; `resourceUpdated(uri)` names the one that changed. From outside a handler — a cron job, a webhook route — there is no `event.context.mcp` to reach: that event never passed through this MCP server, so it was never attached one. Import the handler directly instead; it carries the same methods as `handler.notify`.
 
 ```ts
 // server/routes/webhook.ts
@@ -378,7 +385,7 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [g
 
 Handwritten definitions name themselves, since no filename is there to do it.
 
-The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime.
+The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps.
 
 ## Authentication
 
@@ -450,7 +457,7 @@ Every `401` then answers with `WWW-Authenticate: Bearer realm="mcp", resource_me
 
 There is no token format, issuer or audience model here — `validate` is opaque credential comparison, so **audience validation belongs inside it**: verify that the presented token was issued for this server (its `aud` claim, or the equivalent introspection result) before returning `true`, or a token minted for another service is accepted, the confused-deputy attack the spec's authorization security considerations call out.
 
-In tests, drive a header through the handler's `fetch` directly, or forge one on the transport's `fetch` — `createMcpTestClient`'s own `{ auth }` option is unrelated, standing in for the SDK's `authInfo` passthrough rather than this gate.
+In tests, pass the credential as `{ headers }` on `createMcpTestClient` rather than forging the transport's `fetch`.
 
 ## Testing
 
@@ -472,23 +479,27 @@ it('greets', async () => {
 
 The client closes itself when it leaves scope, so a failing assertion cannot leak it. `textOf` reads the text out of a tool call, a resource read or a prompt alike, for when the shape of the content blocks is not what you are asserting.
 
-Pass `{ era: 'legacy' }` to test the 2025 path, or `{ auth }` to stand in for a verified token.
+Pass `{ era: 'legacy' }` to test the 2025 path. A credential is a header:
+
+```ts
+await using client = await createMcpTestClient(handler, {
+  headers: { authorization: 'Bearer secret' },
+})
+```
 
 ## Protocol revisions
 
-The handler serves 2026-07-28 and, by default, falls back to stateless 2025-era serving. Pass `legacy: 'reject'` for a modern-only endpoint.
+The handler serves 2026-07-28 and, by default, also answers 2025-era clients (`era: 'dual'`). Pass `era: 'modern'` for a 2026-07-28-only endpoint.
 
 ```ts
-export default createMcpHandler({ name: 'my-server', version: '1.0.0', legacy: 'reject' })
+export default createMcpHandler({ name: 'my-server', version: '1.0.0', era: 'modern' })
 ```
 
-Note that MCP clients still negotiate the 2025 revision by default, so a client must opt in to the modern path. The toolkit exports `MODERN_PROTOCOL_VERSION` to pin it — the SDK's `LATEST_PROTOCOL_VERSION` names the newest _legacy_ revision, not this one.
+Note that MCP clients still negotiate the 2025 revision by default, so a client must opt in to the modern path. The toolkit exports `MODERN_PROTOCOL_VERSION` to pin it.
 
 ## Runtimes
 
-Apart from one import the runtime is web-standard: the request context is carried by `AsyncLocalStorage`, so the handler needs `node:async_hooks`. It is the only Node built-in a built bundle pulls in — the SDK, h3 and your definitions add none — and it is there on Node, Deno, Bun, Vercel and Netlify, and on Cloudflare Workers once `nodejs_compat` is enabled. On workerd the SDK also selects a schema validator that generates no code, so nothing in the bundle needs `eval`.
-
-Presets that emit an `iife` bundle, `winterjs` among them, leave every `node:` import as an undefined global. That is a Nitro packaging limit which any app importing a built-in runs into, and not something this package can work around.
+The runtime is web-standard: h3-mcp owns the protocol, and the toolkit adds no Node built-ins. It runs on Node, Deno, Bun, Vercel, Netlify, and Cloudflare Workers with no `nodejs_compat` flag.
 
 Windows is supported: discovery, the imports generated from the paths it finds, and the dev watcher all speak `/` there, and a CI job keeps it that way.
 

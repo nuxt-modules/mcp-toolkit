@@ -7,9 +7,8 @@ import {
   defineMcpTool,
 } from '../src/runtime/index.ts'
 
-// The SDK builds its server once per request, so a clash would otherwise first
-// show up as an HTTP 500 on the first call, with the cause absent from the
-// message the client receives.
+// A clash would otherwise first show up as an HTTP 500 on the first call,
+// with the cause absent from the message the client receives.
 describe('createMcpHandler validation', () => {
   it('rejects two tools sharing a name', () => {
     expect(() =>

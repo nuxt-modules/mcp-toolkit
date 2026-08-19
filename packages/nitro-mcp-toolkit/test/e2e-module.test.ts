@@ -87,8 +87,6 @@ describe('a built Nitro app using the module', () => {
 
     expect(tools.map(({ name }) => name)).toEqual(['purge'])
     expect(adminClient.getServerVersion()?.name).toBe('admin-fixture')
-    await expect(adminClient.callTool({ name: 'greet-visitor' })).rejects.toThrow(
-      /greet-visitor not found/,
-    )
+    await expect(adminClient.callTool({ name: 'greet-visitor' })).rejects.toThrow(/Tool not found/)
   })
 })

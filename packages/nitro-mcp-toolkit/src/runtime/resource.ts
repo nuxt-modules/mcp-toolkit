@@ -1,14 +1,15 @@
-import { attachContext } from './context.ts'
-import { resolveIdentity, resolveMeta } from './validate.ts'
+import { defineResourceTemplate } from 'h3-mcp'
+import { attachNotify } from './context.ts'
+import { resolveMeta } from './validate.ts'
+import type { H3Event } from 'h3'
 import type {
-  CacheHint,
+  CacheHints,
+  CompleteCallback,
   Icon,
   ReadResourceResult,
-  ResourceMetadata,
-  ResourceTemplate,
-  ServerContext,
-  Variables,
-} from '@modelcontextprotocol/server'
+  ResourceDescriptor,
+  ResourceTemplateListCallback,
+} from 'h3-mcp'
 import type { McpEvent } from './context.ts'
 import type { McpResource } from './definition.ts'
 
@@ -32,7 +33,7 @@ interface McpResourceMetadata {
   mimeType?: string
   icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
-  cacheHint?: CacheHint
+  cache?: CacheHints
 }
 
 export interface McpResourceDefinition extends McpResourceMetadata {
@@ -42,21 +43,27 @@ export interface McpResourceDefinition extends McpResourceMetadata {
 }
 
 export interface McpResourceTemplateDefinition extends McpResourceMetadata {
-  /** A `ResourceTemplate` whose placeholders are resolved per read. */
-  uri: ResourceTemplate
-  handler: (uri: URL, variables: Variables, event: McpEvent) => Awaitable<McpResourceReturn>
+  /** An RFC 6570 URI template, e.g. `docs://{slug}`. */
+  uriTemplate: string
+  /** Enumerate current members into `resources/list`. */
+  list?: ResourceTemplateListCallback
+  /** Autocomplete a template variable. */
+  complete?: CompleteCallback
+  handler: (
+    uri: URL,
+    variables: Record<string, string>,
+    event: McpEvent,
+  ) => Awaitable<McpResourceReturn>
 }
 
 function toReadResult(uri: URL, value: McpResourceReturn): ReadResourceResult {
   return typeof value === 'string' ? { contents: [{ uri: uri.href, text: value }] } : value
 }
 
-// `uri` is a `string` or a class instance, neither of which is a unit type, so
-// the union needs a predicate rather than an inline `typeof` check to narrow.
 function isStatic(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): definition is McpResourceDefinition {
-  return typeof definition.uri === 'string'
+  return 'uri' in definition
 }
 
 /**
@@ -76,7 +83,7 @@ export function defineMcpResource(definition: McpResourceTemplateDefinition): Mc
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, group, tags, mimeType, icons, cacheHint } = definition
+  const { name, title, description, group, tags, mimeType, icons, cache } = definition
   const isStaticUri = isStatic(definition)
 
   return {
@@ -86,38 +93,43 @@ export function defineMcpResource(
     description,
     group,
     tags,
-    uri: isStaticUri ? definition.uri : definition.uri.uriTemplate.toString(),
-    register(server, identity) {
-      const resolved = resolveIdentity('resource', definition, identity)
-      const config: ResourceMetadata & { cacheHint?: CacheHint } = {
-        title: resolved.title,
+    uri: isStaticUri ? definition.uri : definition.uriTemplate,
+    build(identity, into, notify) {
+      const advertised = {
+        name: identity.name,
+        title: identity.title,
         description,
         mimeType,
         icons,
-        cacheHint,
-        _meta: resolveMeta(resolved.group, tags),
+        cache,
+        _meta: resolveMeta(identity.group, tags),
       }
 
       if (isStaticUri) {
         const { uri: staticUri, handler } = definition
-        server.registerResource(
-          resolved.name,
-          staticUri,
-          config,
-          async (url: URL, ctx: ServerContext) =>
-            toReadResult(url, await handler(url, attachContext(ctx))),
-        )
+        into.resources.push({
+          ...advertised,
+          uri: staticUri,
+          handler: async (url: URL, event: H3Event) =>
+            toReadResult(url, await handler(url, attachNotify(event, notify))),
+        })
         return
       }
 
-      const { uri: template, handler } = definition
-      server.registerResource(
-        resolved.name,
-        template,
-        config,
-        async (url: URL, variables: Variables, ctx: ServerContext) =>
-          toReadResult(url, await handler(url, variables, attachContext(ctx))),
+      const { uriTemplate, list, complete, handler } = definition
+      into.resourceTemplates.push(
+        defineResourceTemplate({
+          ...advertised,
+          name: identity.name,
+          uriTemplate,
+          list,
+          complete,
+          handler: async (url: URL, variables: Record<string, string>, event: H3Event) =>
+            toReadResult(url, await handler(url, variables, attachNotify(event, notify))),
+        }),
       )
     },
   }
 }
+
+export type { ResourceDescriptor }

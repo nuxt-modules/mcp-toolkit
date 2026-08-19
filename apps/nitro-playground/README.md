@@ -59,7 +59,7 @@ single failing probe.
 | `server/mcp/tools/boom.ts`              | Thrown errors, including `HTTPError` status and data |
 | `server/mcp/tools/pixel.ts`             | Image content blocks                                 |
 | `server/mcp/resources/readme.ts`        | Static URI, string return                            |
-| `server/mcp/resources/doc-page.ts`      | `ResourceTemplate`, listing, completions             |
+| `server/mcp/resources/doc-page.ts`      | `uriTemplate`, listing, completions                  |
 | `server/mcp/prompts/review.ts`          | No arguments, string return                          |
 | `server/mcp/prompts/summarize.ts`       | Arguments, multi-message result                      |
 | `server/mcp-admin/tools/cache/purge.ts` | A second server, and a group from a subdirectory     |

@@ -1,6 +1,7 @@
 import { HTTPError } from 'h3'
 import { describe, expect, it } from 'vitest'
 import { audioResult, createMcpHandler, defineMcpTool, imageResult } from '../src/runtime/index.ts'
+import { toCallToolResult } from '../src/runtime/results.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 import type { McpToolReturn } from '../src/runtime/index.ts'
 
@@ -16,6 +17,12 @@ async function callReturning(value: McpToolReturn<undefined>) {
 describe('result coercion', () => {
   it('answers with no content for null', async () => {
     await expect(callReturning(null)).resolves.toMatchObject({ content: [] })
+  })
+
+  it('stringifies a non-object primitive the handler type does not name', () => {
+    expect(toCallToolResult(1n, false)).toEqual({
+      content: [{ type: 'text', text: '1' }],
+    })
   })
 
   it('keeps image and audio content blocks as built', async () => {

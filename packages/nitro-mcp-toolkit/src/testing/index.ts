@@ -1,17 +1,12 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol.ts'
 import type { ClientCapabilities } from '@modelcontextprotocol/client'
-import type { AuthInfo } from '@modelcontextprotocol/server'
 import type { McpHandler } from '../runtime/handler.ts'
-import type {
-  CallToolResult,
-  GetPromptResult,
-  ReadResourceResult,
-} from '@modelcontextprotocol/server'
+import type { CallToolResult, GetPromptResult, ReadResourceResult } from '../runtime/index.ts'
 
 /**
- * Anything fetch-shaped: the handler from `createMcpHandler`, a bare SDK
- * handler, or a built Nitro app's entry.
+ * Anything fetch-shaped: the handler from `createMcpHandler`, or a built
+ * Nitro app's entry.
  */
 export type McpFetchHandler = Pick<McpHandler, 'fetch'>
 
@@ -35,14 +30,14 @@ export interface McpTestClientOptions {
    * @default 'modern'
    */
   era?: 'modern' | 'legacy'
-  /**
-   * Authentication info handed to the handler, standing in for the gate that
-   * would verify a token in production.
-   */
-  auth?: AuthInfo
   /** Only the origin matters; the handler never sees the path. */
   url?: string
   capabilities?: ClientCapabilities
+  /**
+   * Extra headers on every request the client makes — a Bearer token, an
+   * `X-MCP-Tools` allowlist, anything the handler reads off the request.
+   */
+  headers?: Record<string, string>
 }
 
 /**
@@ -60,7 +55,8 @@ export async function createMcpTestClient(
   handler: McpFetchHandler,
   options: McpTestClientOptions = {},
 ): Promise<McpTestClient> {
-  const { era = 'modern', auth, url = 'http://localhost/mcp', capabilities } = options
+  const { era = 'modern', url = 'http://localhost/mcp', capabilities, headers } = options
+  const extra = headers === undefined ? undefined : new Headers(headers)
 
   const client = new Client(
     { name: 'nitro-mcp-toolkit-test-client', version: '0.0.0' },
@@ -73,7 +69,13 @@ export async function createMcpTestClient(
   )
 
   const transport = new StreamableHTTPClientTransport(new URL(url), {
-    fetch: (input, init) => handler.fetch(new Request(input, init), { authInfo: auth }),
+    fetch: (input, init) => {
+      const request = new Request(input, init)
+      if (!extra) return handler.fetch(request)
+      const merged = new Headers(request.headers)
+      extra.forEach((value, key) => merged.set(key, value))
+      return handler.fetch(new Request(request, { headers: merged }))
+    },
   })
 
   await client.connect(transport)

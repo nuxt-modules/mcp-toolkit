@@ -1,83 +1,93 @@
-import { createMcpHandler as createSdkHandler, McpServer } from '@modelcontextprotocol/server'
-import { H3Event } from 'h3'
-import { buildAuthGate } from './auth.ts'
-import { getToolAllowlist, runWithRequest, setEra } from './context.ts'
-import { forbiddenOriginResponse, isOriginAllowed } from './origin.ts'
-import {
-  filterRegistrationsByToolAllowlist,
-  parseMcpToolsHeader,
-  unknownToolsResponse,
-} from './tools-header.ts'
+import { H3Event, toResponse } from 'h3'
+import { defineMcpHandler } from 'h3-mcp'
+import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
-import type { McpRegistration } from './validate.ts'
+import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
+import type { McpNotifier } from './context.ts'
 import type {
-  Icon,
-  McpHandlerRequestOptions,
-  PerRequestResponseMode,
-  ServerEventBus,
-  ServerNotifier,
-} from '@modelcontextprotocol/server'
-import type { McpAuthOptions } from './auth.ts'
-import type { McpDefinitionSummary, McpPrompt, McpResource, McpTool } from './definition.ts'
-import type { McpOriginOptions } from './origin.ts'
+  McpDefinitionBuckets,
+  McpDefinitionSummary,
+  McpPrompt,
+  McpResource,
+  McpTool,
+} from './definition.ts'
 
-export interface McpHandlerOptions {
+/**
+ * Everything the engine takes that is not a definition: eras, caching, auth,
+ * origin checks, request limits, subscriptions. Passed straight through, so the
+ * toolkit never has to keep up with it.
+ */
+type EngineWiring = Omit<
+  EngineOptions,
+  'name' | 'version' | 'tools' | 'resources' | 'resourceTemplates' | 'prompts'
+>
+
+export interface McpHandlerOptions extends EngineWiring {
   /** Advertised to clients during initialization. */
   name?: string
   version?: string
-  title?: string
-  /** What this server is, for a human reading a client's server list. */
-  description?: string
-  /** Shown beside the server's name by clients that render one. */
-  icons?: Icon[]
-  /** Where a human can read more about this server. */
-  websiteUrl?: string
-  /** Guidance the client shows to the model about this server as a whole. */
-  instructions?: string
   tools?: McpTool[]
+  /** Static resources and URI templates alike. */
   resources?: McpResource[]
   prompts?: McpPrompt[]
   /**
-   * How 2025-era clients are served: through the SDK's stateless fallback, or
-   * refused outright for a 2026-07-28-only endpoint.
-   *
-   * @default 'stateless'
-   */
-  legacy?: 'stateless' | 'reject'
-  /**
-   * Whether modern exchanges answer with a single JSON body or an SSE stream.
-   *
-   * @default 'auto'
-   */
-  responseMode?: PerRequestResponseMode
-  /**
    * Which browser origins may reach the endpoint, beyond the pages the app
    * serves to itself over loopback, which are accepted by default. Requests
-   * carrying no `Origin` are unaffected. `false` drops the check.
+   * carrying no `Origin` are unaffected, and a `validate` of your own replaces
+   * the default. `false` drops the check.
    *
    * @example
    * ```ts
    * createMcpHandler({ origin: { allow: ['https://app.example.com'] } })
    * ```
    */
-  origin?: McpOriginOptions
-  /**
-   * Require a bearer token or API key on every request. Off by default —
-   * many MCP endpoints sit behind a gateway that already authenticates.
-   *
-   * @example
-   * ```ts
-   * createMcpHandler({ auth: { tokens: [process.env.MCP_TOKEN!] } })
-   * ```
-   */
-  auth?: McpAuthOptions
-  /**
-   * The change-event bus backing `subscriptions/listen`. Supply a shared
-   * implementation to notify clients from several processes.
-   */
-  bus?: ServerEventBus
-  /** Called for out-of-band errors; it never alters the response. */
-  onError?: (error: Error) => void
+  origin?: EngineWiring['origin']
+}
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
+
+// The loopback test is not optional: `event.url` reads the `Host` header, which
+// DNS rebinding sets to the attacker's own name — matching its `Origin`.
+function sameLoopbackOrigin(origin: string, event: H3Event): boolean {
+  return origin === event.url.origin && LOOPBACK_HOSTS.has(event.url.hostname)
+}
+
+function resolveOrigin(origin: McpHandlerOptions['origin']): EngineOptions['origin'] {
+  if (origin === false) return false
+
+  return { ...origin, validate: origin?.validate ?? sameLoopbackOrigin }
+}
+
+function createNotifier(): {
+  notify: McpNotifier
+  onListen: NonNullable<EngineWiring['onListen']>
+} {
+  const listeners = new Set<Subscription>()
+
+  const notify: McpNotifier = {
+    toolsChanged: () => {
+      for (const subscription of listeners) void subscription.toolsListChanged()
+    },
+    promptsChanged: () => {
+      for (const subscription of listeners) void subscription.promptsListChanged()
+    },
+    resourcesChanged: () => {
+      for (const subscription of listeners) void subscription.resourcesListChanged()
+    },
+    resourceUpdated: (uri) => {
+      for (const subscription of listeners) void subscription.resourceUpdated(uri)
+    },
+  }
+
+  return {
+    notify,
+    onListen(subscription) {
+      listeners.add(subscription)
+      subscription.onClosed(() => {
+        listeners.delete(subscription)
+      })
+    },
+  }
 }
 
 /**
@@ -88,10 +98,9 @@ export interface McpHandler {
   (event: H3Event): Promise<Response>
   /**
    * Serve one request outside of Nitro: Deno, Bun, a test, or any runtime that
-   * provides `node:async_hooks` — on Cloudflare Workers that means enabling the
-   * `nodejs_compat` flag, which the request context depends on.
+   * speaks `fetch`.
    */
-  fetch: (request: Request, options?: McpHandlerRequestOptions) => Promise<Response>
+  fetch: (request: Request) => Promise<Response>
   /**
    * Everything this endpoint serves, as plain JSON — the full catalog, not the
    * per-request `X-MCP-Tools` subset.
@@ -108,20 +117,7 @@ export interface McpHandler {
    */
   definitions: readonly McpDefinitionSummary[]
   /** Push list-changed and resource-updated events to subscribed clients. */
-  notify: ServerNotifier
-  bus: ServerEventBus
-  close: () => Promise<void>
-}
-
-function gateToolsHeader(
-  registrations: readonly McpRegistration[],
-  event: H3Event,
-): Set<string> | Response | undefined {
-  const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
-  if (!requested) return undefined
-  const { unknownNames } = filterRegistrationsByToolAllowlist(registrations, requested)
-  if (unknownNames.length) return unknownToolsResponse(unknownNames)
-  return requested
+  notify: McpNotifier
 }
 
 /**
@@ -133,84 +129,98 @@ function gateToolsHeader(
  * export default createMcpHandler({ name: 'my-app', tools: [greet] })
  * ```
  */
-export function createMcpHandler(options: McpHandlerOptions = {}): McpHandler {
-  const { tools = [], resources = [], prompts = [], origin } = options
-  const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
-  // Built once, eagerly, so a misconfigured `auth` throws when the handler is
-  // created rather than on the first request.
-  const authGate = buildAuthGate(options.auth)
+export function createMcpHandler(
+  options: McpHandlerOptions = {},
+  setup?: PluginOptions,
+): McpHandler {
+  const {
+    name = 'nitro-mcp-server',
+    version = '0.0.0',
+    tools = [],
+    resources = [],
+    prompts = [],
+    origin,
+    auth,
+    onListen: userOnListen,
+    ...wiring
+  } = options
 
-  const sdk = createSdkHandler(
-    (requestCtx) => {
-      // Called once per request, so definitions can never leak state between
-      // clients; the same set serves both protocol eras.
-      setEra(requestCtx.era)
+  const resolvedOrigin = resolveOrigin(origin)
 
-      const server = new McpServer(
-        {
-          name: options.name ?? 'nitro-mcp-server',
-          version: options.version ?? '0.0.0',
-          title: options.title,
-          description: options.description,
-          icons: options.icons,
-          websiteUrl: options.websiteUrl,
-        },
-        { instructions: options.instructions },
-      )
-
-      const allowlist = getToolAllowlist()
-      const toRegister = allowlist
-        ? registrations.filter(
-            (entry) => entry.definition.kind !== 'tool' || allowlist.has(entry.identity.name),
-          )
-        : registrations
-
-      for (const { definition, identity } of toRegister) {
-        definition.register(server, identity)
-      }
-
-      return server
-    },
+  // Static resolve throws on a bad `auth` / `origin` when the handler is
+  // created, rather than on the first request.
+  defineMcpHandler(
     {
-      legacy: options.legacy,
-      responseMode: options.responseMode,
-      bus: options.bus,
-      onerror: options.onError,
+      name,
+      version,
+      ...(auth !== undefined ? { auth } : {}),
+      origin: resolvedOrigin,
     },
+    setup,
   )
 
-  // Driven bare, there is no Nitro event to carry, so one is synthesized over
-  // the request: handlers get a consistent `event` either way.
-  const fetch: McpHandler['fetch'] = async (request, requestOptions) => {
-    const event = new H3Event(request)
-    if (!isOriginAllowed(event, origin)) return forbiddenOriginResponse()
-
-    const denied = await authGate?.(event)
-    if (denied) return denied
-
-    const toolsHeader = gateToolsHeader(registrations, event)
-    if (toolsHeader instanceof Response) return toolsHeader
-
-    return runWithRequest(event, sdk.notify, () => sdk.fetch(request, requestOptions), toolsHeader)
+  const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
+  const { notify, onListen } = createNotifier()
+  const buckets: McpDefinitionBuckets = {
+    tools: [],
+    resources: [],
+    resourceTemplates: [],
+    prompts: [],
   }
 
-  const handle = async (event: H3Event): Promise<Response> => {
-    if (!isOriginAllowed(event, origin)) return forbiddenOriginResponse()
-
-    const denied = await authGate?.(event)
-    if (denied) return denied
-
-    const toolsHeader = gateToolsHeader(registrations, event)
-    if (toolsHeader instanceof Response) return toolsHeader
-
-    return runWithRequest(event, sdk.notify, () => sdk.fetch(event.req), toolsHeader)
+  for (const { definition, identity } of registrations) {
+    definition.build(identity, buckets, notify)
   }
 
-  return Object.assign(handle, {
-    fetch,
+  const engine = defineMcpHandler((event) => {
+    const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
+    const servedTools = requested
+      ? buckets.tools.filter((tool) => typeof tool !== 'function' && requested.has(tool.name))
+      : buckets.tools
+
+    return {
+      ...wiring,
+      name,
+      version,
+      ...(auth !== undefined ? { auth } : {}),
+      origin: resolvedOrigin,
+      tools: servedTools,
+      resources: buckets.resources,
+      resourceTemplates: buckets.resourceTemplates,
+      prompts: buckets.prompts,
+      onListen(subscription, listenEvent) {
+        onListen(subscription, listenEvent)
+        return userOnListen?.(subscription, listenEvent)
+      },
+    }
+  }, setup)
+
+  const run = async (event: H3Event): Promise<Response> => {
+    const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
+    if (requested) {
+      const unknownNames = unknownToolNames(registrations, requested)
+      if (unknownNames.length) {
+        // Origin and auth must run first: a 400 on the name would otherwise
+        // tell an unauthenticated caller whether the tool exists.
+        const probe = new H3Event(
+          new Request(event.url, {
+            method: 'POST',
+            headers: event.req.headers,
+            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+          }),
+        )
+        const gated = await toResponse(await engine(probe), probe)
+        if (gated.status === 401 || gated.status === 403) return gated
+        return unknownToolsResponse(unknownNames)
+      }
+    }
+
+    return toResponse(await engine(event), event)
+  }
+
+  return Object.assign(run, {
+    fetch: (request: Request) => run(new H3Event(request)),
     definitions: Object.freeze(summarize(registrations)),
-    notify: sdk.notify,
-    bus: sdk.bus,
-    close: sdk.close,
+    notify,
   })
 }

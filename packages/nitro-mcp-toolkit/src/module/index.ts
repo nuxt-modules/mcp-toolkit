@@ -65,7 +65,7 @@ export default function mcp(options: McpModuleOptions = {}): NitroModule {
       nitro.options.handlers.push({
         route,
         handler: handlerId,
-        // Matches Nitro's own file-based routes: the MCP SDK is only loaded
+        // Matches Nitro's own file-based routes: the handler is only loaded
         // once a request actually asks for it.
         lazy: true,
         middleware: false,

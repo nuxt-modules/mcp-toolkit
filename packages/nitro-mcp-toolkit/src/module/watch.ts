@@ -72,8 +72,13 @@ export function watchDefinitions(nitro: Nitro, dir: string): void {
 
   nitro.hooks.hook('close', () => controller.abort())
 
+  // Taken in this turn, before setup returns: a glob after the IIFE yields
+  // would already include files created in that gap, and a later scan would
+  // look unchanged — the registry generated at setup would stay empty.
+  const startedEmpty = !existsSync(dir)
+
   void (async () => {
-    let generated = await served(dir)
+    let generated = startedEmpty ? '' : await served(dir)
 
     const reloadIfChanged = async (): Promise<void> => {
       await new Promise((settle) => setTimeout(settle, SETTLE_MS))

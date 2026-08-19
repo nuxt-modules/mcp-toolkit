@@ -17,7 +17,7 @@ describe('protocol eras', () => {
           name: 'greet',
           inputSchema: z.object({ name: z.string() }),
           handler: ({ name }, event) => {
-            seenEras.push(event.context.mcp.era)
+            seenEras.push(event.context.mcp.era ?? 'missing')
             return `Hello ${name}`
           },
         }),
@@ -36,7 +36,7 @@ describe('protocol eras', () => {
 
   it('refuses a legacy client when the endpoint is modern-only', async () => {
     const handler = createMcpHandler({
-      legacy: 'reject',
+      era: 'modern',
       tools: [defineMcpTool({ name: 'ping', handler: () => 'pong' })],
     })
 

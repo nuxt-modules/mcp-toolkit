@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "h3": "2.0.1-rc.26",
+    "h3": "2.0.1-rc.27",
     "nitro-mcp-toolkit": "workspace:*",
     "zod": "^4.2.0"
   },
