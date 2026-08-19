@@ -108,7 +108,7 @@ export interface McpHandler {
    * @example
    * ```ts
    * // server/routes/mcp-catalog.ts
-   * import mcp from '#mcp/mcp/handler'
+   * import { mcp } from 'nitro-mcp-toolkit/servers'
    *
    * export default defineHandler(() =>
    *   mcp.definitions.filter((definition) => definition.tags?.includes('public')),

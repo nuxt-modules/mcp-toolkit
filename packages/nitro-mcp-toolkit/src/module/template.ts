@@ -67,3 +67,31 @@ ${[...options, '  tools,', '  resources,', '  prompts,'].join('\n')}
 })
 `
 }
+
+/** Named re-exports of every mounted handler. Virtual id: `nitro-mcp-toolkit/servers`. */
+export function renderServers(
+  instances: readonly { exportName: string; handlerId: string }[],
+): string {
+  const exports = instances.map(
+    (instance) =>
+      `export { default as ${instance.exportName} } from ${JSON.stringify(instance.handlerId)}`,
+  )
+
+  return `${BANNER}\n${exports.join('\n')}\n`
+}
+
+/**
+ * App-specific names (`adminMcp`, …) the published stub cannot list. Merged
+ * onto `nitro-mcp-toolkit/servers` once Nitro writes its types.
+ */
+export function renderServerTypes(instances: readonly { exportName: string }[]): string {
+  const names = instances
+    .map((instance) => `  export const ${instance.exportName}: McpHandler`)
+    .join('\n')
+
+  return `declare module 'nitro-mcp-toolkit/servers' {
+  import type { McpHandler } from 'nitro-mcp-toolkit'
+${names}
+}
+`
+}

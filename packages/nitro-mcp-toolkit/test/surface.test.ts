@@ -46,4 +46,8 @@ describe('public exports', () => {
       ]
     `)
   })
+
+  it('does not load nitro-mcp-toolkit/servers outside mcp()', async () => {
+    await expect(import('../src/runtime/servers.ts')).rejects.toThrow(/provided by `mcp\(\)`/)
+  })
 })

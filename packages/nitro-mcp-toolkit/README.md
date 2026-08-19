@@ -150,11 +150,11 @@ A server serves exactly what sits under its `dir`, so the admin tools above are 
 
 ### Listing what a server serves
 
-A handler exposes the set it registered as plain JSON — the same set every client sees. Each server is generated under a module id named after its route, so any route can import it:
+A handler exposes the set it registered as plain JSON — the same set every client sees. Import it from `nitro-mcp-toolkit/servers`: the default instance is `mcp`, and any other route is the camelCase of its slug (`/admin/mcp` is `adminMcp`).
 
 ```ts
 // server/routes/catalog.ts
-import mcp from '#mcp/mcp/handler' // `/admin/mcp` is `#mcp/admin-mcp/handler`
+import { mcp } from 'nitro-mcp-toolkit/servers'
 
 export default defineHandler(() =>
   mcp.definitions.filter((definition) => definition.tags?.includes('public')),
@@ -163,7 +163,7 @@ export default defineHandler(() =>
 
 Each entry carries `kind`, `name`, `title`, `description`, `group`, `tags`, the `uri` of a resource, and the `file` it was discovered in. There is no filtering API on purpose: every field is a plain value, so `Array.filter` covers groups, tags and kinds at once.
 
-Those ids are typed by a declaration the package ships, so there is nothing to configure — and a handler mounted by hand exposes the same `definitions`, read off your own route.
+`mcp` is always typed. Extra names such as `adminMcp` are generated into `node_modules/.nitro/types` when you run `nitro prepare` or `nitro dev`. A handler mounted by hand exposes the same `definitions`, read off your own route.
 
 ## Tools
 
@@ -358,9 +358,9 @@ handler: ({ id }, event) => {
 
 ```ts
 // server/routes/webhook.ts
-import mcp from '#mcp/mcp/handler'
+import { mcp } from 'nitro-mcp-toolkit/servers'
 
-export default (event) => {
+export default () => {
   mcp.notify.resourcesChanged()
 }
 ```
