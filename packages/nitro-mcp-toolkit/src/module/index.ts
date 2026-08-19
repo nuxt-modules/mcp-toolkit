@@ -2,22 +2,13 @@ import { resolve } from 'pathe'
 import { discoverDefinitions } from './discover.ts'
 import { resolveModuleOptions } from './options.ts'
 import { reportDefinitions } from './report.ts'
+import { registerServer, slugify } from './servers.ts'
 import { renderHandler, renderRegistry } from './template.ts'
 import { watchDefinitions } from './watch.ts'
 import type { McpModuleOptions } from './options.ts'
 import type { NitroModule } from 'nitro/types'
 
 export type { McpModuleOptions, McpServerOptions, ResolvedMcpModuleOptions } from './options.ts'
-
-/** `/admin/mcp` becomes `admin-mcp`, so two instances get distinct module ids. */
-function slugify(route: string): string {
-  return (
-    route
-      .replace(/^\//, '')
-      .replace(/[^a-z0-9]+/gi, '-')
-      .toLowerCase() || 'root'
-  )
-}
 
 /**
  * Serve an MCP endpoint from the files under `dir`: every definition in
@@ -61,6 +52,7 @@ export default function mcp(options: McpModuleOptions = {}): NitroModule {
       nitro.options.virtual[registryId] = async () =>
         renderRegistry(await discoverDefinitions(definitionsDir))
       nitro.options.virtual[handlerId] = () => renderHandler(registryId, server)
+      registerServer(nitro, { route, slug, handlerId })
 
       nitro.options.handlers.push({
         route,

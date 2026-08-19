@@ -4,6 +4,7 @@ import { defineMcpTool } from '../src/runtime/index.ts'
 import type { CallToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
+import type { mcp } from 'nitro-mcp-toolkit/servers'
 import type { McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
@@ -54,5 +55,9 @@ describe('tool typing', () => {
 describe('the generated handler modules', () => {
   it('are typed for whichever route mounted them', () => {
     expectTypeOf<typeof generated>().toEqualTypeOf<McpHandler>()
+  })
+
+  it('types the /mcp instance on nitro-mcp-toolkit/servers', () => {
+    expectTypeOf<typeof mcp>().toEqualTypeOf<McpHandler>()
   })
 })

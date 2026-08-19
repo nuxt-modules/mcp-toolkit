@@ -31,6 +31,10 @@
       "types": "./dist/runtime/index.d.mts",
       "import": "./dist/runtime/index.mjs"
     },
+    "./servers": {
+      "types": "./dist/runtime/servers.d.mts",
+      "import": "./dist/runtime/servers.mjs"
+    },
     "./module": {
       "types": "./dist/module/index.d.mts",
       "import": "./dist/module/index.mjs"

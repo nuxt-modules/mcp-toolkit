@@ -18,7 +18,8 @@
     // The e2e fixture imports the public specifier; resolving it to source keeps
     // `typecheck` independent of whether `dist` has been built.
     "paths": {
-      "nitro-mcp-toolkit": ["./src/runtime/index.ts"]
+      "nitro-mcp-toolkit": ["./src/runtime/index.ts"],
+      "nitro-mcp-toolkit/servers": ["./src/runtime/servers.ts"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],

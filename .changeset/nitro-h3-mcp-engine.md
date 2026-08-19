@@ -19,3 +19,4 @@ This is a breaking change on 0.x:
 - `getInputResponses` / `getMissingInputs` / `canRequestInput` / `getSupportedInputs` / `McpJsonRpcError` are re-exported so a handler does not need a second import from `h3-mcp`.
 - `nitro` is an optional peer: it is only required for `nitro-mcp-toolkit/module`. `createMcpHandler` needs `h3`.
 - `createMcpTestClient` accepts `{ headers }` so a Bearer token or `X-MCP-Tools` allowlist does not need a custom `fetch` wrap.
+- Import a mounted handler as `{ mcp }` (or `{ adminMcp }` for `/admin/mcp`) from `nitro-mcp-toolkit/servers`. `#mcp/<slug>/handler` is still what Nitro mounts, not what an app imports.
