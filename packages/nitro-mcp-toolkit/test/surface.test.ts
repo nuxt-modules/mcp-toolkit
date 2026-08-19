@@ -10,13 +10,18 @@ describe('public exports', () => {
     expect(Object.keys(runtime).sort()).toMatchInlineSnapshot(`
       [
         "MODERN_PROTOCOL_VERSION",
+        "McpJsonRpcError",
         "audioResult",
+        "canRequestInput",
         "createMcpHandler",
         "defineMcpPrompt",
         "defineMcpResource",
         "defineMcpTool",
         "defineRequestState",
         "getElicitedContent",
+        "getInputResponses",
+        "getMissingInputs",
+        "getSupportedInputs",
         "imageResult",
         "inputRequired",
         "mcpElicit",

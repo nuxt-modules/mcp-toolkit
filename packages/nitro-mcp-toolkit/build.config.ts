@@ -18,6 +18,7 @@ export default defineBuildConfig({
           'nitro/types',
           'h3',
           'h3-mcp',
+          'pathe',
           'tinyglobby',
           '@modelcontextprotocol/client',
         ],

@@ -15,4 +15,7 @@ This is a breaking change on 0.x:
 - Cloudflare no longer needs `nodejs_compat`.
 - An `X-MCP-Tools` header naming an unknown tool is a 400 only after origin and auth have passed, so the name does not leak to a caller who is not allowed through.
 - `createMcpHandler` takes h3-mcp's `{ extensionPlugins }` as a second argument, for tasks and MCP Apps.
-- Engine types (`AuthOptions`, `CacheHints`, `CallToolResult`, …) keep their h3-mcp names.
+- Engine types (`AuthOptions`, `CacheHints`, `CallToolResult`, `Era`, `PluginOptions`, …) keep their h3-mcp names.
+- `getInputResponses` / `getMissingInputs` / `canRequestInput` / `getSupportedInputs` / `McpJsonRpcError` are re-exported so a handler does not need a second import from `h3-mcp`.
+- `nitro` is an optional peer: it is only required for `nitro-mcp-toolkit/module`. `createMcpHandler` needs `h3`.
+- `createMcpTestClient` accepts `{ headers }` so a Bearer token or `X-MCP-Tools` allowlist does not need a custom `fetch` wrap.

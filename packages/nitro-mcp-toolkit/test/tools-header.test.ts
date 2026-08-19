@@ -5,10 +5,7 @@ import {
   defineMcpResource,
   defineMcpTool,
 } from '../src/runtime/index.ts'
-import {
-  filterRegistrationsByToolAllowlist,
-  parseMcpToolsHeader,
-} from '../src/runtime/tools-header.ts'
+import { parseMcpToolsHeader, unknownToolNames } from '../src/runtime/tools-header.ts'
 import { createMcpTestClient } from '../src/testing/index.ts'
 
 function handler() {
@@ -26,14 +23,10 @@ function handler() {
 }
 
 function withToolsHeader(value: string | undefined) {
-  const mcp = handler()
-  return createMcpTestClient({
-    fetch: (request) => {
-      const headers = new Headers(request.headers)
-      if (value !== undefined) headers.set('x-mcp-tools', value)
-      return mcp.fetch(new Request(request, { headers }))
-    },
-  })
+  return createMcpTestClient(
+    handler(),
+    value === undefined ? {} : { headers: { 'x-mcp-tools': value } },
+  )
 }
 
 describe('parseMcpToolsHeader', () => {
@@ -55,25 +48,20 @@ describe('parseMcpToolsHeader', () => {
   })
 })
 
-describe('filterRegistrationsByToolAllowlist', () => {
+describe('unknownToolNames', () => {
   const registrations = [
     { definition: { kind: 'tool' }, identity: { name: 'search-icons' } },
     { definition: { kind: 'tool' }, identity: { name: 'get-component' } },
     { definition: { kind: 'resource' }, identity: { name: 'readme' } },
   ]
 
-  it('keeps requested tools and every non-tool', () => {
-    const result = filterRegistrationsByToolAllowlist(registrations, new Set(['search-icons']))
-    expect(result.unknownNames).toEqual([])
-    expect(result.registrations.map((entry) => entry.identity.name)).toEqual([
-      'search-icons',
-      'readme',
-    ])
+  it('reports names that are not a registered tool', () => {
+    expect(unknownToolNames(registrations, new Set(['search-icons']))).toEqual([])
+    expect(unknownToolNames(registrations, new Set(['nope']))).toEqual(['nope'])
   })
 
-  it('reports unknown names', () => {
-    const result = filterRegistrationsByToolAllowlist(registrations, new Set(['nope']))
-    expect(result.unknownNames).toEqual(['nope'])
+  it('does not treat a resource name as a tool', () => {
+    expect(unknownToolNames(registrations, new Set(['readme']))).toEqual(['readme'])
   })
 })
 

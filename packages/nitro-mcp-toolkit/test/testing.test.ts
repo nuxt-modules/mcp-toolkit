@@ -55,4 +55,24 @@ describe('createMcpTestClient', () => {
 
     expect(close).toHaveBeenCalledOnce()
   })
+
+  it('sends extra headers on every request', async () => {
+    const seen: string[] = []
+    const guarded = createMcpHandler({
+      tools: [
+        defineMcpTool({
+          name: 'who',
+          handler: (event) => {
+            seen.push(event.req.headers.get('x-tenant') ?? '')
+            return 'ok'
+          },
+        }),
+      ],
+    })
+
+    await using client = await createMcpTestClient(guarded, { headers: { 'x-tenant': 'acme' } })
+    await client.callTool({ name: 'who' })
+
+    expect(seen).toEqual(['acme'])
+  })
 })

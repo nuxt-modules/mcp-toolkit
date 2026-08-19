@@ -83,6 +83,9 @@
   "peerDependenciesMeta": {
     "@modelcontextprotocol/client": {
       "optional": true
+    },
+    "nitro": {
+      "optional": true
     }
   },
   "engines": {

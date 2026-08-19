@@ -15,16 +15,10 @@ function withOrigin(
     ...handlerOptions,
   })
 
-  return createMcpTestClient(
-    {
-      fetch: (request) => {
-        const headers = new Headers(request.headers)
-        if (origin) headers.set('origin', origin)
-        return handler.fetch(new Request(request, { headers }))
-      },
-    },
-    { url },
-  )
+  return createMcpTestClient(handler, {
+    url,
+    ...(origin ? { headers: { origin } } : {}),
+  })
 }
 
 describe('which browsers reach the endpoint', () => {

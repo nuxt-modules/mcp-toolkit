@@ -15,6 +15,8 @@ Targets protocol revision **2026-07-28** and falls back to the 2025 revisions au
 npm install nitro-mcp-toolkit zod
 ```
 
+`h3` is a peer. `nitro` is only needed if you install the module (`nitro-mcp-toolkit/module`); `createMcpHandler` runs on h3 alone.
+
 Any [Standard Schema](https://standardschema.dev) library works — Zod, Valibot, ArkType. Nothing is auto-imported: every helper is imported explicitly.
 
 ## Quick start
@@ -303,34 +305,40 @@ Everything specific to this call — as opposed to the request in general — si
 
 ### Multi-round-trip
 
-A tool can pause mid-call and ask the client for something — confirmation, a sample, a root listing — then pick up where it left off once the answer arrives. `inputRequired`, `mcpElicit` and `getElicitedContent` build and read that exchange; `event.context.mcp.inputResponses` and `requestState` are the raw fields for anything they don't cover.
+A tool can pause mid-call and ask the client for something — confirmation, a sample, a root listing — then pick up where it left off once the answer arrives. `inputRequired` and `mcpElicit` build that exchange; `getInputResponses` / `getMissingInputs` read it back. `getElicitedContent` is the shortcut for an idempotent form (it collapses missing, declined, and cancelled into `undefined`, so a refusal looks like a first visit and is asked again).
 
 ```ts
-import { defineMcpTool, getElicitedContent, inputRequired, mcpElicit } from 'nitro-mcp-toolkit'
+import { defineMcpTool, getInputResponses, inputRequired, mcpElicit } from 'nitro-mcp-toolkit'
 import { z } from 'zod'
+
+const requests = {
+  confirm: mcpElicit({
+    message: 'Delete this?',
+    requestedSchema: {
+      type: 'object',
+      properties: { confirm: { type: 'boolean' } },
+      required: ['confirm'],
+    },
+  }),
+}
 
 export default defineMcpTool({
   inputSchema: z.object({ id: z.string() }),
   handler: ({ id }, event) => {
-    const requests = {
-      confirm: mcpElicit({
-        message: `Delete ${id}?`,
-        requestedSchema: {
-          type: 'object',
-          properties: { confirm: { type: 'boolean' } },
-          required: ['confirm'],
-        },
-      }),
-    }
-    const confirmed = getElicitedContent(event, requests, 'confirm')
-    if (!confirmed?.confirm) {
+    const answer = getInputResponses(event, requests).confirm
+    if (answer === undefined) {
       return inputRequired(event, { inputRequests: requests })
+    }
+    if (answer.action !== 'accept' || !answer.content?.confirm) {
+      return 'cancelled'
     }
 
     return db.delete(id)
   },
 })
 ```
+
+`canRequestInput` / `getSupportedInputs` are the same capability check `inputRequired` runs, without the throw — use them when the handler can degrade instead of erroring. `event.context.mcp.inputResponses` and `requestState` are the raw fields for anything the helpers don't cover.
 
 `requestState` is opaque, server-minted state the client echoes back verbatim — treat it as attacker-controlled input on the way back in. `defineRequestState` is an HMAC-SHA256 codec for that: seal on the way out, open on the way back, and reject anything that fails verification.
 
@@ -449,7 +457,7 @@ Every `401` then answers with `WWW-Authenticate: Bearer realm="mcp", resource_me
 
 There is no token format, issuer or audience model here — `validate` is opaque credential comparison, so **audience validation belongs inside it**: verify that the presented token was issued for this server (its `aud` claim, or the equivalent introspection result) before returning `true`, or a token minted for another service is accepted, the confused-deputy attack the spec's authorization security considerations call out.
 
-In tests, drive a header through the handler's `fetch` directly, or forge one on the transport's `fetch`.
+In tests, pass the credential as `{ headers }` on `createMcpTestClient` rather than forging the transport's `fetch`.
 
 ## Testing
 
@@ -471,7 +479,13 @@ it('greets', async () => {
 
 The client closes itself when it leaves scope, so a failing assertion cannot leak it. `textOf` reads the text out of a tool call, a resource read or a prompt alike, for when the shape of the content blocks is not what you are asserting.
 
-Pass `{ era: 'legacy' }` to test the 2025 path. A credential is a real header on the request, not an options bag.
+Pass `{ era: 'legacy' }` to test the 2025 path. A credential is a header:
+
+```ts
+await using client = await createMcpTestClient(handler, {
+  headers: { authorization: 'Bearer secret' },
+})
+```
 
 ## Protocol revisions
 

@@ -33,6 +33,11 @@ export interface McpTestClientOptions {
   /** Only the origin matters; the handler never sees the path. */
   url?: string
   capabilities?: ClientCapabilities
+  /**
+   * Extra headers on every request the client makes — a Bearer token, an
+   * `X-MCP-Tools` allowlist, anything the handler reads off the request.
+   */
+  headers?: Record<string, string>
 }
 
 /**
@@ -50,7 +55,8 @@ export async function createMcpTestClient(
   handler: McpFetchHandler,
   options: McpTestClientOptions = {},
 ): Promise<McpTestClient> {
-  const { era = 'modern', url = 'http://localhost/mcp', capabilities } = options
+  const { era = 'modern', url = 'http://localhost/mcp', capabilities, headers } = options
+  const extra = headers === undefined ? undefined : new Headers(headers)
 
   const client = new Client(
     { name: 'nitro-mcp-toolkit-test-client', version: '0.0.0' },
@@ -63,7 +69,13 @@ export async function createMcpTestClient(
   )
 
   const transport = new StreamableHTTPClientTransport(new URL(url), {
-    fetch: (input, init) => handler.fetch(new Request(input, init)),
+    fetch: (input, init) => {
+      const request = new Request(input, init)
+      if (!extra) return handler.fetch(request)
+      const merged = new Headers(request.headers)
+      extra.forEach((value, key) => merged.set(key, value))
+      return handler.fetch(new Request(request, { headers: merged }))
+    },
   })
 
   await client.connect(transport)

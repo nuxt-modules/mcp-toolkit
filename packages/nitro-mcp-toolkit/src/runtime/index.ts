@@ -7,11 +7,16 @@ export { defineMcpResource } from './resource.ts'
 export { audioResult, imageResult } from './results.ts'
 export { defineMcpTool } from './tool.ts'
 export {
+  canRequestInput,
   defineRequestState,
   getElicitedContent,
+  getInputResponses,
+  getMissingInputs,
+  getSupportedInputs,
   inputRequired,
   mcpElicit,
   mcpElicitUrl,
+  McpJsonRpcError,
 } from 'h3-mcp'
 
 export type { McpEvent, McpNotifier } from './context.ts'
@@ -46,10 +51,12 @@ export type {
   CacheHints,
   CallToolResult,
   ContentBlock,
+  Era,
   GetPromptResult,
   Icon,
   InputRequiredResult,
   OriginOptions,
+  PluginOptions,
   ReadResourceResult,
   ToolAnnotations,
 } from 'h3-mcp'

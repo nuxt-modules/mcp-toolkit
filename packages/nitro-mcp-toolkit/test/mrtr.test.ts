@@ -1,6 +1,13 @@
 import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
-import { getElicitedContent, inputRequired, mcpElicit, mcpElicitUrl } from '../src/runtime/index.ts'
+import {
+  getElicitedContent,
+  getInputResponses,
+  getMissingInputs,
+  inputRequired,
+  mcpElicit,
+  mcpElicitUrl,
+} from '../src/runtime/index.ts'
 import type { RequestContext } from 'h3-mcp'
 
 function event(mcp: RequestContext = {}): H3Event {
@@ -90,5 +97,28 @@ describe('getElicitedContent', () => {
     expect(
       getElicitedContent(event({ inputResponses: { confirm: 'nope' } }), 'confirm'),
     ).toBeUndefined()
+  })
+})
+
+describe('getInputResponses', () => {
+  const requests = { confirm }
+
+  it('distinguishes a missing answer from a declined one', () => {
+    expect(getInputResponses(event(), requests).confirm).toBeUndefined()
+    expect(
+      getInputResponses(event({ inputResponses: { confirm: { action: 'decline' } } }), requests)
+        .confirm,
+    ).toEqual({ action: 'decline' })
+  })
+})
+
+describe('getMissingInputs', () => {
+  const requests = { confirm }
+
+  it('treats a declined answer as present, so it is not re-asked', () => {
+    expect(getMissingInputs(event(), requests)).toEqual(requests)
+    expect(
+      getMissingInputs(event({ inputResponses: { confirm: { action: 'decline' } } }), requests),
+    ).toEqual({})
   })
 })

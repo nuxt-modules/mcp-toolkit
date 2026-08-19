@@ -1,10 +1,6 @@
 import { H3Event, toResponse } from 'h3'
 import { defineMcpHandler } from 'h3-mcp'
-import {
-  filterRegistrationsByToolAllowlist,
-  parseMcpToolsHeader,
-  unknownToolsResponse,
-} from './tools-header.ts'
+import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
 import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
 import type { McpNotifier } from './context.ts'
@@ -202,7 +198,7 @@ export function createMcpHandler(
   const run = async (event: H3Event): Promise<Response> => {
     const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
     if (requested) {
-      const { unknownNames } = filterRegistrationsByToolAllowlist(registrations, requested)
+      const unknownNames = unknownToolNames(registrations, requested)
       if (unknownNames.length) {
         // Origin and auth must run first: a 400 on the name would otherwise
         // tell an unauthenticated caller whether the tool exists.

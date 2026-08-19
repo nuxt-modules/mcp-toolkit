@@ -19,13 +19,7 @@ function withHeader(auth: AuthOptions, header?: string, value?: string) {
     tools: [defineMcpTool({ name: 'ping', handler: () => 'pong' })],
   })
 
-  return createMcpTestClient({
-    fetch: (req) => {
-      const headers = new Headers(req.headers)
-      if (header && value) headers.set(header, value)
-      return handler.fetch(new Request(req, { headers }))
-    },
-  })
+  return createMcpTestClient(handler, header && value ? { headers: { [header]: value } } : {})
 }
 
 describe('auth config', () => {
@@ -184,12 +178,8 @@ describe('a custom validate callback', () => {
       ],
     })
 
-    await using client = await createMcpTestClient({
-      fetch: (req) => {
-        const headers = new Headers(req.headers)
-        headers.set('authorization', 'Bearer good')
-        return handler.fetch(new Request(req, { headers }))
-      },
+    await using client = await createMcpTestClient(handler, {
+      headers: { authorization: 'Bearer good' },
     })
 
     const result = await client.callTool({ name: 'who' })
