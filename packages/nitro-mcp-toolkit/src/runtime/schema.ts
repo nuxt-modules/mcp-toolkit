@@ -2,19 +2,16 @@ import { toStandardJsonSchema } from '@valibot/to-json-schema'
 import type { StandardJSONSchemaV1, StandardTypedV1 } from 'h3-mcp'
 import type { GenericSchema } from 'valibot'
 
-function hasJsonSchema(schema: StandardTypedV1): boolean {
-  const standard = schema['~standard']
-  if (!('jsonSchema' in standard)) return false
-  return standard.jsonSchema !== null && typeof standard.jsonSchema === 'object'
-}
-
 function isValibotSchema(schema: StandardTypedV1): schema is GenericSchema {
   return schema['~standard'].vendor === 'valibot' && 'async' in schema && schema.async === false
 }
 
-function withTrimIgnored(converter: StandardJSONSchemaV1['~standard']['jsonSchema']) {
+export function resolveSchema(schema: StandardTypedV1 | undefined): StandardTypedV1 | undefined {
+  if (!schema || !isValibotSchema(schema)) return schema
+
+  const standard = toStandardJsonSchema(schema)['~standard']
   const convert = (method: 'input' | 'output') => (options: StandardJSONSchemaV1.Options) =>
-    converter[method]({
+    standard.jsonSchema[method]({
       ...options,
       libraryOptions: {
         ...options.libraryOptions,
@@ -22,20 +19,13 @@ function withTrimIgnored(converter: StandardJSONSchemaV1['~standard']['jsonSchem
       },
     })
 
-  return {
-    input: convert('input'),
-    output: convert('output'),
-  }
-}
-
-export function resolveSchema(schema: StandardTypedV1 | undefined): StandardTypedV1 | undefined {
-  if (!schema || !isValibotSchema(schema) || hasJsonSchema(schema)) return schema
-
-  const resolved = toStandardJsonSchema(schema)
   const converted: StandardJSONSchemaV1 = {
     '~standard': {
-      ...resolved['~standard'],
-      jsonSchema: withTrimIgnored(resolved['~standard'].jsonSchema),
+      ...standard,
+      jsonSchema: {
+        input: convert('input'),
+        output: convert('output'),
+      },
     },
   }
   return converted
