@@ -1,6 +1,7 @@
 import { McpJsonRpcError } from 'h3-mcp'
 import { attachNotify } from './context.ts'
 import { isInputRequired, toCallToolResult, toErrorResult } from './results.ts'
+import { resolveSchema } from './schema.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type {
@@ -115,7 +116,7 @@ export function defineMcpTool(
         name: identity.name,
         title: identity.title,
         description,
-        outputSchema,
+        outputSchema: resolveSchema(outputSchema),
         annotations,
         icons,
         _meta: resolveMeta(identity.group, tags),
@@ -125,7 +126,7 @@ export function defineMcpTool(
         const { inputSchema, handler } = definition
         into.tools.push({
           ...advertised,
-          inputSchema,
+          inputSchema: resolveSchema(inputSchema),
           handler: (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
             settle(() => handler(args, attachNotify(event, notify)), hasOutputSchema),
         })
