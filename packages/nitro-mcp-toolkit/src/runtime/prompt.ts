@@ -1,4 +1,5 @@
 import { attachNotify } from './context.ts'
+import { resolveSchema } from './schema.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type { GetPromptResult, Icon, PromptArgument, StandardTypedV1 } from 'h3-mcp'
@@ -98,7 +99,7 @@ export function defineMcpPrompt(
         const { inputSchema, handler } = definition
         into.prompts.push({
           ...advertised,
-          arguments: inputSchema,
+          arguments: resolveSchema(inputSchema),
           handler: async (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
             toPromptResult(await handler(args, attachNotify(event, notify))),
         })
