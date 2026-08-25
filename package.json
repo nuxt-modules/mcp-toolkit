@@ -31,7 +31,7 @@
     "eval": "turbo run eval --filter=@nuxtjs/mcp-toolkit-docs",
     "eval:ui": "turbo run eval:ui --filter=@nuxtjs/mcp-toolkit-docs",
     "clean": "turbo run clean",
-    "automd": "npx automd --config .github/automd.json",
+    "automd": "npx automd --config .config/automd.json",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "turbo run build --filter='./packages/*' && changeset publish"
