@@ -1,44 +1,16 @@
+import type { ModuleOptions as LlmsOptions, LLMsSection } from 'nuxt-llms'
 import { defineNitroPlugin } from 'nitropack/runtime'
 import config from '#nuxt-mcp-toolkit/config.mjs'
 
-interface LlmsLink {
-  title: string
-  description?: string
-  href: string
-}
-
-interface LlmsSection {
-  title: string
-  description?: string
-  links?: LlmsLink[]
-}
-
-interface LlmsOptions {
-  domain?: string
-  sections?: LlmsSection[]
-}
-
-/** Loose hook surface — `nuxt-llms` is an optional peer, so its hook types may not be in scope. */
-type LlmsHookable = {
-  hook: (name: 'llms:generate', cb: (event: unknown, options: LlmsOptions) => void) => void
-}
-
 const SECTION_TITLE = 'MCP Server'
 
-function joinUrl(domain: string | undefined, path: string): string {
-  if (!domain) return path
+function joinUrl(domain: string, path: string): string {
   return `${domain.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`
 }
 
-/**
- * Build the `/llms.txt` section describing this MCP server.
- *
- * Exported for testing — the plugin itself only wires it to the
- * `llms:generate` hook owned by `nuxt-llms`.
- */
-export function buildMcpLlmsSection(options: LlmsOptions): LlmsSection {
+function buildMcpLlmsSection(options: LlmsOptions): LLMsSection {
   const endpoint = joinUrl(options.domain, config.route)
-  const links: LlmsLink[] = [
+  const links: NonNullable<LLMsSection['links']> = [
     {
       title: config.name || 'MCP endpoint',
       description: 'Streamable HTTP endpoint — connect an MCP client to this URL to call the tools, resources and prompts exposed by this site.',
@@ -71,10 +43,8 @@ export function buildMcpLlmsSection(options: LlmsOptions): LlmsSection {
  * `nuxt-llms` owns the file; this plugin only appends one section.
  */
 export default defineNitroPlugin((nitroApp) => {
-  ;(nitroApp.hooks as unknown as LlmsHookable).hook('llms:generate', (_event, options) => {
+  nitroApp.hooks.hook('llms:generate', (_event, options) => {
     if (!config.enabled) return
-
-    options.sections ??= []
 
     // Idempotent: a site may already document its own MCP server, in which
     // case the author's section wins.
