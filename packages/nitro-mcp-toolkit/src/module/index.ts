@@ -1,5 +1,5 @@
-import { resolve } from 'pathe'
-import { discoverDefinitions } from './discover.ts'
+import { basename, resolve } from 'pathe'
+import { discoverDefinitions, discoverPlugins } from './discover.ts'
 import { resolveModuleOptions } from './options.ts'
 import { reportDefinitions } from './report.ts'
 import { registerServer, slugify } from './servers.ts'
@@ -44,6 +44,18 @@ export type {
  */
 const AS_METADATA = '/.well-known/oauth-authorization-server'
 
+/** Which plugins file the handler installs, when the convention is unambiguous. */
+function onePluginsFile(route: string, paths: string[]): string | undefined {
+  if (paths.length > 1) {
+    throw new Error(
+      `[nitro-mcp-toolkit] ${route} has more than one plugins file ` +
+        `(${paths.map((path) => basename(path)).join(', ')}). Keep one.`,
+    )
+  }
+
+  return paths[0]
+}
+
 export default function mcp(options: McpModuleOptions = {}): NitroModule {
   const { route, dir, server, oauth } = resolveModuleOptions(options)
   const slug = slugify(route)
@@ -68,8 +80,16 @@ export default function mcp(options: McpModuleOptions = {}): NitroModule {
 
       nitro.options.virtual[registryId] = async () =>
         renderRegistry(await discoverDefinitions(definitionsDir))
-      nitro.options.virtual[handlerId] = () =>
-        renderHandler(registryId, server, oauth ? oauthId : undefined)
+      // Async like the registry: a plugins file written after setup is picked
+      // up by the rebuild the watcher triggers, rather than needing a restart.
+      nitro.options.virtual[handlerId] = async () => {
+        const pluginsPath = onePluginsFile(route, await discoverPlugins(definitionsDir))
+
+        return renderHandler(registryId, server, {
+          ...(oauth ? { oauthId } : {}),
+          ...(pluginsPath ? { pluginsPath } : {}),
+        })
+      }
       registerServer(nitro, { route, slug, handlerId })
 
       nitro.options.handlers.push({

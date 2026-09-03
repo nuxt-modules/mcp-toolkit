@@ -1,6 +1,6 @@
-import { relative } from 'pathe'
+import { basename, relative } from 'pathe'
 import { glob } from 'tinyglobby'
-import { DEFINITION_DIRS, discoverDefinitions } from './discover.ts'
+import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins } from './discover.ts'
 import type { DiscoveredDefinition } from './discover.ts'
 import type { Nitro } from 'nitro/types'
 
@@ -52,9 +52,14 @@ export function reportDefinitions(nitro: Nitro, route: string, dir: string): voi
   let reported: string | undefined
 
   nitro.hooks.hook('compiled', async () => {
-    const [definitions, misnamed] = await Promise.all([discoverDefinitions(dir), nearMisses(dir)])
+    const [definitions, plugins, misnamed] = await Promise.all([
+      discoverDefinitions(dir),
+      discoverPlugins(dir),
+      nearMisses(dir),
+    ])
     const current = [
       ...definitions.map((definition) => definition.file),
+      ...plugins.map((path) => basename(path)),
       ...misnamed.map((directory) => directory.found),
     ].join('|')
 
@@ -70,7 +75,10 @@ export function reportDefinitions(nitro: Nitro, route: string, dir: string): voi
           'The route is still mounted, and serves a server with nothing on it.',
       )
     } else {
-      nitro.logger.info(`[mcp] ${route} serves ${counted(definitions)} from ${where}`)
+      const [pluginsFile] = plugins
+      const installed = pluginsFile ? `, with ${basename(pluginsFile)}` : ''
+
+      nitro.logger.info(`[mcp] ${route} serves ${counted(definitions)} from ${where}${installed}`)
     }
 
     for (const { found, expected } of misnamed) {

@@ -89,27 +89,42 @@ export default oauth.authorizationServerHandler
 `
 }
 
+/** What the handler wires in beyond the registry, when the app asked for it. */
+export interface HandlerWiring {
+  /** The `createMcpOAuth` instance to take `auth` from. */
+  oauthId?: string
+  /** Absolute path of the plugins file, whose default export is installed. */
+  pluginsPath?: string
+}
+
 /** The route handler: the discovered registry, served on the module's route. */
 export function renderHandler(
   registryId: string,
   server: McpServerOptions,
-  oauthId?: string,
+  wiring: HandlerWiring = {},
 ): string {
+  const { oauthId, pluginsPath } = wiring
   const options = Object.entries(server)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => line(key, value))
 
   if (oauthId) options.push('  auth: oauth.auth,')
 
-  const oauthImport = oauthId ? `import { oauth } from ${JSON.stringify(oauthId)}\n` : ''
+  const imports = [
+    `import { createMcpHandler } from 'nitro-mcp-toolkit'`,
+    ...(oauthId ? [`import { oauth } from ${JSON.stringify(oauthId)}`] : []),
+    ...(pluginsPath ? [`import plugins from ${JSON.stringify(pluginsPath)}`] : []),
+    `import { prompts, resources, tools } from ${JSON.stringify(registryId)}`,
+  ]
+
+  const setup = pluginsPath ? ', { extensionPlugins: plugins }' : ''
 
   return `${BANNER}
-import { createMcpHandler } from 'nitro-mcp-toolkit'
-${oauthImport}import { prompts, resources, tools } from ${JSON.stringify(registryId)}
+${imports.join('\n')}
 
 export default createMcpHandler({
 ${[...options, '  tools,', '  resources,', '  prompts,'].join('\n')}
-})
+}${setup})
 `
 }
 

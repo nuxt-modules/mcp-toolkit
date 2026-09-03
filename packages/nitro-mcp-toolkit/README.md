@@ -79,6 +79,22 @@ export default defineMcpTool({
 
 Both are advertised in the definition's `_meta`, so a client sees them in `tools/list` and can sort or filter on them. The group defaults to the subdirectory the file sits in, which is why most files only ever set `tags`.
 
+### Plugins
+
+`server/mcp/plugins.ts`, beside the three directories, installs [h3-mcp](https://github.com/h3js/h3-mcp) extension plugins on that endpoint. Its default export is the array:
+
+```ts
+// server/mcp/plugins.ts
+import { mcpTasks } from 'h3-mcp/tasks'
+import type { ExtensionPlugin } from 'nitro-mcp-toolkit'
+
+export default [mcpTasks({ max: 100 })] satisfies ExtensionPlugin[]
+```
+
+A plugin is a live function, so it cannot be an `mcp()` option — those cross into generated code and are data only. The file is how one reaches a generated handler.
+
+Like a definition, it belongs to whichever `mcp()` scans its directory: two servers get two plugin sets, and a server whose `dir` holds no such file installs none. `.js`, `.mts` and `.mjs` work too, one file per directory, and creating it in development is picked up without a restart. Every build names the file it installed alongside the counts it reports.
+
 ### Options
 
 ```ts

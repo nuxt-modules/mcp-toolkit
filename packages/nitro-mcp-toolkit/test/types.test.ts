@@ -5,7 +5,7 @@ import type { CallToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
 import type { mcp } from 'nitro-mcp-toolkit/servers'
-import type { McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
+import type { ExtensionPlugin, McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 
@@ -60,5 +60,18 @@ describe('the generated handler modules', () => {
 
   it('types the /mcp instance on nitro-mcp-toolkit/servers', () => {
     expectTypeOf<typeof mcp>().toEqualTypeOf<McpHandler>()
+  })
+})
+
+// The convention is only usable if an app can name the type its plugins file
+// must satisfy, without reaching into h3-mcp itself.
+describe('the plugins convention', () => {
+  it('types the array server/mcp/plugins.ts exports', () => {
+    expectTypeOf<[{ id: 'acme/stamp'; settings: () => Record<string, never> }]>().toExtend<
+      ExtensionPlugin[]
+    >()
+
+    // The id is the key the extension is advertised under, so it is required.
+    expectTypeOf<[{ settings: () => Record<string, never> }]>().not.toExtend<ExtensionPlugin[]>()
   })
 })

@@ -65,6 +65,7 @@ export type {
   CallToolResult,
   ContentBlock,
   Era,
+  ExtensionPlugin,
   GetPromptResult,
   Icon,
   InputRequiredResult,
