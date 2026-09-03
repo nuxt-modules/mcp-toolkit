@@ -1,6 +1,7 @@
 import { McpJsonRpcError } from 'h3-mcp'
 import { attachNotify } from './context.ts'
 import { isInputRequired, toCallToolResult, toErrorResult } from './results.ts'
+import { requireScopes } from './scopes.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type {
@@ -36,6 +37,16 @@ interface McpToolMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
+  /**
+   * OAuth scopes the access token must all carry to call this tool. The tool
+   * still appears in `tools/list`; a call without them is refused.
+   *
+   * @example
+   * ```ts
+   * defineMcpTool({ scopes: ['todos:write'], handler: … })
+   * ```
+   */
+  scopes?: string[]
   annotations?: ToolAnnotations
   icons?: Icon[]
 }
@@ -100,7 +111,8 @@ export function defineMcpTool(
     | McpToolDefinition<Schema, Schema | undefined>
     | McpToolDefinitionWithoutInput<Schema | undefined>,
 ): McpTool {
-  const { name, title, description, group, tags, annotations, icons, outputSchema } = definition
+  const { name, title, description, group, tags, scopes, annotations, icons, outputSchema } =
+    definition
   const hasOutputSchema = outputSchema !== undefined
 
   return {
@@ -110,6 +122,7 @@ export function defineMcpTool(
     description,
     group,
     tags,
+    scopes,
     build(identity, into, notify) {
       const advertised = {
         name: identity.name,
@@ -118,7 +131,7 @@ export function defineMcpTool(
         outputSchema,
         annotations,
         icons,
-        _meta: resolveMeta(identity.group, tags),
+        _meta: resolveMeta(identity.group, tags, scopes),
       }
 
       if (definition.inputSchema) {
@@ -127,7 +140,10 @@ export function defineMcpTool(
           ...advertised,
           inputSchema,
           handler: (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
-            settle(() => handler(args, attachNotify(event, notify)), hasOutputSchema),
+            settle(() => {
+              requireScopes(event, scopes, 'tool', identity.name)
+              return handler(args, attachNotify(event, notify))
+            }, hasOutputSchema),
         })
         return
       }
@@ -136,7 +152,10 @@ export function defineMcpTool(
       into.tools.push({
         ...advertised,
         handler: (event: H3Event) =>
-          settle(() => handler(attachNotify(event, notify)), hasOutputSchema),
+          settle(() => {
+            requireScopes(event, scopes, 'tool', identity.name)
+            return handler(attachNotify(event, notify))
+          }, hasOutputSchema),
       })
     },
   }

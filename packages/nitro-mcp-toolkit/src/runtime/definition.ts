@@ -51,6 +51,8 @@ export interface McpDefinition {
   readonly group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   readonly tags?: string[]
+  /** OAuth scopes the access token must all carry to reach this definition. */
+  readonly scopes?: string[]
   /** Set for discovered definitions; absent for hand-written ones. */
   readonly source?: McpDefinitionSource
   /**
@@ -73,6 +75,8 @@ export interface McpDefinitionSummary {
   description?: string
   group?: string
   tags?: string[]
+  /** OAuth scopes required to reach it, when it declared any. */
+  scopes?: string[]
   /** Resources only: the URI read, or the pattern a template answers. */
   uri?: string
   /** Path relative to the scanned directory, for discovered definitions. */
