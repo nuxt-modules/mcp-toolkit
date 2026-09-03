@@ -191,15 +191,16 @@ export default defineMcpTool({
 
 Return whatever is natural; the toolkit builds the protocol result.
 
-| You return                  | The client receives           |
-| --------------------------- | ----------------------------- |
-| `string`                    | one text block                |
-| `number`, `boolean`         | one text block, stringified   |
-| `null`, `undefined`         | no content                    |
-| object, array               | one text block of pretty JSON |
-| a full `CallToolResult`     | used as-is                    |
-| `imageResult(base64, mime)` | an image block                |
-| `audioResult(base64, mime)` | an audio block                |
+| You return                  | The client receives                                        |
+| --------------------------- | ---------------------------------------------------------- |
+| `string`                    | one text block                                             |
+| `number`, `boolean`         | one text block, stringified                                |
+| `null`, `undefined`         | no content                                                 |
+| object, array               | one text block of pretty JSON                              |
+| a full `CallToolResult`     | used as-is without `outputSchema`                          |
+| `toolResult(result)`        | an explicit protocol result, including with `outputSchema` |
+| `imageResult(base64, mime)` | an image block                                             |
+| `audioResult(base64, mime)` | an audio block                                             |
 
 ### Structured output
 
@@ -214,6 +215,43 @@ export default defineMcpTool({
 ```
 
 A return that doesn't actually satisfy a declared `outputSchema` is a protocol error (`-32602`), not an `isError` result — the engine validates the advertised shape after the handler returns.
+
+When a structured failure is part of the advertised output contract, use `toolResult()` to make the protocol result explicit while keeping the domain schema unambiguous:
+
+```ts
+import { defineMcpTool, toolResult } from 'nitro-mcp-toolkit'
+import { z } from 'zod'
+
+export default defineMcpTool({
+  inputSchema: z.object({ key: z.string() }),
+  outputSchema: z.object({
+    success: z.boolean(),
+    message: z.string().min(1).regex(/\S/),
+    error_code: z
+      .string()
+      .regex(/^[a-z][a-z0-9_]*$/)
+      .optional(),
+    value: z.string().optional(),
+  }),
+  handler: async ({ key }) => {
+    const value = await getSetting(key)
+    if (value === undefined) {
+      return toolResult({
+        structuredContent: {
+          success: false,
+          message: `Setting "${key}" was not found.`,
+          error_code: 'setting_not_found',
+        },
+        isError: true,
+      })
+    }
+
+    return { success: true, message: `Setting "${key}" returned.`, value }
+  },
+})
+```
+
+Without `toolResult()`, an object returned by a tool with `outputSchema` is deliberately treated as domain output, even if it contains protocol-looking keys such as `content` or `isError`. That keeps schemas with those legitimate field names safe from heuristics.
 
 ### Errors
 
