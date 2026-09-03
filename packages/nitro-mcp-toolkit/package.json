@@ -31,6 +31,18 @@
       "types": "./dist/runtime/index.d.mts",
       "import": "./dist/runtime/index.mjs"
     },
+    "./oauth/clerk": {
+      "types": "./dist/runtime/oauth/clerk.d.mts",
+      "import": "./dist/runtime/oauth/clerk.mjs"
+    },
+    "./oauth/okta": {
+      "types": "./dist/runtime/oauth/okta.d.mts",
+      "import": "./dist/runtime/oauth/okta.mjs"
+    },
+    "./oauth/workos": {
+      "types": "./dist/runtime/oauth/workos.d.mts",
+      "import": "./dist/runtime/oauth/workos.mjs"
+    },
     "./servers": {
       "types": "./dist/runtime/servers.d.mts",
       "import": "./dist/runtime/servers.mjs"

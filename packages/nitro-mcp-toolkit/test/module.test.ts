@@ -5,6 +5,7 @@ import { createNitro } from 'nitro/builder'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import mcp from '../src/module/index.ts'
 import { resolveOAuthOptions } from '../src/module/options.ts'
+import { clerk } from '../src/runtime/oauth/clerk.ts'
 import { fixtureDir, modules } from './helpers/discovery-fixture.ts'
 import type { Nitro } from 'nitro/types'
 
@@ -264,6 +265,45 @@ describe('the mcp() module', () => {
       })
       "
     `)
+
+    await guarded.close()
+  })
+
+  it('accepts a connector result and mounts RFC 8414 for old clients', async () => {
+    const key = `pk_test_${Buffer.from('acme.clerk.accounts.dev$', 'utf8').toString('base64')}`
+    const guarded = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [
+        mcp({
+          route: '/mcp',
+          dir: 'server/mcp-admin',
+          oauth: clerk({
+            publishableKey: key,
+            resource: 'http://localhost:3030/mcp',
+          }),
+        }),
+      ],
+    })
+
+    expect(guarded.options.handlers).toMatchObject([
+      { route: '/mcp', handler: '#mcp/mcp/handler' },
+      {
+        route: '/.well-known/oauth-protected-resource/mcp',
+        handler: '#mcp/mcp/oauth-metadata',
+      },
+      {
+        route: '/.well-known/oauth-authorization-server',
+        handler: '#mcp/mcp/oauth-authorization-server',
+      },
+    ])
+
+    const generated = await render(guarded, '#mcp/mcp/oauth')
+    expect(generated).toContain('"https://acme.clerk.accounts.dev"')
+    expect(generated).toContain('https://acme.clerk.accounts.dev/.well-known/jwks.json')
+    expect(generated).toContain('"audience":false')
+    expect(generated).toContain('authorizationServer')
 
     await guarded.close()
   })

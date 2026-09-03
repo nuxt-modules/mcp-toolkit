@@ -11,6 +11,9 @@ export default defineBuildConfig({
       type: 'bundle',
       input: [
         './src/runtime/index.ts',
+        './src/runtime/oauth/clerk.ts',
+        './src/runtime/oauth/okta.ts',
+        './src/runtime/oauth/workos.ts',
         './src/runtime/servers.ts',
         './src/module/index.ts',
         './src/testing/index.ts',
