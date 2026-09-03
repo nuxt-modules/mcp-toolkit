@@ -1,6 +1,11 @@
 /// <reference path="./virtual.d.ts" />
 
 export { createMcpHandler } from './handler.ts'
+export {
+  createMcpOAuth,
+  authorizationServerMetadataUrl,
+  protectedResourceMetadataUrl,
+} from './oauth.ts'
 export { defineMcpPrompt } from './prompt.ts'
 export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
 export { defineMcpResource } from './resource.ts'
@@ -21,6 +26,14 @@ export {
 
 export type { McpEvent, McpNotifier } from './context.ts'
 export type { McpHandler, McpHandlerOptions } from './handler.ts'
+export type {
+  McpOAuth,
+  McpOAuthClaims,
+  McpOAuthJwtOptions,
+  McpOAuthOptions,
+  McpOAuthSetup,
+  McpProtectedResourceMetadata,
+} from './oauth.ts'
 export type {
   McpPromptDefinition,
   McpPromptDefinitionWithArguments,

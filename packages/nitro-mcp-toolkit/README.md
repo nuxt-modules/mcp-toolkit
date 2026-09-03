@@ -421,6 +421,33 @@ Enabling `auth` requires at least one of `tokens` or `validate` — a config wit
 
 `auth` answers "may this caller talk to this endpoint" — nothing more. A valid credential still reaches every tool and resource the server declares; per-operation authorization belongs in your `validate` callback (check scopes there) or in your handlers.
 
+### OAuth 2.1 resource server
+
+This package is the **resource server**, not the authorization server. It does not mint tokens, serve a login page, or speak DCR. Pair it with an authorization server — Clerk, Okta, WorkOS, Auth0, or [Better Auth's MCP plugin](https://www.better-auth.com/docs/plugins/mcp).
+
+`createMcpOAuth` verifies JWT access tokens against the issuer's JWKS and lands the claims on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. Pass `jwt.audience: false` only when the issuer does not put this MCP URL in the token.
+
+```ts
+import { createMcpHandler, createMcpOAuth, defineMcpTool } from 'nitro-mcp-toolkit'
+
+const oauth = createMcpOAuth({
+  resource: 'https://api.example.com/mcp',
+  authorizationServers: ['https://auth.example.com'],
+  jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+})
+
+export default createMcpHandler({
+  auth: oauth.auth,
+  tools: [defineMcpTool({ name: 'who', handler: (event) => event.context.oauth?.email })],
+})
+```
+
+Mount `oauth.metadataHandler` on `oauth.metadataPath` to serve the RFC 9728 protected-resource document. Every `401` then carries `WWW-Authenticate: Bearer realm="mcp", resource_metadata="…"` pointing at it, which is how a client discovers where to authenticate.
+
+#### Opaque tokens, or extra checks
+
+`createMcpOAuth({ verify })` replaces JWKS verification with your own callback. Audience validation belongs inside `verify` when `jwt` is omitted — otherwise a token minted for another service is accepted.
+
 ### Zero-config: `mcp()`
 
 `mcp()`'s options cross into generated code as JSON, so its `auth` is the JSON-serializable subset of what `createMcpHandler` accepts above — a static `tokens` list, no `validate` callback. Omit it and that server stays open, exactly like every other `mcp()` option:
@@ -440,24 +467,6 @@ export default defineConfig({
 ```
 
 For a `validate` callback, or anything else that is a live function rather than data, mount `createMcpHandler` yourself in a route file instead — the [Authentication](#authentication) examples above are exactly that.
-
-### Protected resource metadata
-
-If you act as an OAuth 2.1 resource server, point clients at your [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728) metadata document — served by your own app, not this package — so a `401` is enough to discover your authorization server:
-
-```ts
-auth: {
-  schemes: ['bearer'],
-  validate: verifyToken,
-  resourceMetadataUrl: 'https://example.com/.well-known/oauth-protected-resource',
-}
-```
-
-Every `401` then answers with `WWW-Authenticate: Bearer realm="mcp", resource_metadata="https://example.com/.well-known/oauth-protected-resource"`.
-
-There is no token format, issuer or audience model here — `validate` is opaque credential comparison, so **audience validation belongs inside it**: verify that the presented token was issued for this server (its `aud` claim, or the equivalent introspection result) before returning `true`, or a token minted for another service is accepted, the confused-deputy attack the spec's authorization security considerations call out.
-
-In tests, pass the credential as `{ headers }` on `createMcpTestClient` rather than forging the transport's `fetch`.
 
 ## Testing
 

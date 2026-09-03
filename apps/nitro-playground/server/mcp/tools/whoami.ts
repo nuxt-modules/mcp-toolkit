@@ -16,6 +16,7 @@ export default defineMcpTool({
       protocolVersion: mcp.protocolVersion ?? null,
       requestState: mcp.requestState ?? null,
       aborted: mcp.signal?.aborted ?? false,
+      oauth: event.context.oauth ?? null,
     }
   },
 })

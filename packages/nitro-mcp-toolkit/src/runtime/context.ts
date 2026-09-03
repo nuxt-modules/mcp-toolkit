@@ -20,6 +20,7 @@ export interface McpNotifier {
 export type McpEvent = H3Event & {
   context: H3Event['context'] & {
     mcp: RequestContext & { notify: McpNotifier }
+    oauth?: import('./oauth.ts').McpOAuthClaims
   }
 }
 

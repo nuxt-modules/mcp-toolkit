@@ -12,8 +12,10 @@ describe('public exports', () => {
         "MODERN_PROTOCOL_VERSION",
         "McpJsonRpcError",
         "audioResult",
+        "authorizationServerMetadataUrl",
         "canRequestInput",
         "createMcpHandler",
+        "createMcpOAuth",
         "defineMcpPrompt",
         "defineMcpResource",
         "defineMcpTool",
@@ -26,6 +28,7 @@ describe('public exports', () => {
         "inputRequired",
         "mcpElicit",
         "mcpElicitUrl",
+        "protectedResourceMetadataUrl",
       ]
     `)
   })
