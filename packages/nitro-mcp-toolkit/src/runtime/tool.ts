@@ -13,19 +13,20 @@ import type {
 } from 'h3-mcp'
 import type { McpEvent } from './context.ts'
 import type { McpTool } from './definition.ts'
-import type { McpToolValue } from './results.ts'
+import type { McpToolResult, McpToolValue } from './results.ts'
 
 type Schema = StandardTypedV1
 type Awaitable<T> = T | Promise<T>
 
 /**
  * What a tool handler may return: the shape described by `outputSchema` when
- * one is declared, any plain value otherwise, or a full protocol result.
+ * one is declared, any plain value otherwise. Use `toolResult` for a full
+ * protocol envelope alongside an output schema.
  */
 export type McpToolReturn<Output extends Schema | undefined> =
-  | CallToolResult
+  | McpToolResult
   | InputRequiredResult
-  | (Output extends Schema ? StandardTypedV1.InferInput<Output> : McpToolValue)
+  | (Output extends Schema ? StandardTypedV1.InferInput<Output> : McpToolValue | CallToolResult)
 
 interface McpToolMetadata {
   /** Identifier the client calls. Derived from the filename when discovered. */

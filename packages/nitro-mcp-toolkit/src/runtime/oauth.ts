@@ -64,8 +64,8 @@ export interface McpOAuthJwtOptions {
   /** Defaults to `authorizationServers`. */
   issuer?: string | string[]
   /**
-   * Defaults to `resource`. Pass `false` to skip the check when the issuer
-   * does not put this MCP URL in `aud` (it may use `azp` instead).
+   * Defaults to `resource`. `false` requires a custom `verify` callback that
+   * validates resource binding; `azp` alone is not a resource audience.
    */
   audience?: string | string[] | false
   /** When set, the token's `azp` must be one of these. */
@@ -82,7 +82,7 @@ export interface McpOAuthOptions {
   resource: string
   /** Issuers that mint tokens for `resource`. At least one. */
   authorizationServers: string[]
-  /** Advertised in metadata and, when set, in the `401` challenge. */
+  /** Advertised as `scopes_supported` in resource metadata. */
   scopesSupported?: string[]
   jwt?: McpOAuthJwtOptions
   /**
@@ -104,7 +104,7 @@ export interface McpOAuthOptions {
  * `mcp({ oauth })` accepts it. Opaque tokens still use `createMcpOAuth({ verify })`.
  */
 export type McpOAuthSetup = Omit<McpOAuthOptions, 'jwt' | 'verify'> & {
-  jwt: McpOAuthJwtOptions
+  jwt: Omit<McpOAuthJwtOptions, 'audience'> & { audience?: string | string[] }
 }
 
 export interface McpOAuth {
@@ -154,11 +154,12 @@ function createJwtVerifier(jwt: McpOAuthJwtOptions, resource: string, issuers: s
         issuer,
         ...(audience === undefined ? {} : { audience }),
         clockTolerance: 5,
+        requiredClaims: ['exp', 'sub'],
       })
 
       if (typeof payload.sub !== 'string' || payload.sub === '') return false
 
-      if (parties?.length) {
+      if (parties) {
         if (typeof payload.azp !== 'string' || !parties.includes(payload.azp)) return false
       }
 
@@ -221,6 +222,12 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
 
   if (!options.jwt && !options.verify) {
     throw new Error('[nitro-mcp-toolkit] `createMcpOAuth` needs `jwt` or `verify`.')
+  }
+
+  if (options.jwt?.audience === false && !options.verify) {
+    throw new Error(
+      '[nitro-mcp-toolkit] Disabling audience validation requires a resource verifier in `verify`.',
+    )
   }
 
   const verifyJwt = options.jwt

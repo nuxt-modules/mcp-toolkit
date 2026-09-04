@@ -32,8 +32,8 @@ interface McpResourceMetadata {
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
   /**
-   * OAuth scopes the access token must all carry to read this resource. It
-   * still appears in `resources/list`; a read without them is refused.
+   * OAuth scopes required by reads, enumeration and completion callbacks.
+   * Static definition metadata remains visible.
    */
   scopes?: string[]
   mimeType?: string
@@ -131,8 +131,18 @@ export function defineMcpResource(
           ...advertised,
           name: identity.name,
           uriTemplate,
-          list,
-          complete,
+          list:
+            list &&
+            ((event) => {
+              requireScopes(event, scopes, 'resource', identity.name)
+              return list(event)
+            }),
+          complete:
+            complete &&
+            ((context, event) => {
+              requireScopes(event, scopes, 'resource', identity.name)
+              return complete(context, event)
+            }),
           handler: async (url: URL, variables: Record<string, string>, event: H3Event) => {
             requireScopes(event, scopes, 'resource', identity.name)
             return toReadResult(url, await handler(url, variables, attachNotify(event, notify)))

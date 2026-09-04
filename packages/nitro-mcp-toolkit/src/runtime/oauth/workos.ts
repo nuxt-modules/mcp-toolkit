@@ -1,44 +1,30 @@
 import { envValue } from './env.ts'
+import { assertAbsoluteHttpUrl } from '../oauth-url.ts'
 import type { McpOAuthSetup } from '../oauth.ts'
 
-const ISSUER = 'https://api.workos.com'
-
 export interface WorkOSOAuthOptions {
-  /**
-   * This MCP endpoint as a resource identifier.
-   *
-   * @example 'https://api.example.com/mcp'
-   */
+  /** The MCP URL configured as a Resource Indicator in WorkOS. */
   resource: string
-  /**
-   * WorkOS client id. Defaults to `WORKOS_CLIENT_ID`. Access-token `aud` is
-   * this client, not `resource`.
-   *
-   * @example 'client_123456789'
-   */
-  clientId?: string
+  /** AuthKit issuer URL. Defaults to `WORKOS_AUTHKIT_ISSUER`. */
+  issuer?: string
   scopesSupported?: string[]
 }
 
-/**
- * WorkOS AuthKit session tokens: JWKS at `/sso/jwks/{clientId}`, `iss` is
- * `https://api.workos.com`, `aud` is the client id.
- */
+/** WorkOS Connect access tokens bound to this MCP resource. */
 export function workos(options: WorkOSOAuthOptions): McpOAuthSetup {
-  const clientId = options.clientId ?? envValue(['WORKOS_CLIENT_ID'])
-
-  if (!clientId) {
-    throw new Error('[nitro-mcp-toolkit] `workos` needs `clientId`, or `WORKOS_CLIENT_ID`.')
+  const value = options.issuer ?? envValue(['WORKOS_AUTHKIT_ISSUER'])
+  if (!value) {
+    throw new Error('[nitro-mcp-toolkit] `workos` needs `issuer`, or `WORKOS_AUTHKIT_ISSUER`.')
   }
-
+  const issuer = assertAbsoluteHttpUrl(value, '`workos.issuer`').href.replace(/\/+$/, '')
   return {
     resource: options.resource,
-    authorizationServers: [ISSUER],
+    authorizationServers: [issuer],
     jwt: {
-      jwks: `${ISSUER}/sso/jwks/${clientId}`,
-      issuer: ISSUER,
-      audience: clientId,
+      jwks: `${issuer}/oauth2/jwks`,
+      issuer,
     },
+    authorizationServer: issuer,
     ...(options.scopesSupported ? { scopesSupported: options.scopesSupported } : {}),
   }
 }

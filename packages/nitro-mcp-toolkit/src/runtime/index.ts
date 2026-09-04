@@ -10,7 +10,7 @@ export { defineMcpPlugins } from './plugins.ts'
 export { defineMcpPrompt } from './prompt.ts'
 export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
 export { defineMcpResource } from './resource.ts'
-export { audioResult, imageResult } from './results.ts'
+export { audioResult, imageResult, toolResult } from './results.ts'
 export { defineMcpTool } from './tool.ts'
 export {
   canRequestInput,
@@ -55,7 +55,7 @@ export type {
   McpResource,
   McpTool,
 } from './definition.ts'
-export type { McpToolValue } from './results.ts'
+export type { McpToolResult, McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 
 export type {

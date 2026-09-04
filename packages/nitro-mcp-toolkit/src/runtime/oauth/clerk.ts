@@ -18,8 +18,8 @@ export interface ClerkOAuthOptions {
    */
   publishableKey?: string
   /**
-   * `azp` values this resource accepts. Omit to accept any OAuth client this
-   * Clerk instance issued.
+   * Additional allowed `azp` values. This check does not replace the resource
+   * audience check. An empty list denies every token.
    */
   authorizedParties?: string[]
   scopesSupported?: string[]
@@ -54,8 +54,8 @@ function frontendApiFromPublishableKey(key: string): string {
 }
 
 /**
- * Clerk's issuer, JWKS, and the `aud` skip Clerk access tokens need (`azp`
- * holds the OAuth client). RFC 8414 is proxied from the Frontend API so older
+ * Clerk issuer and JWKS with `aud` bound to the MCP resource.
+ * RFC 8414 is proxied from the Frontend API so older
  * MCP clients that look on the resource origin still discover it.
  */
 export function clerk(options: ClerkOAuthOptions): McpOAuthSetup {
@@ -75,7 +75,6 @@ export function clerk(options: ClerkOAuthOptions): McpOAuthSetup {
     jwt: {
       jwks: `${issuer}/.well-known/jwks.json`,
       issuer,
-      audience: false,
       ...(options.authorizedParties ? { authorizedParties: options.authorizedParties } : {}),
     },
     scopesSupported: options.scopesSupported ?? CLERK_SCOPES,

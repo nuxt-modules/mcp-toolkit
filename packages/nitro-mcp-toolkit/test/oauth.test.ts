@@ -8,6 +8,8 @@ import {
   defineMcpTool,
   protectedResourceMetadataUrl,
 } from '../src/runtime/index.ts'
+import { clerk } from '../src/runtime/oauth/clerk.ts'
+import { workos } from '../src/runtime/oauth/workos.ts'
 import { createMcpTestClient, textOf } from '../src/testing/index.ts'
 import type { AddressInfo } from 'node:net'
 import type { JWK } from 'jose'
@@ -88,6 +90,16 @@ describe('createMcpOAuth', () => {
         verify: () => true,
       }),
     ).toThrow(/at least one issuer/)
+  })
+
+  it('requires a resource verifier when audience validation is disabled', () => {
+    expect(() =>
+      createMcpOAuth({
+        resource: 'https://api.example.com/mcp',
+        authorizationServers: ['https://auth.example.com'],
+        jwt: { jwks: 'https://auth.example.com/jwks', audience: false },
+      }),
+    ).toThrow(/resource verifier/)
   })
 
   it('builds metadata and a bearer auth gate', () => {
@@ -224,6 +236,7 @@ describe('createMcpOAuth jwt', () => {
     const oauth = createMcpOAuth({
       resource: RESOURCE,
       authorizationServers: [ISSUER],
+      ...(audience === false ? { verify: () => true } : {}),
       jwt: {
         jwks: jwksUrl,
         ...(audience === undefined ? {} : { audience }),
@@ -258,6 +271,29 @@ describe('createMcpOAuth jwt', () => {
     })
   })
 
+  it('refuses a JWT without an expiration', async () => {
+    const token = await new SignJWT({ sub: 'ada' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+      .setIssuer(ISSUER)
+      .setAudience(RESOURCE)
+      .sign(privateKey)
+    expect((await handler().fetch(ping(RESOURCE, token))).status).toBe(401)
+  })
+
+  it('refuses an expired JWT and a JWT from another issuer', async () => {
+    const expired = await new SignJWT({ sub: 'ada' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+      .setIssuer(ISSUER)
+      .setAudience(RESOURCE)
+      .setExpirationTime(1)
+      .sign(privateKey)
+    expect((await handler().fetch(ping(RESOURCE, expired))).status).toBe(401)
+    expect(
+      (await handler().fetch(ping(RESOURCE, await sign({}, RESOURCE, 'https://other.example.com'))))
+        .status,
+    ).toBe(401)
+  })
+
   it('refuses a JWT bound to another audience', async () => {
     const token = await sign({}, 'https://other.example.com/mcp')
     const response = await handler().fetch(ping(RESOURCE, token))
@@ -281,6 +317,33 @@ describe('createMcpOAuth jwt', () => {
     const response = await handler(false, ['client_abc']).fetch(ping(RESOURCE, token))
     expect(response.status).toBe(401)
   })
+
+  it('denies every party for an explicitly empty allowlist', async () => {
+    const token = await sign({ azp: 'client_abc' })
+    expect((await handler(undefined, []).fetch(ping(RESOURCE, token))).status).toBe(401)
+  })
+
+  it.each([
+    clerk({ resource: RESOURCE, publishableKey: `pk_test_${btoa('acme.clerk.accounts.dev$')}` }),
+    workos({ resource: RESOURCE, issuer: 'https://acme.authkit.app' }),
+  ])(
+    'checks the connector resource audience against signed tokens ($authorizationServers)',
+    async (setup) => {
+      const oauth = createMcpOAuth({
+        ...setup,
+        resource: `${RESOURCE}/`,
+        jwt: { ...setup.jwt, jwks: jwksUrl },
+      })
+      const endpoint = createMcpHandler({ auth: oauth.auth })
+      const issuer = setup.authorizationServers[0]!
+      const valid = await sign({}, RESOURCE, issuer)
+      expect((await endpoint.fetch(ping(RESOURCE, valid))).status).toBe(200)
+      for (const audience of ['https://other.example.com/mcp', false] as const) {
+        const token = await sign({ azp: 'another-client', org_id: 'another-org' }, audience, issuer)
+        expect((await endpoint.fetch(ping(RESOURCE, token))).status).toBe(401)
+      }
+    },
+  )
 
   it('refuses a token that is not a JWT', async () => {
     const response = await handler().fetch(ping(RESOURCE, 'nope'))

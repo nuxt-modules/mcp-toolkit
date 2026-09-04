@@ -21,7 +21,7 @@ If you don't call `next()`, it's called automatically after your middleware retu
 ## Soft Authentication (recommended)
 
 ::callout{icon="i-lucide-triangle-alert" color="warning"}
-**Don't `throw createError({ statusCode: 401 })`** from MCP middleware — most clients interpret a `401` on the MCP route as "this server requires OAuth" and start the discovery flow. Instead, set context on success and let per-tool `enabled` guards hide protected tools, or return `403` for hard rejections.
+For manually configured API keys without OAuth metadata, set context on success and guard every protected operation. A `401` can trigger OAuth discovery. For an OAuth resource server, that is intentional: return `401` with its `WWW-Authenticate` metadata challenge. Do not apply this API-key recipe’s soft authentication to Nitro’s `createMcpOAuth` flow.
 ::
 
 ```typescript [server/mcp/index.ts]

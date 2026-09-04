@@ -33,7 +33,6 @@ describe('clerk', () => {
     expect(options.jwt).toEqual({
       jwks: 'https://acme.clerk.accounts.dev/.well-known/jwks.json',
       issuer: 'https://acme.clerk.accounts.dev',
-      audience: false,
     })
     expect(options.scopesSupported).toEqual(['openid', 'profile', 'email'])
     expect(options.authorizationServer).toBe('https://acme.clerk.accounts.dev')
@@ -96,21 +95,20 @@ describe('okta', () => {
 })
 
 describe('workos', () => {
-  it('verifies AuthKit tokens against the client JWKS', () => {
-    const options = workos({ resource: RESOURCE, clientId: 'client_abc' })
+  it('verifies resource-bound tokens against the AuthKit issuer', () => {
+    const options = workos({ resource: RESOURCE, issuer: 'https://acme.authkit.app' })
 
-    expect(options.authorizationServers).toEqual(['https://api.workos.com'])
+    expect(options.authorizationServers).toEqual(['https://acme.authkit.app'])
     expect(options.jwt).toEqual({
-      jwks: 'https://api.workos.com/sso/jwks/client_abc',
-      issuer: 'https://api.workos.com',
-      audience: 'client_abc',
+      jwks: 'https://acme.authkit.app/oauth2/jwks',
+      issuer: 'https://acme.authkit.app',
     })
-    expect(options.authorizationServer).toBeUndefined()
+    expect(options.authorizationServer).toBe('https://acme.authkit.app')
   })
 
-  it('throws without a client id', () => {
-    withoutEnv(['WORKOS_CLIENT_ID'], () => {
-      expect(() => workos({ resource: RESOURCE })).toThrow(/clientId/)
+  it('throws without an AuthKit issuer', () => {
+    withoutEnv(['WORKOS_AUTHKIT_ISSUER'], () => {
+      expect(() => workos({ resource: RESOURCE })).toThrow(/issuer/)
     })
   })
 })

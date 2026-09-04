@@ -6,7 +6,7 @@ import {
   defineMcpResource,
   defineMcpTool,
 } from '../src/runtime/index.ts'
-import type { CallToolResult } from '../src/runtime/index.ts'
+import type { CallToolResult, McpToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
 import type { mcp } from 'nitro-mcp-toolkit/servers'
@@ -50,7 +50,8 @@ describe('tool typing', () => {
 
   it('narrows the return type to the output schema', () => {
     expectTypeOf<{ bmi: number }>().toExtend<McpToolReturn<typeof output>>()
-    expectTypeOf<CallToolResult>().toExtend<McpToolReturn<typeof output>>()
+    expectTypeOf<CallToolResult>().not.toExtend<McpToolReturn<typeof output>>()
+    expectTypeOf<McpToolResult>().toExtend<McpToolReturn<typeof output>>()
 
     // The whole point of declaring `outputSchema`: a mismatched shape, and the
     // loose values allowed without a schema, stop being valid returns.

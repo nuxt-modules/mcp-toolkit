@@ -30,6 +30,7 @@ describe('public exports', () => {
         "mcpElicit",
         "mcpElicitUrl",
         "protectedResourceMetadataUrl",
+        "toolResult",
       ]
     `)
   })

@@ -95,7 +95,7 @@
   "peerDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
     "h3": "^2.0.1-rc.27",
-    "nitro": "^3.0.0"
+    "nitro": "3.0.260610-beta || ^3.0.0"
   },
   "peerDependenciesMeta": {
     "@modelcontextprotocol/client": {
