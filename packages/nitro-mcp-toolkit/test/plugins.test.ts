@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { discoverPlugins, isPluginsFile } from '../src/module/discover.ts'
 import mcp from '../src/module/index.ts'
 import { renderHandler } from '../src/module/template.ts'
+import { defineMcpPlugins } from '../src/runtime/plugins.ts'
 
 async function appWith(files: Record<string, string>): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'nitro-mcp-plugins-'))
@@ -21,6 +22,16 @@ async function appWith(files: Record<string, string>): Promise<string> {
 }
 
 const A_PLUGIN = `export default [{ id: 'fixture/one' }]\n`
+
+describe('defineMcpPlugins', () => {
+  // The generated handler passes this very array to `extensionPlugins`, and a
+  // plugin instance belongs to one handler, so the helper must not copy it.
+  it('hands back the array it was given', () => {
+    const plugins = [{ id: 'fixture/one' }]
+
+    expect(defineMcpPlugins(plugins)).toBe(plugins)
+  })
+})
 
 describe('discovering the plugins file', () => {
   it('finds it under any extension the convention allows', async () => {

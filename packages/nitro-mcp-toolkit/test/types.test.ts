@@ -1,6 +1,11 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
-import { defineMcpPrompt, defineMcpResource, defineMcpTool } from '../src/runtime/index.ts'
+import {
+  defineMcpPlugins,
+  defineMcpPrompt,
+  defineMcpResource,
+  defineMcpTool,
+} from '../src/runtime/index.ts'
 import type { CallToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
@@ -72,12 +77,14 @@ describe('the generated handler modules', () => {
   })
 })
 
-// The convention is only usable if an app can name the type its plugins file
-// must satisfy, without reaching into h3-mcp itself.
+// Generated code imports the plugins file and is not typechecked with the app,
+// so the helper is the only thing standing between a typo there and a runtime
+// failure. It takes the plugins as h3-mcp installs them, and nothing narrower.
 describe('the plugins convention', () => {
-  it('types the array server/mcp/plugins.ts exports', () => {
-    expectTypeOf<[{ id: 'acme/stamp'; settings: () => Record<string, never> }]>().toExtend<
-      ExtensionPlugin[]
+  it('checks the array server/mcp/plugins.ts exports', () => {
+    expectTypeOf(defineMcpPlugins).parameter(0).toEqualTypeOf<readonly ExtensionPlugin[]>()
+    expectTypeOf(defineMcpPlugins([{ id: 'acme/stamp', settings: () => ({}) }])).toEqualTypeOf<
+      readonly ExtensionPlugin[]
     >()
 
     // The id is the key the extension is advertised under, so it is required.

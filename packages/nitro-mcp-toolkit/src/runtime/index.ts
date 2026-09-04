@@ -6,6 +6,7 @@ export {
   authorizationServerMetadataUrl,
   protectedResourceMetadataUrl,
 } from './oauth.ts'
+export { defineMcpPlugins } from './plugins.ts'
 export { defineMcpPrompt } from './prompt.ts'
 export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
 export { defineMcpResource } from './resource.ts'
