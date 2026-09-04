@@ -86,10 +86,12 @@ Both are advertised in the definition's `_meta`, so a client sees them in `tools
 ```ts
 // server/mcp/plugins.ts
 import { mcpTasks } from 'h3-mcp/tasks'
-import type { ExtensionPlugin } from 'nitro-mcp-toolkit'
+import { defineMcpPlugins } from 'nitro-mcp-toolkit'
 
-export default [mcpTasks({ max: 100 })] satisfies ExtensionPlugin[]
+export default defineMcpPlugins([mcpTasks({ max: 100 })])
 ```
+
+The helper only returns what it is given, but it is what checks the file: the generated handler is its only importer, and generated code is not typechecked with the app, so a misspelled `id` or hook would otherwise surface as a runtime failure.
 
 A plugin is a live function, so it cannot be an `mcp()` option — those cross into generated code and are data only. The file is how one reaches a generated handler.
 
