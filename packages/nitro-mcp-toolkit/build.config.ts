@@ -23,6 +23,7 @@ export default defineBuildConfig({
           'nitro/types',
           'h3',
           'h3-mcp',
+          'jose',
           'pathe',
           'tinyglobby',
           '@modelcontextprotocol/client',

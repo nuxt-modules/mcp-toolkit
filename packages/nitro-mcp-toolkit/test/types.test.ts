@@ -18,6 +18,7 @@ describe('tool typing', () => {
       handler: (args, event) => {
         expectTypeOf(args).toEqualTypeOf<{ name: string; times: number }>()
         expectTypeOf(event).toEqualTypeOf<McpEvent>()
+        expectTypeOf(event.context.oauth?.sub).toEqualTypeOf<string | undefined>()
         return 'ok'
       },
     })
