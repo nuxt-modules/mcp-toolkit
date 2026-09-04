@@ -12,6 +12,9 @@ export type DefinitionDir = (typeof DEFINITION_DIRS)[number]
 
 const PATTERN = '**/*.{ts,js,mts,mjs}'
 
+const PLUGINS_PATTERN = 'plugins.{ts,js,mts,mjs}'
+const PLUGINS_FILE_RE = /^plugins\.(?:ts|js|mts|mjs)$/
+
 /** A definition file, and everything its path says about the definition. */
 export interface DiscoveredDefinition {
   /** Which of the three directories it was found in. */
@@ -50,6 +53,30 @@ export async function discoverDefinitions(dir: string): Promise<DiscoveredDefini
   )
 
   return perDir.flat()
+}
+
+/**
+ * The optional plugins file beside the three directories. Its default export is
+ * installed as the endpoint's `extensionPlugins`, which is how a plugin reaches
+ * a `mcp()` server: the module carries only this path, never the plugins.
+ *
+ * Sorted, and every match is returned — two of them is a configuration error,
+ * reported where it can name the route rather than swallowed here.
+ */
+export async function discoverPlugins(dir: string): Promise<string[]> {
+  const paths = await glob(PLUGINS_PATTERN, {
+    cwd: dir,
+    absolute: true,
+    onlyFiles: true,
+    expandDirectories: false,
+  })
+
+  return paths.sort((a, b) => a.localeCompare(b))
+}
+
+/** Whether `path` is the plugins file of the directory scanned at `dir`. */
+export function isPluginsFile(dir: string, path: string): boolean {
+  return dirname(path) === dir && PLUGINS_FILE_RE.test(basename(path))
 }
 
 function describe(dir: DefinitionDir, root: string, path: string): DiscoveredDefinition {

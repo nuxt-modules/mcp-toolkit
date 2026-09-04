@@ -192,6 +192,8 @@ The runtime is written against a pinned `h3-mcp` (currently 0.2.0). That release
 
 **`X-MCP-Tools` is the same kind of gate** (`src/runtime/tools-header.ts`): allowlist of tool names, HTTP 400 on unknowns, applied before the engine runs. `handler.definitions` stays the full catalog.
 
+**Plugins reach a `mcp()` server through `<dir>/plugins.ts`, not through an option** — an `ExtensionPlugin` is a live function and `mcp()` options cross into generated code as JSON. `discoverPlugins` returns *every* match so the caller can refuse an ambiguous pair; `onePluginsFile` in `src/module/index.ts` does that where it can name the route, which also keeps the watcher's `served()` from dying on a misconfiguration. The handler virtual is `async` for the same reason the registry is: a file written after `setup` must be seen at rebuild. Adding the convention means four places, not one — `discover.ts`, `template.ts` (`renderHandler`'s second argument), `watch.ts` (`couldChangeServed` plus `served`, or creating the file triggers no `rollup:reload`), and `report.ts`.
+
 **OAuth** is a generic resource-server: `mcp({ oauth: { resource, authorizationServers, jwt } })` or `createMcpOAuth`. JWT verify, claims on `event.context.oauth`, RFC 9728 metadata mounted. Connectors (`nitro-mcp-toolkit/oauth/clerk`, `/okta`, `/workos`) return that same options object — Clerk infers issuer/JWKS from `CLERK_PUBLISHABLE_KEY` and skips `aud` (client is in `azp`). The package does not mint tokens. Opaque tokens still mean `createMcpOAuth({ verify })` in a route file.
 
 ### MCP Definitions
