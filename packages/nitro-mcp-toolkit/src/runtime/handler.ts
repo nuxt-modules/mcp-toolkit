@@ -149,15 +149,12 @@ export function createMcpHandler(
 
   // Static resolve throws on a bad `auth` / `origin` when the handler is
   // created, rather than on the first request.
-  defineMcpHandler(
-    {
-      name,
-      version,
-      ...(auth !== undefined ? { auth } : {}),
-      origin: resolvedOrigin,
-    },
-    setup,
-  )
+  const gate = defineMcpHandler({
+    name,
+    version,
+    ...(auth !== undefined ? { auth } : {}),
+    origin: resolvedOrigin,
+  })
 
   const registrations = resolveDefinitions([...tools, ...resources, ...prompts])
   const { notify, onListen } = createNotifier()
@@ -202,15 +199,9 @@ export function createMcpHandler(
       if (unknownNames.length) {
         // Origin and auth must run first: a 400 on the name would otherwise
         // tell an unauthenticated caller whether the tool exists.
-        const probe = new H3Event(
-          new Request(event.url, {
-            method: 'POST',
-            headers: event.req.headers,
-            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
-          }),
-        )
-        const gated = await toResponse(await engine(probe), probe)
+        const gated = await toResponse(await gate(event), event)
         if (gated.status === 401 || gated.status === 403) return gated
+        await gated.body?.cancel()
         return unknownToolsResponse(unknownNames)
       }
     }

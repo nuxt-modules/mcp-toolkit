@@ -304,7 +304,7 @@ describe('the mcp() module', () => {
     const generated = await render(guarded, '#mcp/mcp/oauth')
     expect(generated).toContain('"https://acme.clerk.accounts.dev"')
     expect(generated).toContain('https://acme.clerk.accounts.dev/.well-known/jwks.json')
-    expect(generated).toContain('"audience":false')
+    expect(generated).toContain('resource: "http://localhost:3030/mcp"')
     expect(generated).toContain('authorizationServer')
 
     await guarded.close()

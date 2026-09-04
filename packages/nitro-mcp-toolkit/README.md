@@ -209,15 +209,15 @@ export default defineMcpTool({
 
 Return whatever is natural; the toolkit builds the protocol result.
 
-| You return                  | The client receives           |
-| --------------------------- | ----------------------------- |
-| `string`                    | one text block                |
-| `number`, `boolean`         | one text block, stringified   |
-| `null`, `undefined`         | no content                    |
-| object, array               | one text block of pretty JSON |
-| a full `CallToolResult`     | used as-is                    |
-| `imageResult(base64, mime)` | an image block                |
-| `audioResult(base64, mime)` | an audio block                |
+| You return                  | The client receives                 |
+| --------------------------- | ----------------------------------- |
+| `string`                    | one text block                      |
+| `number`, `boolean`         | one text block, stringified         |
+| `null`, `undefined`         | no content                          |
+| object, array               | one text block of pretty JSON       |
+| a full `CallToolResult`     | used as-is without an output schema |
+| `imageResult(base64, mime)` | an image block                      |
+| `audioResult(base64, mime)` | an audio block                      |
 
 ### Structured output
 
@@ -230,6 +230,24 @@ export default defineMcpTool({
   handler: ({ weightKg, heightM }) => ({ bmi: weightKg / heightM ** 2 }),
 })
 ```
+
+When a tool declares `outputSchema`, use `toolResult()` for a full protocol envelope. Plain objects always mean schema data, even if they contain `content` or `isError` fields:
+
+```ts
+import { defineMcpTool, toolResult } from 'nitro-mcp-toolkit'
+
+const count = defineMcpTool({
+  name: 'count',
+  outputSchema: z.object({ n: z.number() }),
+  handler: () =>
+    toolResult({
+      content: [{ type: 'text', text: 'One item' }],
+      structuredContent: { n: 1 },
+    }),
+})
+```
+
+This also permits explicit `isError` results without treating their envelope as schema data. Existing full-result returns on tools with `outputSchema` need this wrapper.
 
 A return that doesn't actually satisfy a declared `outputSchema` is a protocol error (`-32602`), not an `isError` result — the engine validates the advertised shape after the handler returns.
 
@@ -443,7 +461,7 @@ Enabling `auth` requires at least one of `tokens` or `validate` — a config wit
 
 This package is the **resource server**, not the authorization server. It does not mint tokens, serve a login page, or speak DCR. Pair it with an authorization server — Clerk, Okta, WorkOS, Auth0, or [Better Auth's MCP plugin](https://www.better-auth.com/docs/plugins/mcp).
 
-`mcp({ oauth })` is the usual path: JWT access tokens, file-based definitions, RFC 9728 metadata mounted for you. Verified claims land on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. Pass `jwt.audience: false` only when the issuer does not put this MCP URL in the token.
+`mcp({ oauth })` is the usual path: JWT access tokens, file-based definitions, RFC 9728 metadata mounted for you. Verified claims land on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. JWTs must carry a nonempty `sub` and an `exp`. `jwt.audience: false` requires a `verify` callback that checks resource binding itself; an `azp` allowlist identifies clients, not the resource a token may access. An empty `authorizedParties` list denies every token.
 
 Connectors live on their own subpaths (`nitro-mcp-toolkit/oauth/clerk`, `/okta`, `/workos`) so an app that uses none of them never loads them. Each returns the same options `createMcpOAuth` accepts.
 
@@ -457,7 +475,7 @@ mcp({
 })
 ```
 
-Issuer and JWKS come from `CLERK_PUBLISHABLE_KEY` or `NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. Audience is not checked (Clerk puts the OAuth client in `azp`); pass `authorizedParties` to allowlist clients. RFC 8414 metadata is proxied from Clerk so older MCP clients that look on the resource origin still discover it.
+Issuer and JWKS come from `CLERK_PUBLISHABLE_KEY` or `NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. The token must have `aud` equal to `resource`. Configure your token issuance accordingly; a Clerk session or OAuth token without that audience is refused. `authorizedParties` adds an `azp` allowlist but cannot replace audience validation. RFC 8414 metadata is proxied from Clerk so older MCP clients that look on the resource origin still discover it.
 
 ```ts
 defineMcpTool({
@@ -485,7 +503,7 @@ mcp({
 
 #### WorkOS
 
-AuthKit session tokens. JWKS is `/sso/jwks/{clientId}`; `aud` is the client id, not the MCP URL. `clientId` defaults to `WORKOS_CLIENT_ID`.
+Use WorkOS Connect access tokens from your AuthKit issuer. Set `WORKOS_AUTHKIT_ISSUER` (for example `https://acme.authkit.app`) or pass `issuer`. Configure the MCP URL as a [WorkOS Resource Indicator](https://workos.com/docs/authkit/mcp). JWKS is `${issuer}/oauth2/jwks`; `aud` must match `resource`. Existing `clientId` / `WORKOS_CLIENT_ID` configuration must migrate: session tokens and tokens with the environment client ID as audience are refused.
 
 ```ts
 import { workos } from 'nitro-mcp-toolkit/oauth/workos'
@@ -550,7 +568,7 @@ The scopes are read off the verified claims on `event.context.oauth`: `scope`, s
 }
 ```
 
-**A scoped definition is still listed.** `tools/list` shows it to every caller, and the scopes come back in its `_meta` so a client can say why a call would fail. Only the call itself is gated. The reason is the engine's order: a handler's options resolve before the request is authenticated, so nothing that builds a listing has seen the token yet. Treat `scopes` as authorization, not as concealment — if a tool's _existence_ is sensitive, put it on a second endpoint behind its own `auth`.
+**A scoped definition is still listed.** `tools/list` shows it to every caller, and the scopes come back in its `_meta` so a client can say why a call would fail. Static metadata stays visible. Resource-template `list` and `complete` callbacks, and prompt-argument `complete` callbacks, also require the definition’s scopes. If any template enumeration lacks scopes, `resources/list` fails before that template’s callback runs; it does not return a partial catalog. The reason static listings stay visible is the engine's order: a handler's options resolve before the request is authenticated, so nothing that builds a listing has seen the token yet. Treat `scopes` as authorization, not as concealment — if a tool's _existence_ is sensitive, put it on a second endpoint behind its own `auth`.
 
 It fails closed: a definition that declares `scopes` on an endpoint with no OAuth has no claims to satisfy it, so every call is refused. `handler.definitions` reports the scopes too, so a catalog route can group by them.
 
@@ -621,3 +639,29 @@ Windows is supported: discovery, the imports generated from the paths it finds, 
 ## License
 
 [MIT](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)
+
+### Application security and composition
+
+Definitions can be composed directly: pass imported tools, resources and prompts to `createMcpHandler`. A factory can close over an application service without discovery or ambient globals:
+
+```ts
+function accountTool(accounts: { nameFor(userId: string): Promise<string> }) {
+  return defineMcpTool({
+    name: 'account',
+    scopes: ['account:read'],
+    handler: (event) => accounts.nameFor(event.context.oauth!.sub!),
+  })
+}
+```
+
+Pair this definition with a verifier that establishes `sub`. Scopes authorize an operation; application queries must still enforce the verified user and tenant on every row, resource URI and completion lookup. Client arguments and `X-MCP-Tools` are not identity or tenant boundaries. Catalog metadata is visible to authenticated callers; `handler.definitions` is the full catalog.
+
+Thrown tool error messages, and `HTTPError.data`, are returned to the caller. Catch internal datastore or provider failures at the application boundary and return a deliberate public error. Do not include secrets in errors.
+
+`defineRequestState` signs continuation state but does not encrypt it or make it single-use. Bind state to the authenticated user, tenant and operation, choose an expiry, and use application storage when replay must be prevented. Reauthorize the operation when a continuation resumes.
+
+`handler.notify` broadcasts to subscribers of that handler. Use separate authorized endpoints or an application-controlled subscription filter for tenant-specific notifications; do not broadcast sensitive resource identifiers across tenants.
+
+### Distribution checks
+
+The optional Nitro peer accepts the tested `3.0.260610-beta` and stable `3.x`. `pnpm test:package` packs the package, installs it with ordinary npm peer resolution outside the workspace, checks a runtime-only install, checks public declarations, and builds the real playground with both protocol eras and its protected admin endpoint. It uses Node 24 or later to run TypeScript directly. Declaration checking currently uses `skipLibCheck` because the upstream H3 declarations reference optional host-runtime types.

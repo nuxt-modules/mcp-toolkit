@@ -25,8 +25,8 @@ interface McpPromptMetadata {
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
   /**
-   * OAuth scopes the access token must all carry to expand this prompt. It
-   * still appears in `prompts/list`; an expansion without them is refused.
+   * OAuth scopes required by expansion and completion callbacks.
+   * The prompt still appears in `prompts/list`.
    */
   scopes?: string[]
   icons?: Icon[]
@@ -118,7 +118,15 @@ export function defineMcpPrompt(
         const { arguments: args, handler } = definition
         into.prompts.push({
           ...advertised,
-          arguments: args,
+          arguments: args.map(({ complete, ...argument }): PromptArgument => ({
+            ...argument,
+            complete:
+              complete &&
+              ((context, event) => {
+                requireScopes(event, scopes, 'prompt', identity.name)
+                return complete(context, event)
+              }),
+          })),
           handler: async (parsed: Record<string, string>, event: H3Event) => {
             requireScopes(event, scopes, 'prompt', identity.name)
             return toPromptResult(await handler(parsed, attachNotify(event, notify)))

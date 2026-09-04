@@ -25,6 +25,7 @@
     "lint:docs": "turbo run lint --filter=@nuxtjs/mcp-toolkit-docs",
     "lint:package": "turbo run lint:package --filter=nitro-mcp-toolkit",
     "test": "turbo run test --filter=@nuxtjs/mcp-toolkit --filter=nitro-mcp-toolkit",
+    "test:package": "node scripts/verify-nitro-package.ts",
     "test:coverage": "turbo run test:coverage --filter=nitro-mcp-toolkit",
     "typecheck": "turbo run typecheck",
     "typecheck:docs": "turbo run typecheck --filter=@nuxtjs/mcp-toolkit-docs",
