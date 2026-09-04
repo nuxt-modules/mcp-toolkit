@@ -5,7 +5,7 @@ import {
   renderTable,
   summarize,
   type Measurement,
-} from '../benchmarks/report.ts'
+} from '../benchmarks/catalog.ts'
 
 function row(revision: Measurement['revision'], repeat: number, durations: number[]): Measurement {
   return {

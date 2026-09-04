@@ -15,7 +15,7 @@ For example, compare the last commit with its parent:
 pnpm bench:nitro HEAD^ HEAD --samples 100 --repeats 3 --seed 42
 ```
 
-The runner extracts both revisions into temporary directories, runs the same current harness against each, and removes the directories afterward. It never switches branches or alters your checkout. Git and `tar` must be on `PATH`.
+`catalog.ts` contains the runner, isolated worker and report generation. It extracts both revisions into temporary directories, runs the same current harness against each, and removes the directories afterward. It never switches branches or alters your checkout. Git and `tar` must be on `PATH`.
 
 ## Results and history
 
@@ -25,11 +25,11 @@ Each completed run saves:
 
 - `summary.md`: baseline/candidate p50 and p95, relative p50 changes and bare h3-mcp reference timings.
 - `results.json`: every measured duration, workload and repetition; full commit IDs; Node, OS and CPU information; dependency versions; lockfile and harness hashes; sample counts and seed.
-- The harness files and `pnpm-lock.yaml` used for the run.
+- `catalog.ts` and `pnpm-lock.yaml` used for the run.
 
 Commit the harness and methodology, rather than machine-specific timing tables. The **Nitro benchmarks** workflow runs on relevant pull requests and pushes to `main`, and can also compare refs through manual dispatch. It puts the table in the job summary and retains the raw results and harness as an artifact for 90 days. Download an artifact for longer-term retention. No timing threshold gates a merge; failed requests or malformed results fail the run.
 
-To repeat an archived run, use its harness revision (or saved harness files in this directory), restore its saved lockfile in an isolated checkout, install with `--frozen-lockfile`, and pass the recorded baseline, candidate, samples, repeats and seed. Match Node and hardware when comparing timings across runs. The hash of each harness file lets you verify an exact match even for a local harness edit.
+To repeat an archived run, use its harness revision (or copy the saved `catalog.ts` into this directory), restore its saved lockfile in an isolated checkout, install with `--frozen-lockfile`, and pass the recorded baseline, candidate, samples, repeats and seed. Match Node and hardware when comparing timings across runs. The harness hash lets you verify an exact match even for a local harness edit.
 
 ## Methodology
 
