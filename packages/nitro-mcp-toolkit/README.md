@@ -692,7 +692,7 @@ Thrown tool error messages, and `HTTPError.data`, are returned to the caller. Ca
 
 The optional Nitro peer accepts the tested `3.0.260610-beta` and stable `3.x`. `pnpm test:package` packs the package, installs it with ordinary npm peer resolution outside the workspace, checks a runtime-only install, checks public declarations, and builds the real playground with both protocol eras and its protected admin endpoint. It uses Node 24 or later to run TypeScript directly. Set `MCP_TEST_RUNTIMES=bun,deno` to run the same smoke checks with those executables on `PATH`. CI runs the tested Bun and Deno versions as well. Declaration checking currently uses `skipLibCheck` because the upstream H3 declarations reference optional host-runtime types.
 
-For catalog profiling, run `pnpm --filter nitro-mcp-toolkit bench:catalog`. See [the benchmark methodology and measurements](https://github.com/nuxt-modules/mcp-toolkit/tree/main/packages/nitro-mcp-toolkit/benchmarks).
+For catalog comparisons between Git revisions, run `pnpm bench:nitro <baseline-ref> [candidate-ref]`. See [the benchmark workflow and methodology](https://github.com/nuxt-modules/mcp-toolkit/tree/main/packages/nitro-mcp-toolkit/benchmarks).
 
 ## License
 

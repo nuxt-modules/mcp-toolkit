@@ -204,7 +204,7 @@ For Nitro tools with `outputSchema`, plain objects are schema data; full protoco
 
 `createMcpHandler` accepts readonly tool, resource and prompt collections. Export definitions directly and keep business logic in application services; definition factories are optional. Shared definitions receive the current request context and the serving endpoint's notifier. Never capture a user's identity in a definition shared across requests.
 
-`pnpm --filter nitro-mcp-toolkit bench:catalog` measures dispatch and complete catalog enumeration for 10, 100 and 1,000 tools, in memory and over loopback HTTP. It runs shuffled cases in separate processes and compares against bare h3-mcp; timings are measurements, not CI assertions. `pnpm test:package` also runs the runtime fixture from `test/fixtures/consumer`; `MCP_TEST_RUNTIMES=deno,bun` adds locally installed runtimes.
+`pnpm bench:nitro <baseline-ref> [candidate-ref=HEAD]` compares committed runtime snapshots using the same installed dependencies and benchmark harness. It records raw samples, commit IDs, environment, lockfile and harness hashes, plus a Markdown report under `packages/nitro-mcp-toolkit/benchmarks/results/` (ignored). Cases cover dispatch and complete catalog enumeration for 10, 100 and 1,000 tools, in memory and over loopback HTTP, with seeded ordering and fresh subprocesses. The benchmark workflow retains reports as CI artifacts; timings are measurements, not CI assertions. This isolates source changes; it does not compare dependency upgrades or published bundles. `pnpm test:package` also runs the runtime fixture from `test/fixtures/consumer`; `MCP_TEST_RUNTIMES=deno,bun` adds locally installed runtimes.
 
 ### MCP Definitions
 
