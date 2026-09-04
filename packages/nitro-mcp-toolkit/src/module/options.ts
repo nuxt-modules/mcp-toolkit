@@ -59,6 +59,9 @@ export interface McpServerOptions {
 /**
  * JWT resource-server config for `mcp()`. JSON-serializable, so it can cross
  * into generated code. Opaque tokens or extra checks still mean a route file.
+ *
+ * Connectors (`nitro-mcp-toolkit/oauth/clerk`, `/okta`, `/workos`) return this
+ * shape — pass their result as `oauth`.
  */
 export type McpModuleOAuthOptions = McpOAuthSetup
 
@@ -96,12 +99,10 @@ export interface McpModuleOptions extends McpServerOptions {
    *
    * @example
    * ```ts
+   * import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
+   *
    * mcp({
-   *   oauth: {
-   *     resource: 'https://api.example.com/mcp',
-   *     authorizationServers: ['https://auth.example.com'],
-   *     jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
-   *   },
+   *   oauth: clerk({ resource: 'https://api.example.com/mcp' }),
    * })
    * ```
    */

@@ -427,6 +427,56 @@ This package is the **resource server**, not the authorization server. It does n
 
 `mcp({ oauth })` is the usual path: JWT access tokens, file-based definitions, RFC 9728 metadata mounted for you. Verified claims land on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. Pass `jwt.audience: false` only when the issuer does not put this MCP URL in the token.
 
+Connectors live on their own subpaths (`nitro-mcp-toolkit/oauth/clerk`, `/okta`, `/workos`) so an app that uses none of them never loads them. Each returns the same options `createMcpOAuth` accepts.
+
+#### Clerk
+
+```ts
+import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
+
+mcp({
+  oauth: clerk({ resource: 'https://api.example.com/mcp' }),
+})
+```
+
+Issuer and JWKS come from `CLERK_PUBLISHABLE_KEY` or `NUXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. Audience is not checked (Clerk puts the OAuth client in `azp`); pass `authorizedParties` to allowlist clients. RFC 8414 metadata is proxied from Clerk so older MCP clients that look on the resource origin still discover it.
+
+```ts
+defineMcpTool({
+  name: 'whoami',
+  handler: (event) => event.context.oauth?.sub ?? 'anonymous',
+})
+```
+
+A 401 then answers with `WWW-Authenticate: Bearer realm="mcp", resource_metadata="https://api.example.com/.well-known/oauth-protected-resource/mcp"`. Enable CIMD (or DCR only if the client cannot do CIMD) on the Clerk [OAuth applications](https://dashboard.clerk.com/~/oauth-applications) page so clients can register.
+
+#### Okta
+
+Custom authorization servers only (org-server tokens are opaque). JWKS is `{issuer}/v1/keys`. `OKTA_DOMAIN` or `OKTA_ISSUER` fill in what you omit.
+
+```ts
+import { okta } from 'nitro-mcp-toolkit/oauth/okta'
+
+mcp({
+  oauth: okta({
+    resource: 'https://api.example.com/mcp',
+    domain: 'acme.okta.com',
+  }),
+})
+```
+
+#### WorkOS
+
+AuthKit session tokens. JWKS is `/sso/jwks/{clientId}`; `aud` is the client id, not the MCP URL. `clientId` defaults to `WORKOS_CLIENT_ID`.
+
+```ts
+import { workos } from 'nitro-mcp-toolkit/oauth/workos'
+
+mcp({
+  oauth: workos({ resource: 'https://api.example.com/mcp' }),
+})
+```
+
 #### Any other JWT issuer
 
 ```ts
