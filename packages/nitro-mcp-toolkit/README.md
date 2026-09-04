@@ -632,29 +632,55 @@ Note that MCP clients still negotiate the 2025 revision by default, so a client 
 
 ## Runtimes
 
-The runtime is web-standard: h3-mcp owns the protocol, and the toolkit adds no Node built-ins. It runs on Node, Deno, Bun, Vercel, Netlify, and Cloudflare Workers with no `nodejs_compat` flag.
+The runtime uses web-standard APIs and adds no Node built-ins. Packed-package smoke checks cover Node 24.19.0, Deno 2.9.6, Bun 1.4.0 and Cloudflare's local workerd runtime (Wrangler 4.128.0), without `nodejs_compat`. They exercise both protocol revisions, schemas, resources, prompts, opaque-token OAuth, origin checks and tool selection. They do not establish provider-login or deployed-host compatibility.
+
+Bun 1.3.14 fails legacy requests after a size-limited body is cloned; the same checks pass on Bun 1.4.0. Use the tested version or rerun the checks on your deployment's runtime.
+
+A separate Worker entry invokes the same runtime checks. After building the package, run it locally with Wrangler and request the printed URL:
+
+```sh
+wrangler dev packages/nitro-mcp-toolkit/test/fixtures/consumer/worker.ts --compatibility-date 2026-09-04
+```
+
+A successful response is `MCP runtime checks passed`; no Node compatibility flag is required.
 
 Windows is supported: discovery, the imports generated from the paths it finds, and the dev watcher all speak `/` there, and a CI job keeps it that way.
 
-## License
+## Composition
 
-[MIT](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)
-
-### Application security and composition
-
-Definitions can be composed directly: pass imported tools, resources and prompts to `createMcpHandler`. A factory can close over an application service without discovery or ambient globals:
+Export definitions directly and import the application services they call:
 
 ```ts
-function accountTool(accounts: { nameFor(userId: string): Promise<string> }) {
-  return defineMcpTool({
-    name: 'account',
-    scopes: ['account:read'],
-    handler: (event) => accounts.nameFor(event.context.oauth!.sub!),
-  })
-}
+// server/mcp/tools/account.ts
+import { defineMcpTool } from 'nitro-mcp-toolkit'
+import { accounts } from '../../services/accounts'
+
+export default defineMcpTool({
+  name: 'account',
+  scopes: ['account:read'],
+  handler: (event) => accounts.nameFor(event.context.oauth!.sub!),
+})
 ```
 
-Pair this definition with a verifier that establishes `sub`. Scopes authorize an operation; application queries must still enforce the verified user and tenant on every row, resource URI and completion lookup. Client arguments and `X-MCP-Tools` are not identity or tenant boundaries. Catalog metadata is visible to authenticated callers; `handler.definitions` is the full catalog.
+Compose an endpoint with ordinary imports and arrays. Tools, resources and prompts accept readonly collections too; definitions can be reused across endpoints.
+
+```ts
+// server/routes/mcp.ts
+import { createMcpHandler } from 'nitro-mcp-toolkit'
+import account from '../mcp/tools/account'
+import { oauth } from '../utils/oauth'
+
+export default createMcpHandler({
+  auth: oauth.auth,
+  tools: [account],
+})
+```
+
+With file discovery, `mcp()` generates the registration instead. Keep shared collections outside the scanned definition directories; each discovered file exports one definition. Put business logic in services that routes, jobs and MCP handlers can call independently. Read the current user and tenant from the request context, rather than capturing them in a shared definition. Each endpoint supplies its own notifier when it invokes a shared definition.
+
+## Application security
+
+Pair protected definitions with a verifier that establishes `sub`. Scopes authorize an operation; application queries must still enforce the verified user and tenant on every row, resource URI and completion lookup. Client arguments and `X-MCP-Tools` are not identity or tenant boundaries. Catalog metadata is visible to authenticated callers; `handler.definitions` is the full catalog.
 
 Thrown tool error messages, and `HTTPError.data`, are returned to the caller. Catch internal datastore or provider failures at the application boundary and return a deliberate public error. Do not include secrets in errors.
 
@@ -662,6 +688,12 @@ Thrown tool error messages, and `HTTPError.data`, are returned to the caller. Ca
 
 `handler.notify` broadcasts to subscribers of that handler. Use separate authorized endpoints or an application-controlled subscription filter for tenant-specific notifications; do not broadcast sensitive resource identifiers across tenants.
 
-### Distribution checks
+## Distribution checks
 
-The optional Nitro peer accepts the tested `3.0.260610-beta` and stable `3.x`. `pnpm test:package` packs the package, installs it with ordinary npm peer resolution outside the workspace, checks a runtime-only install, checks public declarations, and builds the real playground with both protocol eras and its protected admin endpoint. It uses Node 24 or later to run TypeScript directly. Declaration checking currently uses `skipLibCheck` because the upstream H3 declarations reference optional host-runtime types.
+The optional Nitro peer accepts the tested `3.0.260610-beta` and stable `3.x`. `pnpm test:package` packs the package, installs it with ordinary npm peer resolution outside the workspace, checks a runtime-only install, checks public declarations, and builds the real playground with both protocol eras and its protected admin endpoint. It uses Node 24 or later to run TypeScript directly. Set `MCP_TEST_RUNTIMES=bun,deno` to run the same smoke checks with those executables on `PATH`. CI runs the tested Bun and Deno versions as well. Declaration checking currently uses `skipLibCheck` because the upstream H3 declarations reference optional host-runtime types.
+
+For catalog profiling, run `pnpm --filter nitro-mcp-toolkit bench:catalog`. See [the benchmark methodology and measurements](https://github.com/nuxt-modules/mcp-toolkit/tree/main/packages/nitro-mcp-toolkit/benchmarks).
+
+## License
+
+[MIT](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)

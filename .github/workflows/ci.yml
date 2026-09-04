@@ -250,8 +250,10 @@ jobs:
       - name: Audit published surface
         run: pnpm run lint:package
 
-      - name: Verify packed consumer
-        run: pnpm run test:package
+      - name: Verify packed consumer on Node, Bun and Deno
+        env:
+          MCP_TEST_RUNTIMES: bun,deno
+        run: npm exec --yes --package=bun@1.4.0 --package=deno@2.9.6 -- pnpm run test:package
 
   publish:
     name: Publish preview package

@@ -81,9 +81,23 @@ void [clerk, okta, workos, mcp]
   )
   run(process.execPath, ['node_modules/typescript/bin/tsc'])
   run(process.execPath, ['check.ts'])
+  await cp(
+    join(root, 'packages/nitro-mcp-toolkit/test/fixtures/consumer/runtime.ts'),
+    join(temporary, 'runtime.ts'),
+  )
+  run(process.execPath, ['runtime.ts'])
+  for (const runtime of (process.env.MCP_TEST_RUNTIMES ?? '').split(',').filter(Boolean)) {
+    assert(['bun', 'deno'].includes(runtime), `Unknown test runtime: ${runtime}`)
+    run(
+      runtime,
+      runtime === 'deno'
+        ? ['run', '--no-lock', '--allow-read', '--allow-env', 'runtime.ts']
+        : ['run', 'runtime.ts'],
+    )
+  }
   if (engine) {
     await cp(
-      join(root, 'scripts/fixtures/engine-cancellation.ts'),
+      join(root, 'packages/nitro-mcp-toolkit/test/fixtures/consumer/engine-cancellation.ts'),
       join(temporary, 'engine-cancellation.ts'),
     )
     run(process.execPath, ['engine-cancellation.ts'])
