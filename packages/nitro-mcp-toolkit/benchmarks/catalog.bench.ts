@@ -201,9 +201,11 @@ async function registerBenchmarks() {
   })
   for (const count of [10, 100, 1000]) {
     for (const transport of ['memory', 'http'] as const) {
-      for (const workload of ['call', 'catalog', 'subset'] as const) {
+      for (const workload of ['call', 'catalog', 'subset', 'selection'] as const) {
         describe(`${count}/${transport}/${workload}`, () => {
-          for (const implementation of workload === 'subset' ? ['toolkit'] : ['toolkit', 'bare']) {
+          for (const implementation of workload === 'subset' || workload === 'selection'
+            ? ['toolkit']
+            : ['toolkit', 'bare']) {
             bench(
               implementation,
               async () => {
@@ -266,7 +268,7 @@ export async function exercise(
   fixture: Pick<Fixture, 'fetch' | 'url'>,
   count: number,
   transport: 'memory' | 'http',
-  workload: 'call' | 'catalog' | 'subset',
+  workload: 'call' | 'catalog' | 'subset' | 'selection',
 ) {
   let cursor: string | undefined
   let found = 0
@@ -284,6 +286,14 @@ export async function exercise(
         'mcp-method': method,
         ...(workload === 'catalog' ? {} : { 'mcp-name': name }),
         ...(workload === 'subset' ? { 'x-mcp-tools': name } : {}),
+        ...(workload === 'selection'
+          ? {
+              'x-mcp-tools': Array.from(
+                { length: Math.ceil(count / 10) },
+                (_, i) => `tool-${count - 1 - i}`,
+              ).join(','),
+            }
+          : {}),
       },
       body: JSON.stringify({
         jsonrpc: '2.0',

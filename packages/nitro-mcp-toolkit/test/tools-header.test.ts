@@ -72,6 +72,49 @@ describe('unknownToolNames', () => {
 
 describe('X-MCP-Tools', () => {
   for (const era of ['modern', 'legacy'] as const) {
+    it(`reauthorizes repeated selections after credentials are revoked (${era})`, async () => {
+      let allowed = true
+      const endpoint = createMcpHandler({
+        auth: { schemes: ['bearer'], validate: () => allowed },
+        tools: [defineMcpTool({ name: 'account', handler: () => 'account' })],
+      })
+      await using client = await createMcpTestClient(endpoint, {
+        era,
+        headers: { authorization: 'Bearer token', 'x-mcp-tools': 'account' },
+      })
+      expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(['account'])
+      allowed = false
+      await expect(client.callTool({ name: 'account' })).rejects.toThrow('Unauthorized')
+      allowed = true
+      expect((await client.callTool({ name: 'account' })).content).toEqual([
+        { type: 'text', text: 'account' },
+      ])
+    })
+
+    it(`changes between repeated, different, absent and empty selections (${era})`, async () => {
+      const endpoint = handler()
+      for (const header of [
+        'get-component',
+        'get-component',
+        'search-icons',
+        undefined,
+        '',
+        'get-component',
+      ]) {
+        await using client = await createMcpTestClient(endpoint, {
+          era,
+          ...(header === undefined ? {} : { headers: { 'x-mcp-tools': header } }),
+        })
+        expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(
+          header === undefined
+            ? ['search-icons', 'get-component', 'get-migration-guide']
+            : header
+              ? [header]
+              : [],
+        )
+      }
+    })
+
     it(`isolates concurrent subsets and preserves registration order (${era})`, async () => {
       const endpoint = handler()
       await using first = await createMcpTestClient(endpoint, {

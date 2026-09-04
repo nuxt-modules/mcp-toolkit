@@ -21,7 +21,7 @@ pnpm bench:nitro HEAD HEAD --time 1000 --repeats 3
 
 ## Workloads
 
-Cases cover 10, 100 and 1,000 tools, calling the last tool and reading **every** catalog page, in memory and over loopback HTTP. Each workload compares the toolkit with bare h3-mcp using equivalent Zod schemas and results on the same modern protocol revision. The one-tool `X-MCP-Tools` subset case applies only to the toolkit.
+Cases cover 10, 100 and 1,000 tools, calling the last tool and reading **every** catalog page, in memory and over loopback HTTP. Each workload compares the toolkit with bare h3-mcp using equivalent Zod schemas and results on the same modern protocol revision. The `subset` case selects one tool; `selection` selects the last 10% of tools in reverse order. These two cases apply only to the toolkit and repeat the same `X-MCP-Tools` header, measuring steady-state selection reuse. They do not measure workloads that change the allowlist every request.
 
 Fixtures are prepared before measurement and closed afterward. HTTP includes the local server adapter and response consumption, at concurrency 1. Every measured invocation checks HTTP status, tool results or the complete catalog count; repeated pagination cursors and failed responses fail the benchmark. Unit tests cover these assertions.
 
@@ -43,4 +43,20 @@ The **Nitro benchmarks** workflow runs on relevant pull requests and pushes to `
 
 To reproduce a run, check out its harness revision or restore the archived benchmark file and config to their original locations in an isolated checkout. Restore the saved lockfile, install with `--frozen-lockfile`, and use the recorded baseline, candidate, time and repeats on matching Node and hardware.
 
-OAuth, legacy transport, concurrent load, deployment cold starts, bundle size and competitor frameworks require separate workloads. These catalog measurements do not establish performance for those cases.
+OAuth, legacy transport, concurrent load, deployment cold starts and competitor frameworks require separate workloads. These catalog measurements do not establish performance for those cases.
+
+## Built consumers and HTTP profiles
+
+```sh
+pnpm bench:consumer HEAD --repeats 5 --profile
+```
+
+`consumer.ts` extracts the requested commit (default `HEAD`), builds its package with obuild, and imports the built public exports in five isolated Nitro consumers: one tool, OAuth with an opaque-token verifier, directory discovery, 1,000 tools, and bare h3-mcp with 1,000 tools. All use the currently installed dependencies and the same production Nitro configuration (`standard`, Rolldown, minification, no external packages). No new dependencies are installed. This exercises built output and consumer tree shaking; ordinary npm installation and packed declarations remain covered by `pnpm test:package`.
+
+`--output /new/directory` selects an artifact directory; the default is under `benchmarks/results/`. Reports include every emitted JavaScript file's byte and gzip size, the bundler's module contributions, and every startup sample. Module `renderedLength` is a bundler diagnostic, not a post-minification byte attribution. Total gzip size sums separately compressed files; source maps and non-JavaScript assets are excluded. Minimal and discovery builds fail if they retain rendered `jose` modules.
+
+Each startup sample launches a fresh Node process. `importMs` measures importing the Nitro entry, `firstRequestMs` measures the first successful in-memory tool call including lazy route imports, and `processToReadyMs` includes process launch, worker initialization, that call and opening the loopback listener. Filesystem caches stay warm. These timings are raw observations, not deployment cold-start estimates. OAuth verifies a fixed benchmark token locally; it does not measure JWT verification or JWKS fetching.
+
+`--profile` records the server process only, including the small Node HTTP adapter, after 200 warmup requests and for 3,000 sequential HTTP calls. The toolkit profile selects 100 of 1,000 tools; the bare-engine profile calls a tool without filtering. They diagnose different paths and are not a speed comparison. Open each `http.cpuprofile` in a CPU-profile viewer; corresponding built files are retained under the scenario's `server/` directory. The profile contains original temporary source URLs, which can be matched by their relative server paths.
+
+The artifact also saves the source archive, generated fixtures, harness files and hashes, dependency versions, lockfile and build settings. Run baseline and candidate on the same machine with the same harness and dependencies; use the catalog Vitest command for timing comparisons. Consumer CI reports sizes and preserves startup samples without enforcing a timing threshold.
