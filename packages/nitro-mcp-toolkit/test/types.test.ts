@@ -1,11 +1,20 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
-import { defineMcpTool } from '../src/runtime/index.ts'
+import { defineMcpPrompt, defineMcpResource, defineMcpTool } from '../src/runtime/index.ts'
 import type { CallToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
 import type { mcp } from 'nitro-mcp-toolkit/servers'
-import type { ExtensionPlugin, McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
+import type {
+  ExtensionPlugin,
+  McpDefinitionSummary,
+  McpEvent,
+  McpHandler,
+  McpPrompt,
+  McpResource,
+  McpTool,
+  McpToolReturn,
+} from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 
@@ -73,5 +82,30 @@ describe('the plugins convention', () => {
 
     // The id is the key the extension is advertised under, so it is required.
     expectTypeOf<[{ settings: () => Record<string, never> }]>().not.toExtend<ExtensionPlugin[]>()
+  })
+})
+
+describe('scope typing', () => {
+  it('takes scopes on every kind of definition', () => {
+    expectTypeOf(
+      defineMcpTool({ name: 'remove', scopes: ['todos:write'], handler: () => 'ok' }),
+    ).toEqualTypeOf<McpTool>()
+
+    expectTypeOf(
+      defineMcpResource({
+        name: 'secret',
+        uri: 'app://secret',
+        scopes: ['files:read'],
+        handler: () => 'ok',
+      }),
+    ).toEqualTypeOf<McpResource>()
+
+    expectTypeOf(
+      defineMcpPrompt({ name: 'review', scopes: ['code:read'], handler: () => 'ok' }),
+    ).toEqualTypeOf<McpPrompt>()
+  })
+
+  it('reports them on what a handler says it serves', () => {
+    expectTypeOf<McpDefinitionSummary['scopes']>().toEqualTypeOf<string[] | undefined>()
   })
 })

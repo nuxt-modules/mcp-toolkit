@@ -177,7 +177,7 @@ export default defineHandler(() =>
 )
 ```
 
-Each entry carries `kind`, `name`, `title`, `description`, `group`, `tags`, the `uri` of a resource, and the `file` it was discovered in. There is no filtering API on purpose: every field is a plain value, so `Array.filter` covers groups, tags and kinds at once.
+Each entry carries `kind`, `name`, `title`, `description`, `group`, `tags`, any `scopes` it requires, the `uri` of a resource, and the `file` it was discovered in. There is no filtering API on purpose: every field is a plain value, so `Array.filter` covers groups, tags and kinds at once.
 
 `mcp` is always typed. Extra names such as `adminMcp` are generated into `node_modules/.nitro/types` when you run `nitro prepare` or `nitro dev`. A handler mounted by hand exposes the same `definitions`, read off your own route.
 
@@ -435,7 +435,7 @@ createMcpHandler({
 
 Enabling `auth` requires at least one of `tokens` or `validate` — a config with neither throws when the handler is built, rather than accepting everything. A missing or invalid credential gets a `401` with a `www-authenticate` header and no JSON-RPC body, since the request never reached the protocol layer.
 
-`auth` answers "may this caller talk to this endpoint" — nothing more. A valid credential still reaches every tool and resource the server declares; per-operation authorization belongs in your `validate` callback (check scopes there) or in your handlers.
+`auth` answers "may this caller talk to this endpoint" — nothing more. A valid credential otherwise reaches every tool and resource the server declares. To narrow that per operation, declare [scopes](#per-definition-scopes) on the definitions, or check inside your `validate` callback and your handlers.
 
 ### OAuth 2.1 resource server
 
@@ -525,6 +525,32 @@ export default createMcpHandler({
 ```
 
 Mount `oauth.metadataHandler` on `oauth.metadataPath` if you are not using `mcp()`.
+
+### Per-definition scopes
+
+All three helpers take `scopes`. A call is refused unless the access token carries **every** scope listed:
+
+```ts
+export default defineMcpTool({
+  scopes: ['todos:write'],
+  inputSchema: z.object({ id: z.string() }),
+  handler: ({ id }) => remove(id),
+})
+```
+
+The scopes are read off the verified claims on `event.context.oauth`: `scope`, space-delimited as RFC 6749 writes it, and `scp`, which Okta and Entra ID send as a string or an array. A refusal is a JSON-RPC error naming the scopes that were missing — under HTTP 403 on the modern revision, and in the `200` stream that a legacy request gets for every error:
+
+```json
+{
+  "code": -32003,
+  "message": "The tool \"remove-todo\" requires todos:write.",
+  "data": { "requiredScopes": ["todos:write"], "missingScopes": ["todos:write"] }
+}
+```
+
+**A scoped definition is still listed.** `tools/list` shows it to every caller, and the scopes come back in its `_meta` so a client can say why a call would fail. Only the call itself is gated. The reason is the engine's order: a handler's options resolve before the request is authenticated, so nothing that builds a listing has seen the token yet. Treat `scopes` as authorization, not as concealment — if a tool's _existence_ is sensitive, put it on a second endpoint behind its own `auth`.
+
+It fails closed: a definition that declares `scopes` on an endpoint with no OAuth has no claims to satisfy it, so every call is refused. `handler.definitions` reports the scopes too, so a catalog route can group by them.
 
 ### Zero-config: `mcp()`
 

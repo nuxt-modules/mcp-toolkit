@@ -1,5 +1,6 @@
 import { defineResourceTemplate } from 'h3-mcp'
 import { attachNotify } from './context.ts'
+import { requireScopes } from './scopes.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type {
@@ -30,6 +31,11 @@ interface McpResourceMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
+  /**
+   * OAuth scopes the access token must all carry to read this resource. It
+   * still appears in `resources/list`; a read without them is refused.
+   */
+  scopes?: string[]
   mimeType?: string
   icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
@@ -83,7 +89,7 @@ export function defineMcpResource(definition: McpResourceTemplateDefinition): Mc
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, group, tags, mimeType, icons, cache } = definition
+  const { name, title, description, group, tags, scopes, mimeType, icons, cache } = definition
   const isStaticUri = isStatic(definition)
 
   return {
@@ -93,6 +99,7 @@ export function defineMcpResource(
     description,
     group,
     tags,
+    scopes,
     uri: isStaticUri ? definition.uri : definition.uriTemplate,
     build(identity, into, notify) {
       const advertised = {
@@ -102,7 +109,7 @@ export function defineMcpResource(
         mimeType,
         icons,
         cache,
-        _meta: resolveMeta(identity.group, tags),
+        _meta: resolveMeta(identity.group, tags, scopes),
       }
 
       if (isStaticUri) {
@@ -110,8 +117,10 @@ export function defineMcpResource(
         into.resources.push({
           ...advertised,
           uri: staticUri,
-          handler: async (url: URL, event: H3Event) =>
-            toReadResult(url, await handler(url, attachNotify(event, notify))),
+          handler: async (url: URL, event: H3Event) => {
+            requireScopes(event, scopes, 'resource', identity.name)
+            return toReadResult(url, await handler(url, attachNotify(event, notify)))
+          },
         })
         return
       }
@@ -124,8 +133,10 @@ export function defineMcpResource(
           uriTemplate,
           list,
           complete,
-          handler: async (url: URL, variables: Record<string, string>, event: H3Event) =>
-            toReadResult(url, await handler(url, variables, attachNotify(event, notify))),
+          handler: async (url: URL, variables: Record<string, string>, event: H3Event) => {
+            requireScopes(event, scopes, 'resource', identity.name)
+            return toReadResult(url, await handler(url, variables, attachNotify(event, notify)))
+          },
         }),
       )
     },
