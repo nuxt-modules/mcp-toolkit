@@ -176,9 +176,16 @@ export function createMcpHandler(
     ),
   )
 
-  const engine = defineMcpHandler((event) => {
-    const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
-    const servedTools = requested
+  let previousHeader: string | null = null
+  let previousSelection: { tools: McpDefinitionBuckets['tools']; unknownNames: string[] } = {
+    tools: buckets.tools,
+    unknownNames: [],
+  }
+  // Retain only the last catalog selection, never authentication or request state.
+  function selectTools(header: string | null) {
+    if (header === previousHeader) return previousSelection
+    const requested = parseMcpToolsHeader(header)
+    const selected = requested
       ? [...requested]
           .flatMap((name) => {
             const entry = toolsByName.get(name)
@@ -187,6 +194,17 @@ export function createMcpHandler(
           .sort((a, b) => a.index - b.index)
           .map(({ tool }) => tool)
       : buckets.tools
+
+    previousHeader = header
+    previousSelection = {
+      tools: selected,
+      unknownNames: requested ? unknownToolNames(toolNames, requested) : [],
+    }
+    return previousSelection
+  }
+
+  const engine = defineMcpHandler((event) => {
+    const { tools: servedTools } = selectTools(event.req.headers.get('x-mcp-tools'))
 
     return {
       ...wiring,
@@ -206,17 +224,14 @@ export function createMcpHandler(
   }, setup)
 
   const run = async (event: H3Event): Promise<Response> => {
-    const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
-    if (requested) {
-      const unknownNames = unknownToolNames(toolNames, requested)
-      if (unknownNames.length) {
-        // Origin and auth must run first: a 400 on the name would otherwise
-        // tell an unauthenticated caller whether the tool exists.
-        const gated = await toResponse(await gate(event), event)
-        if (gated.status === 401 || gated.status === 403) return gated
-        await gated.body?.cancel()
-        return unknownToolsResponse(unknownNames)
-      }
+    const { unknownNames } = selectTools(event.req.headers.get('x-mcp-tools'))
+    if (unknownNames.length) {
+      // Origin and auth must run first: a 400 on the name would otherwise
+      // tell an unauthenticated caller whether the tool exists.
+      const gated = await toResponse(await gate(event), event)
+      if (gated.status === 401 || gated.status === 403) return gated
+      await gated.body?.cancel()
+      return unknownToolsResponse(unknownNames)
     }
 
     return toResponse(await engine(event), event)

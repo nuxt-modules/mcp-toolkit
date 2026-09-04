@@ -694,6 +694,8 @@ The optional Nitro peer accepts the tested `3.0.260610-beta` and stable `3.x`. `
 
 For catalog comparisons between Git revisions, run `pnpm bench:nitro <baseline-ref> [candidate-ref]`. See [the benchmark workflow and methodology](https://github.com/nuxt-modules/mcp-toolkit/tree/main/packages/nitro-mcp-toolkit/benchmarks).
 
+For production consumer size, startup samples and HTTP CPU profiles, run `pnpm bench:consumer HEAD --profile` from this repository. See [benchmark methodology](./benchmarks/README.md#built-consumers-and-http-profiles) for scope and reproduction.
+
 ## License
 
 [MIT](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)
