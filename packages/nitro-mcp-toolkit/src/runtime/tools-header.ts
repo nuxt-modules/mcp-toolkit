@@ -1,8 +1,3 @@
-type NamedRegistration = {
-  definition: { kind: string }
-  identity: { name: string }
-}
-
 /**
  * Parse the `X-MCP-Tools` header. `undefined` means the header is absent
  * (no filter). An empty or whitespace-only value is an empty allowlist.
@@ -27,15 +22,7 @@ export function parseMcpToolsHeader(value: string | null | undefined): Set<strin
  *
  * @internal
  */
-export function unknownToolNames(
-  registrations: readonly NamedRegistration[],
-  requested: Set<string>,
-): string[] {
-  const toolNames = new Set(
-    registrations
-      .filter((entry) => entry.definition.kind === 'tool')
-      .map((entry) => entry.identity.name),
-  )
+export function unknownToolNames(toolNames: ReadonlySet<string>, requested: Set<string>): string[] {
   return [...requested].filter((name) => !toolNames.has(name))
 }
 

@@ -3,8 +3,14 @@ import { createMcpHandler, defineMcpTool, MODERN_PROTOCOL_VERSION } from 'nitro-
 
 for (const era of ['modern', 'legacy']) {
   for (const action of ['foreign-cancellation', 'request-abort']) {
-    const entered = Promise.withResolvers<AbortSignal | undefined>()
-    const finish = Promise.withResolvers<void>()
+    let enter!: (signal: AbortSignal | undefined) => void
+    const entered = new Promise<AbortSignal | undefined>((resolve) => {
+      enter = resolve
+    })
+    let finish!: () => void
+    const finished = new Promise<void>((resolve) => {
+      finish = resolve
+    })
     const controller = new AbortController()
     const endpoint = createMcpHandler({
       auth: { tokens: ['alice', 'bob'] },
@@ -12,8 +18,8 @@ for (const era of ['modern', 'legacy']) {
         defineMcpTool({
           name: 'slow',
           handler: async (event) => {
-            entered.resolve(event.context.mcp?.signal)
-            await finish.promise
+            enter(event.context.mcp?.signal)
+            await finished
             return 'done'
           },
         }),
@@ -53,7 +59,7 @@ for (const era of ['modern', 'legacy']) {
         }),
       }),
     )
-    const signal = await entered.promise
+    const signal = await entered
     try {
       if (action === 'request-abort') controller.abort()
       else
@@ -70,7 +76,7 @@ for (const era of ['modern', 'legacy']) {
         )
       assert.equal(signal?.aborted, action === 'request-abort')
     } finally {
-      finish.resolve()
+      finish()
       await pending
     }
   }

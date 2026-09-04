@@ -26,10 +26,10 @@ export interface McpHandlerOptions extends EngineWiring {
   /** Advertised to clients during initialization. */
   name?: string
   version?: string
-  tools?: McpTool[]
+  tools?: readonly McpTool[]
   /** Static resources and URI templates alike. */
-  resources?: McpResource[]
-  prompts?: McpPrompt[]
+  resources?: readonly McpResource[]
+  prompts?: readonly McpPrompt[]
   /**
    * Which browser origins may reach the endpoint, beyond the pages the app
    * serves to itself over loopback, which are accepted by default. Requests
@@ -169,10 +169,23 @@ export function createMcpHandler(
     definition.build(identity, buckets, notify)
   }
 
+  const toolNames = new Set(tools.map((tool) => tool.name!))
+  const toolsByName = new Map(
+    buckets.tools.flatMap((tool, index) =>
+      typeof tool === 'function' ? [] : [[tool.name, { tool, index }] as const],
+    ),
+  )
+
   const engine = defineMcpHandler((event) => {
     const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
     const servedTools = requested
-      ? buckets.tools.filter((tool) => typeof tool !== 'function' && requested.has(tool.name))
+      ? [...requested]
+          .flatMap((name) => {
+            const entry = toolsByName.get(name)
+            return entry ? [entry] : []
+          })
+          .sort((a, b) => a.index - b.index)
+          .map(({ tool }) => tool)
       : buckets.tools
 
     return {
@@ -195,7 +208,7 @@ export function createMcpHandler(
   const run = async (event: H3Event): Promise<Response> => {
     const requested = parseMcpToolsHeader(event.req.headers.get('x-mcp-tools'))
     if (requested) {
-      const unknownNames = unknownToolNames(registrations, requested)
+      const unknownNames = unknownToolNames(toolNames, requested)
       if (unknownNames.length) {
         // Origin and auth must run first: a 400 on the name would otherwise
         // tell an unauthenticated caller whether the tool exists.

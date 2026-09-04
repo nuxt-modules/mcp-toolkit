@@ -54,18 +54,49 @@ describe('unknownToolNames', () => {
     { definition: { kind: 'tool' }, identity: { name: 'get-component' } },
     { definition: { kind: 'resource' }, identity: { name: 'readme' } },
   ]
+  const toolNames = new Set(
+    registrations
+      .filter((entry) => entry.definition.kind === 'tool')
+      .map((entry) => entry.identity.name),
+  )
 
   it('reports names that are not a registered tool', () => {
-    expect(unknownToolNames(registrations, new Set(['search-icons']))).toEqual([])
-    expect(unknownToolNames(registrations, new Set(['nope']))).toEqual(['nope'])
+    expect(unknownToolNames(toolNames, new Set(['search-icons']))).toEqual([])
+    expect(unknownToolNames(toolNames, new Set(['nope']))).toEqual(['nope'])
   })
 
   it('does not treat a resource name as a tool', () => {
-    expect(unknownToolNames(registrations, new Set(['readme']))).toEqual(['readme'])
+    expect(unknownToolNames(toolNames, new Set(['readme']))).toEqual(['readme'])
   })
 })
 
 describe('X-MCP-Tools', () => {
+  for (const era of ['modern', 'legacy'] as const) {
+    it(`isolates concurrent subsets and preserves registration order (${era})`, async () => {
+      const endpoint = handler()
+      await using first = await createMcpTestClient(endpoint, {
+        era,
+        headers: { 'x-mcp-tools': 'get-component,search-icons' },
+      })
+      await using second = await createMcpTestClient(endpoint, {
+        era,
+        headers: { 'x-mcp-tools': 'get-migration-guide' },
+      })
+      const [a, b] = await Promise.all([first.listTools(), second.listTools()])
+      expect(a.tools.map((tool) => tool.name)).toEqual(['search-icons', 'get-component'])
+      expect(b.tools.map((tool) => tool.name)).toEqual(['get-migration-guide'])
+      await expect(first.callTool({ name: 'get-migration-guide' })).rejects.toThrow(
+        'Tool not found',
+      )
+      expect((await second.callTool({ name: 'get-migration-guide' })).content).toEqual([
+        { type: 'text', text: 'guide' },
+      ])
+      expect(endpoint.definitions.filter((definition) => definition.kind === 'tool')).toHaveLength(
+        3,
+      )
+    })
+  }
+
   it('leaves the catalog alone when the header is absent', async () => {
     await using client = await withToolsHeader(undefined)
     const { tools } = await client.listTools()
