@@ -192,7 +192,7 @@ The runtime is written against a pinned `h3-mcp` (currently 0.2.0). That release
 
 **`X-MCP-Tools` is the same kind of gate** (`src/runtime/tools-header.ts`): allowlist of tool names, HTTP 400 on unknowns, applied before the engine runs. `handler.definitions` stays the full catalog.
 
-**OAuth** is a generic resource-server: `createMcpOAuth` verifies JWTs against the issuer's JWKS, lands claims on `event.context.oauth`, and returns the RFC 9728 metadata handler to mount. The package does not mint tokens. Opaque tokens mean `createMcpOAuth({ verify })` in a route file.
+**OAuth** is a generic resource-server: `mcp({ oauth: { resource, authorizationServers, jwt } })` or `createMcpOAuth`. JWT verify, claims on `event.context.oauth`, RFC 9728 metadata mounted. The package does not mint tokens. Opaque tokens still mean `createMcpOAuth({ verify })` in a route file.
 
 ### MCP Definitions
 

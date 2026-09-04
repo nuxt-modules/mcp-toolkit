@@ -1,4 +1,5 @@
 import type { Era, Icon } from 'h3-mcp'
+import type { McpOAuthSetup } from '../runtime/oauth.ts'
 
 /**
  * What the server advertises and how it answers — everything a definition file
@@ -55,6 +56,26 @@ export interface McpServerOptions {
   }
 }
 
+/**
+ * JWT resource-server config for `mcp()`. JSON-serializable, so it can cross
+ * into generated code. Opaque tokens or extra checks still mean a route file.
+ */
+export type McpModuleOAuthOptions = McpOAuthSetup
+
+/** What generated code passes to `createMcpOAuth`. */
+export interface ResolvedMcpOAuthOptions {
+  resource: string
+  authorizationServers: string[]
+  jwt: {
+    jwks: string
+    issuer?: string | string[]
+    audience?: string | string[] | false
+    authorizedParties?: string[]
+  }
+  scopesSupported?: string[]
+  authorizationServer?: string
+}
+
 export interface McpModuleOptions extends McpServerOptions {
   /**
    * Where the endpoint is mounted.
@@ -69,12 +90,29 @@ export interface McpModuleOptions extends McpServerOptions {
    * @default 'server/mcp'
    */
   dir?: string
+  /**
+   * Protect this endpoint as an OAuth 2.1 resource server: JWT verify against
+   * a JWKS, RFC 9728 metadata mounted for you. Cannot be combined with `auth`.
+   *
+   * @example
+   * ```ts
+   * mcp({
+   *   oauth: {
+   *     resource: 'https://api.example.com/mcp',
+   *     authorizationServers: ['https://auth.example.com'],
+   *     jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+   *   },
+   * })
+   * ```
+   */
+  oauth?: McpModuleOAuthOptions
 }
 
 export interface ResolvedMcpModuleOptions {
   route: string
   dir: string
   server: McpServerOptions
+  oauth?: ResolvedMcpOAuthOptions
 }
 
 /** `/Mcp/` and `mcp` alike become `/mcp`, so a route always matches as written. */
@@ -88,8 +126,39 @@ function normalizeRoute(route: string): string {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
 }
 
-export function resolveModuleOptions(options: McpModuleOptions = {}): ResolvedMcpModuleOptions {
-  const { route = '/mcp', dir = 'server/mcp', ...server } = options
+export function resolveOAuthOptions(oauth: McpModuleOAuthOptions): ResolvedMcpOAuthOptions {
+  if (oauth.authorizationServers.length === 0) {
+    throw new Error('[nitro-mcp-toolkit] `oauth.authorizationServers` needs at least one issuer.')
+  }
 
-  return { route: normalizeRoute(route), dir, server }
+  if (!oauth.jwt?.jwks) {
+    throw new Error(
+      '[nitro-mcp-toolkit] `oauth` on `mcp()` needs `jwt`. Opaque tokens mean `createMcpOAuth({ verify })` in a route file.',
+    )
+  }
+
+  return {
+    resource: oauth.resource,
+    authorizationServers: oauth.authorizationServers,
+    jwt: oauth.jwt,
+    ...(oauth.scopesSupported ? { scopesSupported: oauth.scopesSupported } : {}),
+    ...(oauth.authorizationServer ? { authorizationServer: oauth.authorizationServer } : {}),
+  }
+}
+
+export function resolveModuleOptions(options: McpModuleOptions = {}): ResolvedMcpModuleOptions {
+  const { route = '/mcp', dir = 'server/mcp', oauth, ...server } = options
+
+  if (oauth && server.auth) {
+    throw new Error(
+      '[nitro-mcp-toolkit] `oauth` and `auth` cannot both be set. `oauth` already requires a bearer token.',
+    )
+  }
+
+  return {
+    route: normalizeRoute(route),
+    dir,
+    server,
+    ...(oauth ? { oauth: resolveOAuthOptions(oauth) } : {}),
+  }
 }

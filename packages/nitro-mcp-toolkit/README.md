@@ -425,7 +425,23 @@ Enabling `auth` requires at least one of `tokens` or `validate` — a config wit
 
 This package is the **resource server**, not the authorization server. It does not mint tokens, serve a login page, or speak DCR. Pair it with an authorization server — Clerk, Okta, WorkOS, Auth0, or [Better Auth's MCP plugin](https://www.better-auth.com/docs/plugins/mcp).
 
-`createMcpOAuth` verifies JWT access tokens against the issuer's JWKS and lands the claims on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. Pass `jwt.audience: false` only when the issuer does not put this MCP URL in the token.
+`mcp({ oauth })` is the usual path: JWT access tokens, file-based definitions, RFC 9728 metadata mounted for you. Verified claims land on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. Pass `jwt.audience: false` only when the issuer does not put this MCP URL in the token.
+
+#### Any other JWT issuer
+
+```ts
+mcp({
+  oauth: {
+    resource: 'https://api.example.com/mcp',
+    authorizationServers: ['https://auth.example.com'],
+    jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+  },
+})
+```
+
+#### Opaque tokens, or extra checks
+
+`createMcpOAuth({ verify })` in a route file. Audience validation belongs inside `verify` when `jwt` is omitted — otherwise a token minted for another service is accepted.
 
 ```ts
 import { createMcpHandler, createMcpOAuth, defineMcpTool } from 'nitro-mcp-toolkit'
@@ -442,15 +458,11 @@ export default createMcpHandler({
 })
 ```
 
-Mount `oauth.metadataHandler` on `oauth.metadataPath` to serve the RFC 9728 protected-resource document. Every `401` then carries `WWW-Authenticate: Bearer realm="mcp", resource_metadata="…"` pointing at it, which is how a client discovers where to authenticate.
-
-#### Opaque tokens, or extra checks
-
-`createMcpOAuth({ verify })` replaces JWKS verification with your own callback. Audience validation belongs inside `verify` when `jwt` is omitted — otherwise a token minted for another service is accepted.
+Mount `oauth.metadataHandler` on `oauth.metadataPath` if you are not using `mcp()`.
 
 ### Zero-config: `mcp()`
 
-`mcp()`'s options cross into generated code as JSON, so its `auth` is the JSON-serializable subset of what `createMcpHandler` accepts above — a static `tokens` list, no `validate` callback. Omit it and that server stays open, exactly like every other `mcp()` option:
+`mcp()`'s options cross into generated code as JSON, so its `auth` is the JSON-serializable subset of what `createMcpHandler` accepts above — a static `tokens` list, no `validate` callback. `oauth` is the other exception: JWT verification is generated for you. Omit both and that server stays open:
 
 ```ts
 // nitro.config.ts
@@ -466,7 +478,7 @@ export default defineConfig({
 })
 ```
 
-For a `validate` callback, or anything else that is a live function rather than data, mount `createMcpHandler` yourself in a route file instead — the [Authentication](#authentication) examples above are exactly that.
+For a `validate` callback, or anything else that is a live function rather than data, mount `createMcpHandler` yourself in a route file instead — the [Authentication](#authentication) examples above are exactly that. `oauth` on `mcp()` is the exception: JWT verification is generated for you.
 
 ## Testing
 
