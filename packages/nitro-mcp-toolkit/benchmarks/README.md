@@ -1,44 +1,46 @@
 # Catalog benchmarks
 
-Compare two committed revisions from the repository root, using Node 24+ and installed workspace dependencies:
+The benchmark uses the installed Vitest 4 runner and Tinybench for warmup, timing, statistics and comparisons. All workload and revision orchestration code lives in `catalog.bench.ts`; there is no custom statistics engine.
+
+From the repository root, with Node 24+ and Git and `tar` on `PATH`:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm bench:nitro <baseline-ref> [candidate-ref]
 ```
 
-The candidate defaults to `HEAD`. Uncommitted runtime changes are not measured: commit them locally first. Both refs must contain `packages/nitro-mcp-toolkit/src/runtime/index.ts` and support the APIs used by the harness.
-
-For example, compare the last commit with its parent:
+The candidate defaults to `HEAD`. Both revisions must contain `packages/nitro-mcp-toolkit/src/runtime/index.ts` and support the APIs exercised by the benchmark. Commit runtime changes locally before measuring them; the command extracts committed snapshots without switching branches or changing the checkout.
 
 ```sh
-pnpm bench:nitro HEAD^ HEAD --samples 100 --repeats 3 --seed 42
+pnpm bench:nitro HEAD^ HEAD --time 1000 --repeats 3
+# Measure variation with identical source on both sides:
+pnpm bench:nitro HEAD HEAD --time 1000 --repeats 3
 ```
 
-`catalog.ts` contains the runner, isolated worker and report generation. It extracts both revisions into temporary directories, runs the same current harness against each, and removes the directories afterward. It never switches branches or alters your checkout. Git and `tar` must be on `PATH`.
+`--time` is the minimum measurement time in milliseconds per benchmark, alongside a minimum of 100 iterations. Warmup runs for at least 500 ms and 20 iterations. Each repeat runs baseline and candidate in fresh Vitest processes, alternating their order. Candidate runs use Vitest's `--compare` against the most recently completed baseline. The default is three repeats; individual reports stay separate rather than being combined by custom aggregation code.
+
+## Workloads
+
+Cases cover 10, 100 and 1,000 tools, calling the last tool and reading **every** catalog page, in memory and over loopback HTTP. Each workload compares the toolkit with bare h3-mcp using equivalent Zod schemas and results on the same modern protocol revision. The one-tool `X-MCP-Tools` subset case applies only to the toolkit.
+
+Fixtures are prepared before measurement and closed afterward. HTTP includes the local server adapter and response consumption, at concurrency 1. Every measured invocation checks HTTP status, tool results or the complete catalog count; repeated pagination cursors and failed responses fail the benchmark. Unit tests cover these assertions.
+
+Both revisions use the same current harness, Vitest configuration and installed dependencies. This isolates toolkit source changes; it does not compare dependency upgrades or published bundles. Vitest transforms imported source, so use runs from the same harness to compare revisions. Earlier results from the custom Node runner are a different measurement setup.
 
 ## Results and history
 
-Every run creates a directory under `benchmarks/results/`, ignored by Git. Use `--output /absolute/path/to/new-directory` to choose another destination. Existing directories are refused so a run cannot overwrite earlier evidence.
+Every run creates an ignored directory under `benchmarks/results/`. Use `--output /absolute/path/to/new-directory` to choose another destination. Existing directories are refused.
 
-Each completed run saves:
+The artifact contains:
 
-- `summary.md`: baseline/candidate p50 and p95, relative p50 changes and bare h3-mcp reference timings.
-- `results.json`: every measured duration, workload and repetition; full commit IDs; Node, OS and CPU information; dependency versions; lockfile and harness hashes; sample counts and seed.
-- `catalog.ts` and `pnpm-lock.yaml` used for the run.
+- `baseline-N.json` and `candidate-N.json`: native Vitest results, including throughput, mean, median, percentiles, relative margin of error and sample counts. Vitest 4's JSON reporter omits individual samples.
+- Matching `.txt` files: Vitest's tables and saved-baseline comparisons.
+- `summary.md`: the complete reports for each repeat, used as the CI job summary.
+- `metadata.json`: commit IDs, environment, dependency versions, measurement settings and hashes.
+- The benchmark file, Vitest config and lockfile used for the run.
 
-Commit the harness and methodology, rather than machine-specific timing tables. The **Nitro benchmarks** workflow runs on relevant pull requests and pushes to `main`, and can also compare refs through manual dispatch. It puts the table in the job summary and retains the raw results and harness as an artifact for 90 days. Download an artifact for longer-term retention. No timing threshold gates a merge; failed requests or malformed results fail the run.
+The **Nitro benchmarks** workflow runs on relevant pull requests and pushes to `main`, and supports manual comparisons. It retains artifacts for 90 days; download them for longer retention. No latency threshold gates a merge. Inspect Vitest's error estimates, repeat variation and a same-commit control before treating small differences as regressions. The relative margin of error describes variation within that run, not differences between machines or separate processes.
 
-To repeat an archived run, use its harness revision (or copy the saved `catalog.ts` into this directory), restore its saved lockfile in an isolated checkout, install with `--frozen-lockfile`, and pass the recorded baseline, candidate, samples, repeats and seed. Match Node and hardware when comparing timings across runs. The harness hash lets you verify an exact match even for a local harness edit.
+To reproduce a run, check out its harness revision or restore the archived benchmark file and config to their original locations in an isolated checkout. Restore the saved lockfile, install with `--frozen-lockfile`, and use the recorded baseline, candidate, time and repeats on matching Node and hardware.
 
-## Methodology
-
-Cases cover 10, 100 and 1,000 tools, calling the last tool and reading **every** catalog page, in memory and over loopback HTTP. Both implementations use the same Zod input schema, result and modern protocol revision. The toolkit also has a one-tool `X-MCP-Tools` subset case; bare h3-mcp has no equivalent header.
-
-Each repetition shuffles baseline, candidate and reference/catalog-size pairs with a recorded seed. Every pair runs in a fresh subprocess. Workloads have 20 warmups followed by 100 measured operations by default; three repetitions are the default. HTTP includes the local server adapter and response consumption, at concurrency 1. The harness asserts status, returned tool data and complete catalog counts, and rejects repeated pagination cursors.
-
-Percentiles use the sorted sample at `floor(sampleCount × percentile)`, capped to the last index. The report takes the median of each repetition's percentile rather than pooling samples. Negative p50 changes mean lower latency. Individual timings vary with machine load, JIT and networking; use repeated runs on an idle machine to investigate a regression.
-
-Both revisions resolve against the **same currently installed dependencies**. This isolates toolkit source changes; it does not measure dependency upgrades, historical lockfiles or published bundles. The manifest versions and lockfile recorded in the artifact identify that shared environment. Run a frozen install before benchmarking so the lockfile describes your dependencies.
-
-The benchmark does not measure OAuth, legacy transport, throughput under concurrent load, deployment cold starts, bundle size or competitor frameworks. Those require separate workloads before making claims about them.
+OAuth, legacy transport, concurrent load, deployment cold starts, bundle size and competitor frameworks require separate workloads. These catalog measurements do not establish performance for those cases.

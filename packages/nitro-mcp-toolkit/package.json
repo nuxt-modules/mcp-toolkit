@@ -71,7 +71,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
     "typecheck": "tsc --noEmit",
-    "bench:catalog": "node benchmarks/catalog.ts"
+    "bench:catalog": "node benchmarks/catalog.bench.ts"
   },
   "dependencies": {
     "h3-mcp": "0.2.0",

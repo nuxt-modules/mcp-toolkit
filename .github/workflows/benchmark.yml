@@ -47,7 +47,7 @@ jobs:
         with:
           filters: --filter=nitro-mcp-toolkit
 
-      - name: Compare catalogs
+      - name: Compare catalogs with Vitest
         env:
           BASELINE: ${{ inputs.baseline || github.event.pull_request.base.sha || github.event.before }}
           CANDIDATE: ${{ inputs.candidate || 'HEAD' }}
