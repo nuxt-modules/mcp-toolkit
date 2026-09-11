@@ -1,11 +1,25 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
-import { defineMcpTool } from '../src/runtime/index.ts'
-import type { CallToolResult } from '../src/runtime/index.ts'
+import {
+  defineMcpPlugins,
+  defineMcpPrompt,
+  defineMcpResource,
+  defineMcpTool,
+} from '../src/runtime/index.ts'
+import type { CallToolResult, McpToolResult } from '../src/runtime/index.ts'
 // Type-only: the module exists once a build generates it, never here.
 import type generated from '#mcp/admin-mcp/handler'
 import type { mcp } from 'nitro-mcp-toolkit/servers'
-import type { McpEvent, McpHandler, McpToolReturn } from '../src/runtime/index.ts'
+import type {
+  ExtensionPlugin,
+  McpDefinitionSummary,
+  McpEvent,
+  McpHandler,
+  McpPrompt,
+  McpResource,
+  McpTool,
+  McpToolReturn,
+} from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
 
@@ -18,6 +32,7 @@ describe('tool typing', () => {
       handler: (args, event) => {
         expectTypeOf(args).toEqualTypeOf<{ name: string; times: number }>()
         expectTypeOf(event).toEqualTypeOf<McpEvent>()
+        expectTypeOf(event.context.oauth?.sub).toEqualTypeOf<string | undefined>()
         return 'ok'
       },
     })
@@ -35,7 +50,8 @@ describe('tool typing', () => {
 
   it('narrows the return type to the output schema', () => {
     expectTypeOf<{ bmi: number }>().toExtend<McpToolReturn<typeof output>>()
-    expectTypeOf<CallToolResult>().toExtend<McpToolReturn<typeof output>>()
+    expectTypeOf<CallToolResult>().not.toExtend<McpToolReturn<typeof output>>()
+    expectTypeOf<McpToolResult>().toExtend<McpToolReturn<typeof output>>()
 
     // The whole point of declaring `outputSchema`: a mismatched shape, and the
     // loose values allowed without a schema, stop being valid returns.
@@ -59,5 +75,45 @@ describe('the generated handler modules', () => {
 
   it('types the /mcp instance on nitro-mcp-toolkit/servers', () => {
     expectTypeOf<typeof mcp>().toEqualTypeOf<McpHandler>()
+  })
+})
+
+// Generated code imports the plugins file and is not typechecked with the app,
+// so the helper is the only thing standing between a typo there and a runtime
+// failure. It takes the plugins as h3-mcp installs them, and nothing narrower.
+describe('the plugins convention', () => {
+  it('checks the array server/mcp/plugins.ts exports', () => {
+    expectTypeOf(defineMcpPlugins).parameter(0).toEqualTypeOf<readonly ExtensionPlugin[]>()
+    expectTypeOf(defineMcpPlugins([{ id: 'acme/stamp', settings: () => ({}) }])).toEqualTypeOf<
+      readonly ExtensionPlugin[]
+    >()
+
+    // The id is the key the extension is advertised under, so it is required.
+    expectTypeOf<[{ settings: () => Record<string, never> }]>().not.toExtend<ExtensionPlugin[]>()
+  })
+})
+
+describe('scope typing', () => {
+  it('takes scopes on every kind of definition', () => {
+    expectTypeOf(
+      defineMcpTool({ name: 'remove', scopes: ['todos:write'], handler: () => 'ok' }),
+    ).toEqualTypeOf<McpTool>()
+
+    expectTypeOf(
+      defineMcpResource({
+        name: 'secret',
+        uri: 'app://secret',
+        scopes: ['files:read'],
+        handler: () => 'ok',
+      }),
+    ).toEqualTypeOf<McpResource>()
+
+    expectTypeOf(
+      defineMcpPrompt({ name: 'review', scopes: ['code:read'], handler: () => 'ok' }),
+    ).toEqualTypeOf<McpPrompt>()
+  })
+
+  it('reports them on what a handler says it serves', () => {
+    expectTypeOf<McpDefinitionSummary['scopes']>().toEqualTypeOf<string[] | undefined>()
   })
 })

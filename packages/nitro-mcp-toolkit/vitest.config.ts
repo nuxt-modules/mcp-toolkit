@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     testTimeout: 20_000,
+    benchmark: { include: ['benchmarks/catalog.bench.ts'] },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

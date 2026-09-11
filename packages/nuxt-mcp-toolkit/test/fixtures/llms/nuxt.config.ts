@@ -1,25 +1,30 @@
+import type { NuxtConfig } from 'nuxt/schema'
+import type { ModuleOptions as LlmsOptions } from 'nuxt-llms'
 import { defineNuxtConfig } from 'nuxt/config'
 import MyModule from '../../../src/module'
 
-export default defineNuxtConfig({
+type FixtureConfig = NuxtConfig & {
+  llms: Partial<LlmsOptions> & Pick<LlmsOptions, 'domain'>
+}
+
+const config: FixtureConfig = {
   modules: [MyModule, 'nuxt-llms'],
+  llms: {
+    domain: 'https://fixture.test',
+    title: 'Fixture',
+    description: 'Fixture site.',
+    sections: [
+      {
+        title: 'Docs',
+        links: [{ title: 'Home', href: 'https://fixture.test/' }],
+      },
+    ],
+  },
   mcp: {
     name: 'Fixture MCP',
     description: 'Fixture MCP server used in tests.',
-    browserRedirect: '/docs/mcp',
+    browserRedirect: 'https://docs.fixture.test/mcp',
   },
-  // `llms` is owned by nuxt-llms, whose types aren't generated for this package
-  ...({
-    llms: {
-      domain: 'https://fixture.test',
-      title: 'Fixture',
-      description: 'Fixture site.',
-      sections: [
-        {
-          title: 'Docs',
-          links: [{ title: 'Home', href: 'https://fixture.test/' }],
-        },
-      ],
-    },
-  } as Record<string, unknown>),
-})
+}
+
+export default defineNuxtConfig(config)

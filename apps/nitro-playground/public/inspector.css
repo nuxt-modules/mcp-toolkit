@@ -351,3 +351,16 @@ code {
 .empty {
   color: var(--muted);
 }
+
+.connection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.connection input {
+  min-width: 16rem;
+}

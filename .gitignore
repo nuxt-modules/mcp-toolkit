@@ -46,7 +46,6 @@ coverage
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
-.history
 
 # Intellij idea
 *.iml
@@ -63,3 +62,6 @@ Temporary Items
 .apdisk
 .turbo
 apps/playground/.data
+
+# Local benchmark runs
+/packages/nitro-mcp-toolkit/benchmarks/results/

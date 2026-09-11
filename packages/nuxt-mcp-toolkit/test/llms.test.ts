@@ -28,7 +28,7 @@ describe('llms.txt integration', async () => {
   it('links the browser redirect as documentation entry point', async () => {
     const txt = await $fetch<string>('/llms.txt')
 
-    expect(txt).toContain('[MCP documentation](https://fixture.test/docs/mcp)')
+    expect(txt).toContain('[MCP documentation](https://docs.fixture.test/mcp)')
   })
 
   it('preserves user-defined sections', async () => {

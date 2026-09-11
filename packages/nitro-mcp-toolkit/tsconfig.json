@@ -22,6 +22,6 @@
       "nitro-mcp-toolkit/servers": ["./src/runtime/servers.ts"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "benchmarks/**/*.ts"],
+  "exclude": ["dist", "node_modules", "benchmarks/results"]
 }

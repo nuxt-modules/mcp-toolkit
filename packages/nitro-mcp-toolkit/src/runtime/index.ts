@@ -1,10 +1,16 @@
 /// <reference path="./virtual.d.ts" />
 
 export { createMcpHandler } from './handler.ts'
+export {
+  createMcpOAuth,
+  authorizationServerMetadataUrl,
+  protectedResourceMetadataUrl,
+} from './oauth.ts'
+export { defineMcpPlugins } from './plugins.ts'
 export { defineMcpPrompt } from './prompt.ts'
 export { MODERN_PROTOCOL_VERSION } from './protocol.ts'
 export { defineMcpResource } from './resource.ts'
-export { audioResult, imageResult } from './results.ts'
+export { audioResult, imageResult, toolResult } from './results.ts'
 export { defineMcpTool } from './tool.ts'
 export {
   canRequestInput,
@@ -21,6 +27,14 @@ export {
 
 export type { McpEvent, McpNotifier } from './context.ts'
 export type { McpHandler, McpHandlerOptions } from './handler.ts'
+export type {
+  McpOAuth,
+  McpOAuthClaims,
+  McpOAuthJwtOptions,
+  McpOAuthOptions,
+  McpOAuthSetup,
+  McpProtectedResourceMetadata,
+} from './oauth.ts'
 export type {
   McpPromptDefinition,
   McpPromptDefinitionWithArguments,
@@ -41,7 +55,7 @@ export type {
   McpResource,
   McpTool,
 } from './definition.ts'
-export type { McpToolValue } from './results.ts'
+export type { McpToolResult, McpToolValue } from './results.ts'
 export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
 
 export type {
@@ -52,6 +66,7 @@ export type {
   CallToolResult,
   ContentBlock,
   Era,
+  ExtensionPlugin,
   GetPromptResult,
   Icon,
   InputRequiredResult,

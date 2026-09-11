@@ -26,6 +26,8 @@ overrides:
   'h3@2.0.0': 2.0.1-rc.27
   # @ai-sdk/provider-utils@4 still pulls undici 5.29.0 (WebSocket DoS CVEs).
   'undici@5.29.0': 6.28.0
+  # Docus and Nuxt Studio still constrain Sharp to the vulnerable 0.34 release.
+  'sharp@<0.35.0': 0.35.4
 
 minimumReleaseAge: 2880
 

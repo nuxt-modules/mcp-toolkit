@@ -41,10 +41,15 @@ function duplicates(values: string[]): string[] {
 export function resolveMeta(
   group: string | undefined,
   tags: string[] | undefined,
+  scopes?: string[],
 ): Record<string, unknown> | undefined {
-  if (!group && !tags?.length) return undefined
+  if (!group && !tags?.length && !scopes?.length) return undefined
 
-  return { ...(group ? { group } : {}), ...(tags?.length ? { tags } : {}) }
+  return {
+    ...(group ? { group } : {}),
+    ...(tags?.length ? { tags } : {}),
+    ...(scopes?.length ? { scopes } : {}),
+  }
 }
 
 function isResource(definition: McpDefinition): definition is McpResource {
@@ -64,6 +69,7 @@ export function summarize(registrations: readonly McpRegistration[]): McpDefinit
     ...(definition.description ? { description: definition.description } : {}),
     ...(identity.group ? { group: identity.group } : {}),
     ...(definition.tags?.length ? { tags: [...definition.tags] } : {}),
+    ...(definition.scopes?.length ? { scopes: [...definition.scopes] } : {}),
     ...(isResource(definition) ? { uri: definition.uri } : {}),
     ...(definition.source ? { file: definition.source.file } : {}),
   }))
