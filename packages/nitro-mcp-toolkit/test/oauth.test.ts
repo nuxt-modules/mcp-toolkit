@@ -193,7 +193,7 @@ const RESOURCE = 'http://localhost:3030/mcp'
 const ISSUER = 'http://127.0.0.1:9999'
 
 describe('createMcpOAuth jwt', () => {
-  let privateKey: CryptoKey
+  let privateKey: Awaited<ReturnType<typeof generateKeyPair>>['privateKey']
   let jwksUrl: string
   let closeJwks: () => Promise<void>
 
