@@ -1,5 +1,15 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.20.0
+
+### Minor Changes
+
+- [#342](https://github.com/nuxt-modules/mcp-toolkit/pull/342) [`4907927`](https://github.com/nuxt-modules/mcp-toolkit/commit/490792745bafcc9870663f02d549650f140da496) Thanks [@miguelrk](https://github.com/miguelrk)! - Customize isolated MCP App bundles with global stylesheets, additional Vite plugins, declarative Vue plugin installation, and custom entries. Vue-only libraries such as Nuxt UI can now run inside app iframes without sharing the host Nuxt runtime.
+
+### Patch Changes
+
+- [#343](https://github.com/nuxt-modules/mcp-toolkit/pull/343) [`1009e4b`](https://github.com/nuxt-modules/mcp-toolkit/commit/1009e4bfafabe52e0ca5fe844bbad84871819980) Thanks [@miguelrk](https://github.com/miguelrk)! - The DevTools MCP Inspector launcher now forwards configured HTTP headers such as `Authorization` when it starts the official inspector process. This keeps authenticated endpoints working from Nuxt DevTools without needing to re-enter the headers in the Inspector UI.
+
 ## 0.19.0
 
 ### Minor Changes

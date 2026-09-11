@@ -1,6 +1,6 @@
 {
   "name": "nitro-mcp-toolkit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and h3-mcp.",
   "keywords": [
     "ai",
