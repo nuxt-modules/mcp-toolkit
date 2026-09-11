@@ -10,4 +10,4 @@ import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
 mcp({ oauth: clerk({ resource: 'https://api.example.com/mcp' }) })
 ```
 
-`clerk` reads `CLERK_PUBLISHABLE_KEY` for the issuer and JWKS, skips audience checks (Clerk puts the OAuth client in `azp`, so use `authorizedParties`), and proxies RFC 8414 metadata from Clerk for clients that only look on the resource origin. `okta` covers custom authorization servers and derives JWKS from the issuer. `workos` covers AuthKit, where `aud` is the client id rather than the MCP URL.
+`clerk` reads `CLERK_PUBLISHABLE_KEY` for the issuer and JWKS, requires `aud` to match the MCP resource, optionally restricts `azp` with `authorizedParties`, and proxies RFC 8414 metadata from Clerk for clients that only look on the resource origin. `okta` covers custom authorization servers and derives JWKS from the issuer. `workos` reads `WORKOS_AUTHKIT_ISSUER` and verifies WorkOS Connect access tokens bound to the MCP resource; AuthKit session tokens are not accepted.
