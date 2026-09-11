@@ -8,7 +8,7 @@ export default defineConfig({
     // contention even after being bumped one-by-one to 15s. A single global
     // timeout plus one CI-only retry absorbs that scheduling noise instead of
     // chasing it test-by-test.
-    testTimeout: 20_000,
+    testTimeout: process.env.CI ? 60_000 : 20_000,
     retry: process.env.CI ? 1 : 0,
   },
 })
