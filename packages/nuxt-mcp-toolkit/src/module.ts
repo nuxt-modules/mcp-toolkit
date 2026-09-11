@@ -8,6 +8,7 @@ import { setupNitroAliases } from './setup/nitro-aliases'
 import { name, version } from '../package.json'
 import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
 import type { McpConfig, McpDefaultHandlerStrategy, McpSecurityConfig } from './runtime/server/mcp/config'
+import type { McpAppsOptions } from './setup/mcp-apps/options'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
@@ -85,6 +86,11 @@ export interface ModuleOptions {
    * @default 'mcp' (app/mcp)
    */
   appsDir?: string
+  /**
+   * Customize the isolated Vue bundle used for MCP Apps.
+   * This is a Vue-only build and does not share the Nuxt runtime or module graph.
+   */
+  apps?: McpAppsOptions
   /**
    * Configuration for the DevTools inspector launcher.
    * Useful when the server requires HTTP headers such as `Authorization`.
@@ -203,7 +209,7 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => `export default ${JSON.stringify(mcpConfig)}`,
     })
 
-    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log, { appsDir })
+    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log, { appsDir, apps: options.apps })
 
     registerTypeReferences(nuxt, resolver)
 

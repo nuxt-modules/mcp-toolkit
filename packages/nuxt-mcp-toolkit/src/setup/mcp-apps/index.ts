@@ -8,6 +8,7 @@ import { type DiscoveredApp, discoverApps } from './discover'
 import { parseSfcApp, type McpAppStaticFields } from './parse-sfc'
 import { bundleAppHtml } from './bundle'
 import { emitAppModules, type ResolvedAttribution } from './emit'
+import type { McpAppsOptions } from './options'
 
 export type { DiscoveredApp } from './discover'
 export { probeAppsDir } from './discover'
@@ -56,6 +57,7 @@ export async function setupMcpApps(
   appsDir: string | undefined,
   resolver: Resolver,
   log: ConsolaInstance,
+  options?: McpAppsOptions,
 ): Promise<McpAppsResult> {
   const dir = appsDir ?? APPS_DIR_DEFAULT
   const apps = await discoverApps(dir, log)
@@ -73,7 +75,10 @@ export async function setupMcpApps(
     try {
       const parsed = await parseSfcApp(app.sfc)
       const attribution = resolveAttribution(app.inferredAttribution, parsed.staticFields)
-      const html = await bundleAppHtml(app, parsed.bundleSource, buildRoot, resolver, log)
+      const html = await bundleAppHtml(app, parsed.bundleSource, buildRoot, resolver, log, {
+        ...options,
+        srcDir: nuxt.options.srcDir,
+      })
       const { toolFile, resourceFile } = emitAppModules(app, parsed, html, attribution, resolver)
       built.push({ ...app, toolFile, resourceFile, attribution })
     }

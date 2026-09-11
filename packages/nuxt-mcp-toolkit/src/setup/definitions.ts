@@ -20,6 +20,7 @@ export interface DefinitionsPaths {
 export interface DefinitionsLoaderConfig {
   /** Sub-directory under the app dir where SFC MCP Apps live. Defaults to `mcp` (i.e. `app/mcp/*.vue`). */
   appsDir?: string
+  apps?: ModuleOptions['apps']
 }
 
 /** Build default scan paths from the resolved MCP `dir`. */
@@ -52,7 +53,7 @@ export function setupDefinitionsLoader(
       // Lazy-load the apps pipeline only when at least one layer carries the dir.
       // Users without `app/mcp/*.vue` pay zero setup/runtime cost.
       const appsResult = probeAppsDir(appsDir)
-        ? await (await import('./mcp-apps')).setupMcpApps(nuxt, appsDir, resolver, log)
+        ? await (await import('./mcp-apps')).setupMcpApps(nuxt, appsDir, resolver, log, config.apps)
         : { apps: [], toolFiles: [], resourceFiles: [] }
 
       const result = await loadAllDefinitions(paths, {
