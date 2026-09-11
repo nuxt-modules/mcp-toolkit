@@ -1,4 +1,5 @@
 import { attachNotify } from './context.ts'
+import { resolveSchema } from './schema.ts'
 import { requireScopes } from './scopes.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
@@ -105,7 +106,7 @@ export function defineMcpPrompt(
         const { inputSchema, handler } = definition
         into.prompts.push({
           ...advertised,
-          arguments: inputSchema,
+          arguments: resolveSchema(inputSchema),
           handler: async (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) => {
             requireScopes(event, scopes, 'prompt', identity.name)
             return toPromptResult(await handler(args, attachNotify(event, notify)))
