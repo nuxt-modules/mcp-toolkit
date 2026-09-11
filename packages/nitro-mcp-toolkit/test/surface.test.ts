@@ -12,8 +12,11 @@ describe('public exports', () => {
         "MODERN_PROTOCOL_VERSION",
         "McpJsonRpcError",
         "audioResult",
+        "authorizationServerMetadataUrl",
         "canRequestInput",
         "createMcpHandler",
+        "createMcpOAuth",
+        "defineMcpPlugins",
         "defineMcpPrompt",
         "defineMcpResource",
         "defineMcpTool",
@@ -26,6 +29,8 @@ describe('public exports', () => {
         "inputRequired",
         "mcpElicit",
         "mcpElicitUrl",
+        "protectedResourceMetadataUrl",
+        "toolResult",
       ]
     `)
   })
@@ -49,5 +54,11 @@ describe('public exports', () => {
 
   it('does not load nitro-mcp-toolkit/servers outside mcp()', async () => {
     await expect(import('../src/runtime/servers.ts')).rejects.toThrow(/provided by `mcp\(\)`/)
+  })
+
+  it('exposes oauth connectors on their own entries', async () => {
+    expect(Object.keys(await import('../src/runtime/oauth/clerk.ts')).sort()).toEqual(['clerk'])
+    expect(Object.keys(await import('../src/runtime/oauth/okta.ts')).sort()).toEqual(['okta'])
+    expect(Object.keys(await import('../src/runtime/oauth/workos.ts')).sort()).toEqual(['workos'])
   })
 })

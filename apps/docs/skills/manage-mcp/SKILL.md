@@ -990,6 +990,20 @@ export default defineNuxtConfig({
 - **CLI Inspector**: `npx @modelcontextprotocol/inspector http://localhost:3000/mcp`
 - **curl smoke test**: `curl -X POST … -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`
 
+For an authenticated endpoint, pass headers to the DevTools launcher:
+
+```ts [nuxt.config.ts]
+const token = process.env.MCP_TOKEN
+
+export default defineNuxtConfig({
+  mcp: {
+    inspector: {
+      headers: { Authorization: token ? `Bearer ${token}` : undefined },
+    },
+  },
+})
+```
+
 ## Learn More
 
 - [Documentation](https://mcp-toolkit.nuxt.dev)

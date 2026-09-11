@@ -31,6 +31,18 @@
       "types": "./dist/runtime/index.d.mts",
       "import": "./dist/runtime/index.mjs"
     },
+    "./oauth/clerk": {
+      "types": "./dist/runtime/oauth/clerk.d.mts",
+      "import": "./dist/runtime/oauth/clerk.mjs"
+    },
+    "./oauth/okta": {
+      "types": "./dist/runtime/oauth/okta.d.mts",
+      "import": "./dist/runtime/oauth/okta.mjs"
+    },
+    "./oauth/workos": {
+      "types": "./dist/runtime/oauth/workos.d.mts",
+      "import": "./dist/runtime/oauth/workos.mjs"
+    },
     "./servers": {
       "types": "./dist/runtime/servers.d.mts",
       "import": "./dist/runtime/servers.mjs"
@@ -58,10 +70,13 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench:catalog": "node benchmarks/catalog.bench.ts",
+    "bench:consumer": "node benchmarks/consumer.ts"
   },
   "dependencies": {
     "h3-mcp": "0.2.0",
+    "jose": "^6.1.3",
     "pathe": "^2.0.3",
     "tinyglobby": "^0.2.17"
   },
@@ -84,7 +99,7 @@
   "peerDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
     "h3": "^2.0.1-rc.27",
-    "nitro": "^3.0.0"
+    "nitro": "3.0.260610-beta || ^3.0.0"
   },
   "peerDependenciesMeta": {
     "@modelcontextprotocol/client": {

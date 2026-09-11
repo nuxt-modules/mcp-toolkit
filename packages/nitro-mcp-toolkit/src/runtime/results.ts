@@ -1,6 +1,27 @@
 import { HTTPError } from 'h3'
 import type { CallToolResult, ContentBlock, InputRequiredResult } from 'h3-mcp'
 
+const TOOL_RESULT = Symbol.for('nitro-mcp-toolkit.toolResult')
+
+/** An explicit protocol envelope, including when a tool declares an output schema. */
+export interface McpToolResult {
+  readonly [TOOL_RESULT]: true
+  readonly result: CallToolResult
+}
+
+export function toolResult(result: CallToolResult): McpToolResult {
+  return { [TOOL_RESULT]: true, result }
+}
+
+function isExplicitResult(value: unknown): value is McpToolResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    TOOL_RESULT in value &&
+    value[TOOL_RESULT] === true
+  )
+}
+
 /**
  * A plain value a handler may return instead of a full `CallToolResult`.
  */
@@ -46,6 +67,7 @@ function textBlock(text: string): ContentBlock[] {
  * @internal
  */
 export function toCallToolResult(value: unknown, hasOutputSchema: boolean): CallToolResult {
+  if (isExplicitResult(value)) return toCallToolResult(value.result, false)
   if (hasOutputSchema && isObject(value)) {
     return { content: textBlock(JSON.stringify(value, null, 2)), structuredContent: value }
   }

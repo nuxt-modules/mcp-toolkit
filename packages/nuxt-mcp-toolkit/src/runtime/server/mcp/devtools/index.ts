@@ -1,7 +1,7 @@
 import { logger } from '@nuxt/kit'
 import { refreshCustomTabs } from '@nuxt/devtools-kit'
 import type { Nuxt } from 'nuxt/schema'
-import type { ModuleOptions } from '../../../../module'
+import type { McpHeaderValue, ModuleOptions } from '../../../../module'
 import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 
@@ -27,9 +27,32 @@ const ERROR_PATTERNS = [
 
 const NPMJS_REGISTRY = 'https://registry.npmjs.org'
 
+function buildInspectorHeaders(headers: Record<string, McpHeaderValue> = {}): string[] {
+  const args: string[] = []
+
+  for (const [key, value] of Object.entries(headers)) {
+    const headerName = key.trim()
+    if (!headerName) {
+      continue
+    }
+
+    const values = Array.isArray(value) ? value : [value]
+    for (const rawValue of values) {
+      const headerValue = typeof rawValue === 'string' ? rawValue.trim() : ''
+      if (!headerValue) {
+        continue
+      }
+      args.push('--header', `${headerName}: ${headerValue}`)
+    }
+  }
+
+  return args
+}
+
 export function inspectorNpxSpec(
   mcpServerUrl: string,
   processEnv: NodeJS.ProcessEnv = process.env,
+  headers: Record<string, McpHeaderValue> = {},
 ): { command: string, args: string[], env: NodeJS.ProcessEnv } {
   const registry = processEnv.MCP_INSPECTOR_REGISTRY || NPMJS_REGISTRY
   return {
@@ -43,6 +66,7 @@ export function inspectorNpxSpec(
       'http',
       '--server-url',
       mcpServerUrl,
+      ...buildInspectorHeaders(headers),
     ],
     env: {
       ...processEnv,
@@ -223,7 +247,7 @@ async function launchMcpInspector(nuxt: Nuxt, options: ModuleOptions): Promise<v
   log.info('🚀 Launching MCP Inspector...')
 
   try {
-    const spec = inspectorNpxSpec(mcpServerUrl)
+    const spec = inspectorNpxSpec(mcpServerUrl, undefined, options.inspector?.headers)
     inspectorProcess = spawn(spec.command, spec.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {

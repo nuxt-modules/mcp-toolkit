@@ -44,6 +44,32 @@ describe('inspectorNpxSpec', () => {
     expect(spec.env.npm_config_registry).toBe(mirror)
     expect(spec.env.NPM_CONFIG_REGISTRY).toBe(mirror)
   })
+
+  it('passes configured HTTP headers to the inspector process', () => {
+    const spec = inspectorNpxSpec('http://localhost:3000/mcp', { PATH: '/usr/bin' }, {
+      'Authorization': 'Bearer test-token',
+      'X-Trace': ['one', 'two'],
+      'X-Empty': '',
+    })
+
+    expect(spec.args).toContain('--header')
+    expect(spec.args).toEqual([
+      '--registry',
+      NPMJS,
+      '-y',
+      '@modelcontextprotocol/inspector',
+      '--transport',
+      'http',
+      '--server-url',
+      'http://localhost:3000/mcp',
+      '--header',
+      'Authorization: Bearer test-token',
+      '--header',
+      'X-Trace: one',
+      '--header',
+      'X-Trace: two',
+    ])
+  })
 })
 
 describe('inspectorMcpUrl', () => {

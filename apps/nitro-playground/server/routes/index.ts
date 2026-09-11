@@ -15,6 +15,16 @@ export default defineHandler((event) => {
   <span class="spacer"></span>
   <div class="eras" role="group" aria-label="Protocol revision"></div>
 </header>
+<form class="connection">
+  <label>Endpoint
+    <input name="endpoint" value="/mcp" list="endpoints" required spellcheck="false">
+    <datalist id="endpoints"><option value="/mcp"><option value="/admin/mcp"></datalist>
+  </label>
+  <label>Bearer token
+    <input name="token" type="password" autocomplete="off" placeholder="Optional; kept in memory">
+  </label>
+  <button class="run" type="submit">Connect</button>
+</form>
 <main>
   <nav aria-label="Definitions"></nav>
   <section aria-live="polite"></section>

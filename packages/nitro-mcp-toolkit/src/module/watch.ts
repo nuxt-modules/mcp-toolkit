@@ -6,8 +6,8 @@ import { watch } from 'node:fs/promises'
 // the whole dev server down. Everything else stays on `pathe`, since the paths
 // we compare against come from a glob.
 import { normalize as nativePath } from 'node:path'
-import { dirname, extname, join, resolve, sep } from 'pathe'
-import { DEFINITION_DIRS, discoverDefinitions } from './discover.ts'
+import { basename, dirname, extname, join, resolve, sep } from 'pathe'
+import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins, isPluginsFile } from './discover.ts'
 import type { Nitro } from 'nitro/types'
 
 const DEFINITION_FILE_RE = /\.(?:ts|js|mts|mjs)$/
@@ -31,14 +31,16 @@ function watchableRoot(dir: string): string {
 }
 
 /**
- * Whether a path could change what is served: a definition file in one of the
- * three directories, or a directory on the way to one of them. A directory
- * counts because it can arrive with its files already inside — a moved folder
- * reports only itself, and on Linux a recursive watch attaches to a new
- * subdirectory too late to report what was written into it.
+ * Whether a path could change what is served: the plugins file, a definition
+ * file in one of the three directories, or a directory on the way to one of
+ * them. A directory counts because it can arrive with its files already inside
+ * — a moved folder reports only itself, and on Linux a recursive watch attaches
+ * to a new subdirectory too late to report what was written into it.
  */
-function couldHoldDefinitions(dir: string, path: string): boolean {
+function couldChangeServed(dir: string, path: string): boolean {
   if (extname(path) && !DEFINITION_FILE_RE.test(path)) return false
+
+  if (isPluginsFile(dir, path)) return true
 
   return DEFINITION_DIRS.some((definitionDir) => {
     const scanned = join(dir, definitionDir)
@@ -49,11 +51,14 @@ function couldHoldDefinitions(dir: string, path: string): boolean {
   })
 }
 
-/** What the registry would import, as one string to compare against. */
+/** What the generated modules would import, as one string to compare against. */
 async function served(dir: string): Promise<string> {
-  const definitions = await discoverDefinitions(dir)
+  const [definitions, plugins] = await Promise.all([discoverDefinitions(dir), discoverPlugins(dir)])
 
-  return definitions.map((definition) => definition.file).join('|')
+  return [
+    ...definitions.map((definition) => definition.file),
+    ...plugins.map((path) => basename(path)),
+  ].join('|')
 }
 
 /**
@@ -113,7 +118,7 @@ export function watchDefinitions(nitro: Nitro, dir: string): void {
             continue
           }
 
-          if (couldHoldDefinitions(dir, resolve(root, filename))) await reloadIfChanged()
+          if (couldChangeServed(dir, resolve(root, filename))) await reloadIfChanged()
         }
       }
     } catch (error) {

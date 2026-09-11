@@ -15,6 +15,12 @@ export const { resolve } = createResolver(import.meta.url)
 
 export type * from './runtime/server/types'
 
+export type McpHeaderValue = string | string[] | null | undefined
+
+export interface McpInspectorConfig {
+  headers?: Record<string, McpHeaderValue>
+}
+
 export interface ModuleOptions {
   /**
    * Enable or disable the MCP server
@@ -79,6 +85,11 @@ export interface ModuleOptions {
    * @default 'mcp' (app/mcp)
    */
   appsDir?: string
+  /**
+   * Configuration for the DevTools inspector launcher.
+   * Useful when the server requires HTTP headers such as `Authorization`.
+   */
+  inspector?: McpInspectorConfig
   /**
    * How the default `/mcp` handler picks up auto-discovered definitions when
    * named handlers exist (`server/mcp/handlers/<name>/` or `handlers: 'name'` field).

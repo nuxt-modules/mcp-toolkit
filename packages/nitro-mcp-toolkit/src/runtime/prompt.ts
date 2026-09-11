@@ -1,5 +1,6 @@
 import { attachNotify } from './context.ts'
 import { resolveSchema } from './schema.ts'
+import { requireScopes } from './scopes.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
 import type { GetPromptResult, Icon, PromptArgument, StandardTypedV1 } from 'h3-mcp'
@@ -24,6 +25,11 @@ interface McpPromptMetadata {
   group?: string
   /** Free-form labels, advertised in `_meta` for clients to filter on. */
   tags?: string[]
+  /**
+   * OAuth scopes required by expansion and completion callbacks.
+   * The prompt still appears in `prompts/list`.
+   */
+  scopes?: string[]
   icons?: Icon[]
 }
 
@@ -77,7 +83,7 @@ export function defineMcpPrompt(
     | McpPromptDefinitionWithArguments
     | McpPromptDefinitionWithoutInput,
 ): McpPrompt {
-  const { name, title, description, group, tags, icons } = definition
+  const { name, title, description, group, tags, scopes, icons } = definition
 
   return {
     kind: 'prompt',
@@ -86,13 +92,14 @@ export function defineMcpPrompt(
     description,
     group,
     tags,
+    scopes,
     build(identity, into, notify) {
       const advertised = {
         name: identity.name,
         title: identity.title,
         description,
         icons,
-        _meta: resolveMeta(identity.group, tags),
+        _meta: resolveMeta(identity.group, tags, scopes),
       }
 
       if ('inputSchema' in definition && definition.inputSchema) {
@@ -100,8 +107,10 @@ export function defineMcpPrompt(
         into.prompts.push({
           ...advertised,
           arguments: resolveSchema(inputSchema),
-          handler: async (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
-            toPromptResult(await handler(args, attachNotify(event, notify))),
+          handler: async (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) => {
+            requireScopes(event, scopes, 'prompt', identity.name)
+            return toPromptResult(await handler(args, attachNotify(event, notify)))
+          },
         })
         return
       }
@@ -110,9 +119,19 @@ export function defineMcpPrompt(
         const { arguments: args, handler } = definition
         into.prompts.push({
           ...advertised,
-          arguments: args,
-          handler: async (parsed: Record<string, string>, event: H3Event) =>
-            toPromptResult(await handler(parsed, attachNotify(event, notify))),
+          arguments: args.map(({ complete, ...argument }): PromptArgument => ({
+            ...argument,
+            complete:
+              complete &&
+              ((context, event) => {
+                requireScopes(event, scopes, 'prompt', identity.name)
+                return complete(context, event)
+              }),
+          })),
+          handler: async (parsed: Record<string, string>, event: H3Event) => {
+            requireScopes(event, scopes, 'prompt', identity.name)
+            return toPromptResult(await handler(parsed, attachNotify(event, notify)))
+          },
         })
         return
       }
@@ -120,8 +139,10 @@ export function defineMcpPrompt(
       const { handler } = definition
       into.prompts.push({
         ...advertised,
-        handler: async (event: H3Event) =>
-          toPromptResult(await handler(attachNotify(event, notify))),
+        handler: async (event: H3Event) => {
+          requireScopes(event, scopes, 'prompt', identity.name)
+          return toPromptResult(await handler(attachNotify(event, notify)))
+        },
       })
     },
   }

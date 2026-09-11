@@ -1,12 +1,13 @@
-const endpoint = new URL('/mcp', location.href).href
-
 const PROTOCOL = { modern: '2026-07-28', legacy: '2025-11-25' }
 const ENVELOPE = 'io.modelcontextprotocol/'
 
-const state = { era: 'modern', entries: [], selected: null, wire: null }
+const state = { era: 'modern', entries: [], selected: null, connection: null, generation: 0 }
 let nextId = 0
 
 const el = {
+  connection: document.querySelector('.connection'),
+  endpoint: document.querySelector('[name=endpoint]'),
+  token: document.querySelector('[name=token]'),
   server: document.querySelector('.server'),
   eras: document.querySelector('.eras'),
   nav: document.querySelector('nav'),
@@ -18,12 +19,13 @@ const el = {
  * by side: modern is stateless JSON carrying a `_meta` envelope plus headers
  * mirroring the body, legacy is a bare request answered as an SSE stream.
  */
-async function rpc(method, params = {}) {
-  const modern = state.era === 'modern'
+async function rpc(method, params = {}, connection = state.connection) {
+  const modern = connection.era === 'modern'
   const headers = {
     'content-type': 'application/json',
     accept: 'application/json, text/event-stream',
-    'mcp-protocol-version': PROTOCOL[state.era],
+    'mcp-protocol-version': PROTOCOL[connection.era],
+    ...(connection.token ? { authorization: `Bearer ${connection.token}` } : {}),
   }
 
   const body = { jsonrpc: '2.0', id: ++nextId, method, params: { ...params } }
@@ -38,14 +40,35 @@ async function rpc(method, params = {}) {
     }
   }
 
-  const response = await fetch(endpoint, {
+  const started = performance.now()
+  const response = await fetch(connection.endpoint, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
   })
 
-  const payload = decode(await response.text())
-  state.wire = { request: body, response: payload }
+  const raw = await response.text()
+  connection.wire = {
+    request: body,
+    response: raw,
+    status: response.status,
+    duration: Math.round(performance.now() - started),
+  }
+  let payload
+  try {
+    payload = decode(raw, body.id)
+  } catch {
+    throw new Error(`HTTP ${response.status}: the endpoint did not return an MCP response.`)
+  }
+  connection.wire.response = payload
+
+  if (typeof payload.error === 'string') {
+    throw new Error(`HTTP ${response.status}: ${payload.error}`)
+  }
+
+  if (!response.ok && !payload.error) {
+    throw new Error(`HTTP ${response.status}: ${payload.message ?? response.statusText}`)
+  }
 
   if (payload.error) {
     const error = new Error(payload.error.message)
@@ -57,64 +80,103 @@ async function rpc(method, params = {}) {
 }
 
 /** Legacy replies arrive as `text/event-stream`, modern ones as plain JSON. */
-function decode(text) {
-  const data = text
-    .split('\n')
-    .find((line) => line.startsWith('data:'))
-    ?.slice('data:'.length)
+function decode(text, id) {
+  if (!text.trimStart().startsWith('{')) {
+    for (const event of text.split(/\r?\n\r?\n/)) {
+      const data = event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trimStart())
+        .join('\n')
+      if (!data) continue
+      const payload = JSON.parse(data)
+      if (payload.id === id) return payload
+    }
+    throw new Error('The stream closed without a response.')
+  }
+  return JSON.parse(text)
+}
 
-  return JSON.parse(data ?? text)
+async function listAll(method, key, connection) {
+  const entries = []
+  const cursors = new Set()
+  let cursor
+  do {
+    const page = await rpc(method, cursor ? { cursor } : {}, connection)
+    entries.push(...page[key])
+    cursor = page.nextCursor
+    if (cursor && cursors.has(cursor)) throw new Error(`${method} returned a repeated cursor.`)
+    if (cursor) cursors.add(cursor)
+  } while (cursor)
+  return entries
 }
 
 /** Server metadata lives in `server/discover` on modern, `initialize` on legacy. */
-async function describe() {
-  if (state.era === 'legacy') {
-    const result = await rpc('initialize', {
-      protocolVersion: PROTOCOL.legacy,
-      capabilities: {},
-      clientInfo: { name: 'inspector', version: '0' },
-    })
+async function describe(connection) {
+  if (connection.era === 'legacy') {
+    const result = await rpc(
+      'initialize',
+      {
+        protocolVersion: PROTOCOL.legacy,
+        capabilities: {},
+        clientInfo: { name: 'inspector', version: '0' },
+      },
+      connection,
+    )
     return result.serverInfo
   }
 
-  const result = await rpc('server/discover')
+  const result = await rpc('server/discover', {}, connection)
   return result._meta?.[`${ENVELOPE}serverInfo`]
 }
 
 async function load() {
+  const generation = ++state.generation
+  el.detail.innerHTML = ''
+  el.server.innerHTML = ''
   el.nav.innerHTML = '<p class="empty">Loading…</p>'
 
   try {
-    const server = await describe()
+    const endpoint = new URL(el.endpoint.value, location.href)
+    if (endpoint.origin !== location.origin) throw new Error('Choose an endpoint on this origin.')
+    const connection = {
+      endpoint: endpoint.href,
+      era: state.era,
+      token: el.token.value.trim(),
+      wire: null,
+    }
+    const server = await describe(connection)
     const [tools, resources, templates, prompts] = await Promise.all([
-      rpc('tools/list'),
-      rpc('resources/list'),
-      rpc('resources/templates/list'),
-      rpc('prompts/list'),
+      listAll('tools/list', 'tools', connection),
+      listAll('resources/list', 'resources', connection),
+      listAll('resources/templates/list', 'resourceTemplates', connection),
+      listAll('prompts/list', 'prompts', connection),
     ])
 
+    if (generation !== state.generation) return
+    state.connection = connection
     renderServer(server)
 
     state.entries = [
-      ...tools.tools.map((tool) => ({
+      ...tools.map((tool) => ({
         kind: 'tool',
         name: tool.name,
         detail: tool.description,
         schema: tool.inputSchema,
       })),
-      ...resources.resources.map((resource) => ({
+      ...resources.map((resource) => ({
         kind: 'resource',
         name: resource.name,
         detail: resource.uri,
         uri: resource.uri,
       })),
-      ...templates.resourceTemplates.map((template) => ({
+      ...templates.map((template) => ({
         kind: 'template',
         name: template.name,
         detail: template.uriTemplate,
         uriTemplate: template.uriTemplate,
       })),
-      ...prompts.prompts.map((prompt) => ({
+      ...prompts.map((prompt) => ({
         kind: 'prompt',
         name: prompt.name,
         detail: prompt.description,
@@ -122,6 +184,9 @@ async function load() {
       })),
     ]
   } catch (error) {
+    if (generation !== state.generation) return
+    state.connection = null
+    state.entries = []
     el.nav.innerHTML = ''
     el.detail.innerHTML = ''
     el.detail.append(heading('Cannot reach the server'), failure(error))
@@ -147,7 +212,7 @@ addEventListener('hashchange', () => {
 /** The hash keeps a definition addressable, so a reload lands back on it. */
 function select(entry) {
   state.selected = entry
-  state.wire = null
+  if (state.connection) state.connection.wire = null
   if (entry) location.hash = `${entry.kind}/${entry.name}`
   renderNav()
   renderDetail()
@@ -237,6 +302,8 @@ function renderDetail() {
     event.preventDefault()
     run.disabled = true
     output.innerHTML = ''
+    const connection = state.connection
+    connection.wire = null
 
     try {
       output.append(...present(await invoke(entry, fields)))
@@ -244,7 +311,7 @@ function renderDetail() {
       output.append(failure(error))
     } finally {
       run.disabled = false
-      output.append(wirePanel())
+      output.append(wirePanel(connection))
     }
   }
 
@@ -455,17 +522,19 @@ function failure(error) {
 }
 
 /** Seeing the raw envelope is half the point of a toolkit playground. */
-function wirePanel() {
+function wirePanel(connection) {
   const details = document.createElement('details')
   details.append(Object.assign(document.createElement('summary'), { textContent: 'Wire' }))
 
+  if (connection.wire)
+    details.append(text(`HTTP ${connection.wire.status} · ${connection.wire.duration} ms`))
   const wire = document.createElement('div')
   wire.className = 'wire'
   wire.append(
     label('request'),
-    text(JSON.stringify(state.wire?.request, null, 2)),
+    text(JSON.stringify(connection.wire?.request, null, 2)),
     label('response'),
-    text(JSON.stringify(state.wire?.response, null, 2)),
+    text(JSON.stringify(connection.wire?.response, null, 2)),
   )
 
   details.append(wire)
@@ -473,6 +542,12 @@ function wirePanel() {
 }
 
 /* Boot */
+
+el.connection.onsubmit = (event) => {
+  event.preventDefault()
+  state.selected = null
+  load()
+}
 
 for (const era of Object.keys(PROTOCOL)) {
   const button = document.createElement('button')
