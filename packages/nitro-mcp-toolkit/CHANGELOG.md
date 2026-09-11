@@ -10,10 +10,10 @@
 
   ```ts
   // server/mcp/plugins.ts
-  import { mcpTasks } from "h3-mcp/tasks";
-  import { defineMcpPlugins } from "nitro-mcp-toolkit";
+  import { mcpTasks } from 'h3-mcp/tasks'
+  import { defineMcpPlugins } from 'nitro-mcp-toolkit'
 
-  export default defineMcpPlugins([mcpTasks({ max: 100 })]);
+  export default defineMcpPlugins([mcpTasks({ max: 100 })])
   ```
 
   The previous form keeps working — the helper returns the array unchanged, and `ExtensionPlugin` is still exported.
@@ -22,10 +22,10 @@
 
   ```ts
   export default defineMcpTool({
-    scopes: ["todos:write"],
+    scopes: ['todos:write'],
     inputSchema: z.object({ id: z.string() }),
     handler: ({ id }) => remove(id),
-  });
+  })
   ```
 
   A scoped definition is still listed, with its scopes in `_meta` and in `handler.definitions`; only the call is gated. Options resolve before a request is authenticated, so nothing that builds a listing has seen the token — use a separate endpoint when a tool's existence is itself sensitive.
@@ -52,9 +52,9 @@
 - [#332](https://github.com/nuxt-modules/mcp-toolkit/pull/332) [`b50badb`](https://github.com/nuxt-modules/mcp-toolkit/commit/b50badb6c8e264ac46a8ffdf1ae63e2a3e8cfd22) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Connectors fill in the issuer conventions of three providers, so `oauth` is one call instead of a JWKS URL you looked up by hand. Each returns the same options object `mcp({ oauth })` and `createMcpOAuth` already accept, and each sits on its own subpath — an app that imports none of them never loads them.
 
   ```ts
-  import { clerk } from "nitro-mcp-toolkit/oauth/clerk";
+  import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
 
-  mcp({ oauth: clerk({ resource: "https://api.example.com/mcp" }) });
+  mcp({ oauth: clerk({ resource: 'https://api.example.com/mcp' }) })
   ```
 
   `clerk` reads `CLERK_PUBLISHABLE_KEY` for the issuer and JWKS, requires `aud` to match the MCP resource, optionally restricts `azp` with `authorizedParties`, and proxies RFC 8414 metadata from Clerk for clients that only look on the resource origin. `okta` covers custom authorization servers and derives JWKS from the issuer. `workos` reads `WORKOS_AUTHKIT_ISSUER` and verifies WorkOS Connect access tokens bound to the MCP resource; AuthKit session tokens are not accepted.
@@ -67,35 +67,35 @@
     modules: [
       mcp({
         oauth: {
-          resource: "https://api.example.com/mcp",
-          authorizationServers: ["https://auth.example.com"],
-          jwt: { jwks: "https://auth.example.com/.well-known/jwks.json" },
+          resource: 'https://api.example.com/mcp',
+          authorizationServers: ['https://auth.example.com'],
+          jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
         },
       }),
     ],
-  });
+  })
   ```
 
 - [#330](https://github.com/nuxt-modules/mcp-toolkit/pull/330) [`0d8a574`](https://github.com/nuxt-modules/mcp-toolkit/commit/0d8a5743ad16ff4a55701445637a79222333e240) Thanks [@HugoRCD](https://github.com/HugoRCD)! - `createMcpOAuth` turns an MCP endpoint into an OAuth 2.1 resource server: JWT access tokens are verified against the issuer's JWKS, and the verified claims land on `event.context.oauth`. `iss` defaults to `authorizationServers` and `aud` to `resource`, so a token minted for another service is refused. It also hands you `metadataHandler` and `metadataPath` for the RFC 9728 protected-resource document, which is what a `401`'s `WWW-Authenticate` points clients at. `createMcpOAuth({ verify })` covers opaque tokens instead. This package does not issue tokens — pair it with an authorization server.
 
   ```ts
   const oauth = createMcpOAuth({
-    resource: "https://api.example.com/mcp",
-    authorizationServers: ["https://auth.example.com"],
-    jwt: { jwks: "https://auth.example.com/.well-known/jwks.json" },
-  });
+    resource: 'https://api.example.com/mcp',
+    authorizationServers: ['https://auth.example.com'],
+    jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+  })
 
-  export default createMcpHandler({ auth: oauth.auth, tools: [whoami] });
+  export default createMcpHandler({ auth: oauth.auth, tools: [whoami] })
   ```
 
 - [#333](https://github.com/nuxt-modules/mcp-toolkit/pull/333) [`a9acbe6`](https://github.com/nuxt-modules/mcp-toolkit/commit/a9acbe6e2862bbe935e134c820c5dcd7bdb3f198) Thanks [@HugoRCD](https://github.com/HugoRCD)! - `server/mcp/plugins.ts`, beside `tools/`, `resources/` and `prompts/`, installs h3-mcp extension plugins on that endpoint. Its default export is the array, and `ExtensionPlugin` is now re-exported so the file can name the type it satisfies. A plugin is a live function, so this is how one reaches a generated handler — `mcp()` options cross into generated code as JSON. The file belongs to whichever `mcp()` scans its directory, `.js` / `.mts` / `.mjs` work too, creating it in development needs no restart, and each build names the file it installed.
 
   ```ts
   // server/mcp/plugins.ts
-  import { mcpTasks } from "h3-mcp/tasks";
-  import type { ExtensionPlugin } from "nitro-mcp-toolkit";
+  import { mcpTasks } from 'h3-mcp/tasks'
+  import type { ExtensionPlugin } from 'nitro-mcp-toolkit'
 
-  export default [mcpTasks({ max: 100 })] satisfies ExtensionPlugin[];
+  export default [mcpTasks({ max: 100 })] satisfies ExtensionPlugin[]
   ```
 
 - [#338](https://github.com/nuxt-modules/mcp-toolkit/pull/338) [`6785b95`](https://github.com/nuxt-modules/mcp-toolkit/commit/6785b951a0ca2f8cb45aa8f44e530d8ab150a10a) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Require resource-bound, expiring JWTs. Clerk now checks the MCP resource audience; WorkOS uses an AuthKit issuer (`issuer` or `WORKOS_AUTHKIT_ISSUER`) and Connect resource indicators instead of client-ID session tokens. Disabling generic JWT audience checks requires a custom `verify` callback that validates the resource.
