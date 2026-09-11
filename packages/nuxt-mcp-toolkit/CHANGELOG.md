@@ -1,5 +1,28 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.21.0
+
+### Minor Changes
+
+- [#327](https://github.com/nuxt-modules/mcp-toolkit/pull/327) [`46645c4`](https://github.com/nuxt-modules/mcp-toolkit/commit/46645c44f84c3630d4f1dfbed6e9cae62d1c2a4b) Thanks [@larbish](https://github.com/larbish)! - Advertise the MCP server in `/llms.txt` when [`nuxt-llms`](https://github.com/nuxt-content/nuxt-llms) is registered.
+
+  Agents that discover a site through `llms.txt` can now find its MCP endpoint without a hand-configured URL. Register both modules and an `## MCP Server` section is appended to the file:
+
+  ```md [llms.txt]
+  ## MCP Server
+
+  Query Example data from your agent.
+
+  - [Example MCP](https://example.com/mcp): Streamable HTTP endpoint — connect an MCP client to this URL to call the tools, resources and prompts exposed by this site.
+  - [MCP documentation](https://example.com/docs/mcp): How to connect to this MCP server.
+  ```
+
+  The section is built from `llms.domain` + `mcp.route` (endpoint URL), `mcp.name` (label), `mcp.description` (section description), and `mcp.browserRedirect` (documentation link, when set to something other than `/`).
+
+  Set `mcp.llms: false` to leave `/llms.txt` untouched. A section you title `MCP Server` yourself always wins, and nothing is registered when `nuxt-llms` isn't installed.
+
+  Note this is a discoverability convention, not part of the MCP specification — spec'd discovery through an AI Catalog and Server Cards is still a draft.
+
 ## 0.20.0
 
 ### Minor Changes
