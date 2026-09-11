@@ -729,6 +729,24 @@ Override per-handler when an endpoint needs a different identity (e.g. `/mcp/adm
 
 ---
 
+## Agent Discovery (`llms.txt`)
+
+When [`nuxt-llms`](https://github.com/nuxt-content/nuxt-llms) is registered alongside this module, the toolkit appends an `## MCP Server` section to `/llms.txt` pointing at the endpoint, so agents that discover the site through `llms.txt` can connect without a hand-configured URL. Nothing to set up:
+
+```typescript [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit', 'nuxt-llms'],
+  llms: { domain: 'https://example.com', title: 'Example' },
+  mcp: { name: 'Example MCP', description: 'Query Example data from your agent.' },
+})
+```
+
+The section uses `llms.domain` + `mcp.route` for the URL, `mcp.name` as the label, `mcp.description` as the section description, and adds `mcp.browserRedirect` as a documentation link when set. Set `mcp.llms: false` to opt out; a section you title `MCP Server` yourself always wins. No-op when `nuxt-llms` isn't installed.
+
+This is a discoverability convention, not part of the MCP specification — spec'd discovery (AI Catalog / Server Cards) is still a draft.
+
+---
+
 ## Listing Definitions (read your catalog)
 
 Use `listMcp*` to expose summaries (catalog endpoints) and `getMcp*` for raw definitions to feed into a handler:
@@ -953,6 +971,7 @@ export default defineNuxtConfig({
     defaultHandlerStrategy: 'orphans', // or 'all'
     security: { allowedOrigins: ['https://my-app.vercel.app'] },
     logging: true, // requires evlog/nuxt
+    llms: true, // advertise in /llms.txt when nuxt-llms is registered
   },
   nitro: { experimental: { asyncContext: true } },
 })

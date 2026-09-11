@@ -1,4 +1,4 @@
-import { addServerHandler, addServerTemplate, createResolver, defineNuxtModule, logger } from '@nuxt/kit'
+import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, hasNuxtModule, logger } from '@nuxt/kit'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { setupAutoImports } from './setup/auto-imports'
 import { buildDefaultPaths, setupDefinitionsLoader } from './setup/definitions'
@@ -148,6 +148,17 @@ export interface ModuleOptions {
    */
   security?: McpSecurityConfig
   /**
+   * Advertise this MCP server in `/llms.txt` when
+   * [`nuxt-llms`](https://github.com/nuxt-content/nuxt-llms) is registered.
+   *
+   * Appends an `## MCP Server` section listing the streamable HTTP endpoint so
+   * agents that discover the site through llms.txt can connect without any
+   * out-of-band configuration. No-op when `nuxt-llms` is not installed.
+   *
+   * @default true
+   */
+  llms?: boolean
+  /**
    * Server-side observability for MCP requests via [evlog](https://evlog.dev).
    *
    * Install `evlog` and register the `evlog/nuxt` module to enable wide
@@ -224,6 +235,10 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     registerServerHandlers(options.route!, resolver)
+
+    if (options.llms !== false && hasNuxtModule('nuxt-llms')) {
+      addServerPlugin(resolver.resolve('runtime/server/plugins/llms'))
+    }
 
     if (nuxt.options.dev) {
       const { addDevToolsCustomTabs } = await import('./runtime/server/mcp/devtools')

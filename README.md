@@ -26,6 +26,7 @@ A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcon
 - 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
 - 📝 **TypeScript First** - Full type safety with auto-imports
 - 🔒 **Zod Validation** - Built-in input/output validation
+- 🤖 **Agent Discovery** - Advertises your server in `llms.txt` when `nuxt-llms` is registered
 
 <!-- /automd -->
 
