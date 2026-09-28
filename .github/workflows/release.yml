@@ -58,7 +58,8 @@ jobs:
           pr-title: "chore(repo): version packages"
           version-script: pnpm run version
           publish-script: pnpm run release
-          # Releases are created here, then their bodies are rewritten below.
+          # Releases are created here, then their bodies are rewritten below. The action also
+          # pushes the tags (`push-git-tags` defaults to true); a second `git push --tags` is rejected.
           create-github-releases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,10 +72,6 @@ jobs:
       # commit range, and with two packages tagged independently, per-package tags interleave and
       # each package's notes would list everybody's PRs. So we rewrite each body from the PRs that
       # actually touched that package's directory, grouped by the same categories as .github/release.yml.
-      - name: Push tags
-        if: steps.changesets.outputs.published == 'true'
-        run: git push --tags
-
       - name: Rewrite release notes
         if: steps.changesets.outputs.published == 'true'
         run: node scripts/release-notes.mjs '${{ steps.changesets.outputs.published-packages }}'
