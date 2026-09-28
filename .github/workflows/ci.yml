@@ -52,7 +52,7 @@ jobs:
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
             continue-on-error: true
-            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
             with:
               team: ${{ vars.TURBO_TEAM }}
 
@@ -88,7 +88,7 @@ jobs:
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
             continue-on-error: true
-            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
             with:
               team: ${{ vars.TURBO_TEAM }}
 
@@ -121,7 +121,7 @@ jobs:
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
             continue-on-error: true
-            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
             with:
               team: ${{ vars.TURBO_TEAM }}
 
@@ -167,7 +167,7 @@ jobs:
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
             continue-on-error: true
-            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
             with:
               team: ${{ vars.TURBO_TEAM }}
 
@@ -240,7 +240,7 @@ jobs:
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
             continue-on-error: true
-            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
             with:
               team: ${{ vars.TURBO_TEAM }}
 
@@ -281,7 +281,7 @@ jobs:
           - name: Set up Turborepo remote cache
             if: env.IS_INTERNAL == 'true'
             continue-on-error: true
-            uses: vercel/setup-turborepo-remote-cache-action@135046f5efcadb17337d9b29b8d5b4035ae64b10 # v1.0.0
+            uses: vercel/setup-turborepo-remote-cache-action@49d7b1b46ba4c9251e1977986bfe18336feabc8f # v1.1.0
             with:
               team: ${{ vars.TURBO_TEAM }}
 
