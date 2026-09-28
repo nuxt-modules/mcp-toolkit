@@ -44,6 +44,7 @@ minimumReleaseAgeExclude:
   - 'ai'
   - shaders@3.0.445
   - agents
+  - '@iconify-json/lucide'
   - '@iconify-json/simple-icons'
   - '@unhead/*'
   - 'unhead'
