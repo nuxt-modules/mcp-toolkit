@@ -54,16 +54,17 @@ jobs:
         id: changesets
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          title: "chore(repo): version packages"
-          version: pnpm run version
-          publish: pnpm run release
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-title: "chore(repo): version packages"
+          version-script: pnpm run version
+          publish-script: pnpm run release
           # Releases are created here, then their bodies are rewritten below.
-          createGithubReleases: true
+          create-github-releases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-      # createGithubReleases gives us one release per package, tagged pkg@version — that part
+      # create-github-releases gives us one release per package, tagged pkg@version — that part
       # we keep. Its *body* is the CHANGELOG section, which for a dependent package is a wall of
       # "Updated dependencies [<hash>, <hash>, …]" and is empty for packages with no changeset
       # of their own. `--generate-notes` is not the answer either: GitHub builds those from a
@@ -76,6 +77,6 @@ jobs:
 
       - name: Rewrite release notes
         if: steps.changesets.outputs.published == 'true'
-        run: node scripts/release-notes.mjs '${{ steps.changesets.outputs.publishedPackages }}'
+        run: node scripts/release-notes.mjs '${{ steps.changesets.outputs.published-packages }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

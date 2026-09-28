@@ -4,7 +4,7 @@
  *
  * ## Why this exists
  *
- * `createGithubReleases: true` gives changesets' own body — the CHANGELOG
+ * `create-github-releases: true` gives changesets' own body — the CHANGELOG
  * section. For a dependent package that reads:
  *
  *     ### Patch Changes
