@@ -1,5 +1,25 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.22.0
+
+### Minor Changes
+
+- [#353](https://github.com/nuxt-modules/mcp-toolkit/pull/353) [`5654bfa`](https://github.com/nuxt-modules/mcp-toolkit/commit/5654bfa161f14cff40217071930de3f279ab4952) Thanks [@johannschopplich](https://github.com/johannschopplich)! - `useMcpApp()` covers display mode, model context and file downloads:
+
+  - `hostCapabilities` holds the capabilities the host announced in `ui/initialize`, so an app can check for a feature before offering it.
+  - `hostContext` follows `ui/notifications/host-context-changed` and merges partial updates. Before, `theme` and `displayMode` kept their handshake values.
+  - `requestDisplayMode(mode)` asks the host for `inline`, `fullscreen` or `pip` and resolves with the mode it set (through `window.openai.requestDisplayMode` in ChatGPT).
+  - `updateModelContext({ content, structuredContent })` replaces the context the app contributes to the model's next turn.
+  - `downloadFile(contents)` saves embedded or linked MCP resources through the host and rejects with `cancelled: true` when the user cancels. Linked files must use `http` or `https`.
+
+  `useToolCall` is now exported from `@nuxtjs/mcp-toolkit/app` to call a tool without replacing `data`. Tool calls wait for the `ui/initialize` handshake, so calling a tool on mount no longer races it. A JSON-RPC error from the host keeps its `code` and `data` — on the rejection of the new methods, and on `error` of `useToolCall` and `useMcpApp` after a failed tool call. The new types `DisplayMode`, `HostCapabilities`, `DownloadFileContent` and `McpAppRequestError` are exported.
+
+- [#355](https://github.com/nuxt-modules/mcp-toolkit/pull/355) [`8c279b6`](https://github.com/nuxt-modules/mcp-toolkit/commit/8c279b6e2e46faaa691a65f763df9e2bf3897fc2) Thanks [@johannschopplich](https://github.com/johannschopplich)! - Stop embedding the view HTML in MCP App tool results. Hosts load the view from the `ui://` resource, so the embedded copy only reached the model's context. `data` is now `null` until the host pushes the tool result, and `initialData` holds the first payload the view receives. An error result or a cancelled call sets `error` and clears `loading` instead of leaving the view loading.
+
+### Patch Changes
+
+- [#351](https://github.com/nuxt-modules/mcp-toolkit/pull/351) [`630af41`](https://github.com/nuxt-modules/mcp-toolkit/commit/630af41c3e9b16b856213c691e326b36bf694d3e) Thanks [@johannschopplich](https://github.com/johannschopplich)! - An MCP App without a `title` is titled from its SFC filename: `create-final-icon.vue` shows as "Create Final Icon" instead of "Create Final Icon.Tool", the name of the generated tool module.
+
 ## 0.21.0
 
 ### Minor Changes
@@ -166,21 +186,14 @@
   ```ts [server/plugins/mcp-whoami.ts]
   export default defineNitroPlugin((nitroApp) => {
     nitroApp.hooks.hook("mcp:server:created", ({ server, event }) => {
-      server.registerTool(
-        "whoami",
-        { description: "Return the current user id" },
-        async () => ({
-          content: [
-            { type: "text", text: String(event.context.userId ?? "anonymous") },
-          ],
-        })
-      );
+      server.registerTool("whoami", { description: "Return the current user id" }, async () => ({
+        content: [{ type: "text", text: String(event.context.userId ?? "anonymous") }],
+      }));
     });
   });
   ```
 
   ### Public API additions
-
   - `McpResolvedConfig` — type of the resolved per-request server config.
   - `getSdkServer(server)` — reach the underlying SDK `Server` instance from an `McpServer`.
 
@@ -370,11 +383,7 @@
   </script>
 
   <template>
-    <button
-      v-for="s in data?.swatches"
-      :key="s.hex"
-      @click="sendPrompt(`Use ${s.name}`)"
-    >
+    <button v-for="s in data?.swatches" :key="s.hex" @click="sendPrompt(`Use ${s.name}`)">
       {{ s.name }}
     </button>
   </template>
@@ -420,7 +429,6 @@
   The MCP Apps pipeline is fully optional: when no `app/mcp/` directory exists, none of the runtime, the macro, or the auto-imports are emitted.
 
   ### Docs
-
   - [Apps guide](https://mcp-toolkit.nuxt.dev/apps/overview) — full authoring walkthrough, host context, follow-ups, host compatibility matrix.
   - [MCP Apps internals](https://mcp-toolkit.nuxt.dev/advanced/mcp-apps-internals) — build pipeline, host bridge protocol, security model, advanced patterns.
 
