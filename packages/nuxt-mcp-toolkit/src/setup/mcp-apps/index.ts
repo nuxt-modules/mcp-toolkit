@@ -7,6 +7,7 @@ import type { LoadedFile } from '../../runtime/server/mcp/loaders/utils'
 import { type DiscoveredApp, discoverApps } from './discover'
 import { parseSfcApp, type McpAppStaticFields } from './parse-sfc'
 import { bundleAppHtml } from './bundle'
+import { appSourceAliases } from './app-source'
 import { emitAppModules, type ResolvedAttribution } from './emit'
 import type { McpAppsOptions } from './options'
 
@@ -77,7 +78,8 @@ export async function setupMcpApps(
       const attribution = resolveAttribution(app.inferredAttribution, parsed.staticFields)
       const html = await bundleAppHtml(app, parsed.bundleSource, buildRoot, resolver, log, {
         ...options,
-        srcDir: nuxt.options.srcDir,
+        rootDir: nuxt.options.rootDir,
+        alias: appSourceAliases(nuxt.options.alias, nuxt.options.rootDir, nuxt.options.buildDir),
       })
       const { toolFile, resourceFile } = emitAppModules(app, parsed, html, attribution, resolver)
       built.push({ ...app, toolFile, resourceFile, attribution })

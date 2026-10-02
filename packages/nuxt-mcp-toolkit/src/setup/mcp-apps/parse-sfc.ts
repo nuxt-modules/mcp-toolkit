@@ -151,15 +151,6 @@ function absolutiseRelativeImport(text: string, sfcDir: string): string {
   })
 }
 
-/** Rewrite every relative `import ... from './x'` in a script body to absolute paths. */
-function absolutiseAllRelativeImports(script: string, sfcDir: string): string {
-  return script.replace(
-    // eslint-disable-next-line regexp/no-super-linear-backtracking -- build-time scan over our own SFC source
-    /^([ \t]*import\s+[\s\S]+?\s+from\s+)(['"])(\.{1,2}\/[^'"]+)\2/gm,
-    (_, prefix, quote, spec) => `${prefix}${quote}${resolvePath(sfcDir, spec)}${quote}`,
-  )
-}
-
 /** Build the auto-import preamble, skipping any name the user already imported. */
 function buildAutoImportsBlock(existingNames: Set<string>): string {
   const lines: string[] = []
@@ -176,6 +167,16 @@ function injectBundleAutoImports(source: string, scriptOffset: number | null, ex
   const block = buildAutoImportsBlock(existingNames)
   if (!block) return source
   return `${source.slice(0, scriptOffset)}\n${block}${source.slice(scriptOffset)}`
+}
+
+/** Give a component imported by an MCP App the auto-imports the app's own SFC gets. */
+export async function injectSfcAutoImports(source: string, filename: string): Promise<string> {
+  const { parse } = await import('@vue/compiler-sfc')
+  const { descriptor } = parse(source, { filename })
+  const scriptBlock = descriptor.scriptSetup ?? descriptor.script
+  if (!scriptBlock) return source
+  const existingNames = new Set(collectImports(scriptBlock.content).flatMap(i => i.names))
+  return injectBundleAutoImports(source, scriptBlock.loc.start.offset, existingNames)
 }
 
 interface TopLevelField {
@@ -392,11 +393,9 @@ export async function parseSfcApp(sfcPath: string): Promise<ParsedSfcApp> {
   const source = await readFile(sfcPath, 'utf-8')
   const { descriptor } = parse(source, { filename: sfcPath })
 
-  const sfcDir = dirname(sfcPath)
   const scriptBlock = descriptor.scriptSetup ?? descriptor.script
   if (!scriptBlock) {
-    const bundleSource = absolutiseAllRelativeImports(injectBundleAutoImports(source, null, new Set()), sfcDir)
-    return { argText: '{}', imports: [], bundleSource, staticFields: {} }
+    return { argText: '{}', imports: [], bundleSource: source, staticFields: {} }
   }
 
   const scriptContent = scriptBlock.content
@@ -407,7 +406,7 @@ export async function parseSfcApp(sfcPath: string): Promise<ParsedSfcApp> {
   const sourceWithImports = injectBundleAutoImports(source, scriptOffset, existingNames)
 
   if (!macro) {
-    return { argText: '{}', imports: [], bundleSource: absolutiseAllRelativeImports(sourceWithImports, sfcDir), staticFields: {} }
+    return { argText: '{}', imports: [], bundleSource: sourceWithImports, staticFields: {} }
   }
   if (findMacroCall(scriptContent.slice(macro.end), MACRO_NAME)) {
     throw new Error(`Multiple ${MACRO_NAME}() calls found in ${sfcPath}. MCP App SFCs support exactly one app definition.`)
@@ -423,10 +422,7 @@ export async function parseSfcApp(sfcPath: string): Promise<ParsedSfcApp> {
   const offsetShift = sourceWithImports.length - source.length
   const macroStart = scriptOffset + macro.start + offsetShift
   const macroEnd = scriptOffset + macro.end + offsetShift
-  const bundleSource = absolutiseAllRelativeImports(
-    `${sourceWithImports.slice(0, macroStart)}void 0;${sourceWithImports.slice(macroEnd)}`,
-    sfcDir,
-  )
+  const bundleSource = `${sourceWithImports.slice(0, macroStart)}void 0;${sourceWithImports.slice(macroEnd)}`
 
   return { argText: macro.argText, imports, bundleSource, staticFields }
 }

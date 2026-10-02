@@ -13,7 +13,7 @@ export interface McpAppsOptions {
   vuePlugins?: string[]
   /**
    * Stylesheets to import into every app bundle.
-   * `~` and `@` resolve from the Nuxt source directory.
+   * Relative paths resolve from the project root; Nuxt aliases such as `~` and `#shared` also work.
    */
   css?: string[]
   /**

@@ -1,10 +1,12 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createResolver } from '@nuxt/kit'
 import { consola } from 'consola'
 import { afterEach, describe, expect, it } from 'vitest'
+import { appSourceAliases } from '../src/setup/mcp-apps/app-source'
 import { bundleAppHtml } from '../src/setup/mcp-apps/bundle'
+import { parseSfcApp } from '../src/setup/mcp-apps/parse-sfc'
 
 const silentLog = consola.create({ level: -999 })
 const resolver = createResolver(fileURLToPath(new URL('../src/module.ts', import.meta.url)))
@@ -34,6 +36,7 @@ describe('bundleAppHtml', () => {
         join(playground, '.nuxt/mcp-apps'),
         resolver,
         silentLog,
+        { rootDir: playground, alias: {} },
       )
 
       expect(html).toContain('<!DOCTYPE html>')
@@ -43,6 +46,67 @@ describe('bundleAppHtml', () => {
     finally {
       process.chdir(prevCwd)
     }
+  })
+
+  it('treats modules imported from the app source like the app SFC', async () => {
+    playground = await mkdtemp(join(fileURLToPath(new URL('.', import.meta.url)), '.tmp-bundle-'))
+    const app = join(playground, 'app')
+    await mkdir(join(app, 'mcp'), { recursive: true })
+    await mkdir(join(app, 'components'), { recursive: true })
+    await mkdir(join(playground, 'shared'), { recursive: true })
+    await writeFile(join(playground, 'tsconfig.json'), JSON.stringify({
+      files: [],
+      references: [{ path: './.nuxt/tsconfig.app.json' }],
+    }))
+    await writeFile(join(app, 'components', 'HelloChild.vue'), `<script setup lang="ts">
+const props = defineProps<{ name: string }>()
+const greeting = computed((): string => \`mcp-child-greeting \${props.name}\`)
+</script>
+
+<template>
+  <p>{{ greeting }}</p>
+</template>
+`)
+    await writeFile(join(playground, 'shared', 'prefix.ts'), 'export const prefix: string = \'mcp-shared-prefix\'\n')
+    await writeFile(join(playground, 'root-util.ts'), 'export const rootLabel: string = \'mcp-root-util\'\n')
+    await writeFile(join(app, 'mcp', 'hello.css'), '#mcp-app { --mcp-colocated: #abcdef; }')
+    await writeFile(join(app, 'theme.css'), '#mcp-app { --mcp-option-css: #fedcba; }')
+    const sfc = join(app, 'mcp', 'hello.vue')
+    await writeFile(sfc, `<script setup lang="ts">
+import HelloChild from '../components/HelloChild.vue'
+import { prefix } from '#shared/prefix'
+import { rootLabel } from '~~/root-util'
+import './hello.css'
+
+defineMcpApp({ description: 'Says hello' })
+const name = ref(\`\${prefix} \${rootLabel}\`)
+</script>
+
+<template>
+  <HelloChild :name="name" />
+</template>
+`)
+
+    const parsed = await parseSfcApp(sfc)
+    const html = await bundleAppHtml(
+      { name: 'hello', sfc },
+      parsed.bundleSource,
+      join(playground, '.nuxt/mcp-apps'),
+      resolver,
+      silentLog,
+      {
+        rootDir: playground,
+        alias: { '~': app, '~~': playground, '#shared': join(playground, 'shared') },
+        css: ['./app/theme.css'],
+      },
+    )
+
+    expect(html).toContain('mcp-child-greeting')
+    expect(html).toContain('mcp-shared-prefix')
+    expect(html).toContain('mcp-root-util')
+    expect(html).toContain('--mcp-colocated')
+    expect(html).toContain('--mcp-option-css')
+    expect(html).not.toMatch(/\bcomputed\(/)
   })
 
   it('supports a custom entry, stylesheet aliases, and additional Vite plugins', async () => {
@@ -57,7 +121,8 @@ describe('bundleAppHtml', () => {
       resolver,
       silentLog,
       {
-        srcDir: playground,
+        rootDir: playground,
+        alias: { '~': playground },
         css: ['~/app.css'],
         entry: `import { createApp } from 'vue'
 import App from './App.vue'
@@ -95,12 +160,34 @@ createApp(App).mount('#mcp-app')
       resolver,
       silentLog,
       {
-        srcDir: playground,
+        rootDir: playground,
+        alias: {},
         vuePlugins: [plugin],
       },
     )
 
     expect(html).toContain('mcp-vue-plugin')
     expect(html).toContain('Vue plugin app')
+  })
+})
+
+describe('appSourceAliases', () => {
+  it('keeps aliases into the app source and drops those into Nuxt and the build directory', () => {
+    const root = '/project'
+    const nuxt = '/project/node_modules/.pnpm/nuxt@4/node_modules/nuxt/dist/app'
+    expect(appSourceAliases({
+      '~': '/project/app/',
+      '~~': '/project/',
+      '#shared': '/project/shared/',
+      '#build': '/project/.nuxt/',
+      '#internal/nuxt/paths': '/project/.nuxt/paths.mjs',
+      '#app': `${nuxt}/`,
+      'vue-demi': `${nuxt}/compat/vue-demi`,
+      '#elsewhere': '/other/dir',
+    }, root, '/project/.nuxt')).toEqual({
+      '~': '/project/app',
+      '~~': '/project',
+      '#shared': '/project/shared',
+    })
   })
 })

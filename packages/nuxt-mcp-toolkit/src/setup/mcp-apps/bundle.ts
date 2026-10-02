@@ -4,11 +4,13 @@ import { resolve as resolvePath } from 'node:path'
 import type { Resolver } from '@nuxt/kit'
 import type { ConsolaInstance } from 'consola'
 import type { InlineConfig } from 'vite'
+import { appSourcePlugin } from './app-source'
 import type { DiscoveredApp } from './discover'
 import type { McpAppsOptions } from './options'
 
 interface BundleOptions extends McpAppsOptions {
-  srcDir: string
+  rootDir: string
+  alias: Record<string, string>
 }
 
 /** Programmatic Vite build that inlines a Vue SFC into a single self-contained HTML page. */
@@ -18,7 +20,7 @@ export async function bundleAppHtml(
   buildRoot: string,
   resolver: Resolver,
   log: ConsolaInstance,
-  options: BundleOptions = { srcDir: process.cwd() },
+  options: BundleOptions,
 ): Promise<string> {
   const entryDir = resolvePath(buildRoot, '__entry__', app.name)
   const outDir = resolvePath(buildRoot, '__dist__', app.name)
@@ -34,7 +36,7 @@ export async function bundleAppHtml(
     isolatedTsconfig,
     JSON.stringify({
       compilerOptions: { target: 'esnext', module: 'esnext', jsx: 'preserve', moduleResolution: 'bundler', strict: false, isolatedModules: true },
-      files: ['App.vue', 'entry.ts'],
+      include: ['App.vue', 'entry.ts', '__nested__/**/*.vue'],
     }, null, 2),
     'utf-8',
   )
@@ -95,11 +97,15 @@ ${vuePluginUses}app.mount('#mcp-app')
     resolve: {
       alias: [
         { find: '@nuxtjs/mcp-toolkit/app', replacement: runtimeAppEntry },
-        { find: '~', replacement: options.srcDir },
-        { find: '@', replacement: options.srcDir },
+        ...Object.entries(options.alias).map(([find, replacement]) => ({ find, replacement })),
       ],
     },
-    plugins: [vue(), ...(options.vitePlugins ?? []), viteSingleFile()],
+    plugins: [
+      appSourcePlugin({ entryDir, sfc: app.sfc, rootDir: options.rootDir }),
+      vue(),
+      ...(options.vitePlugins ?? []),
+      viteSingleFile(),
+    ],
     build: {
       outDir,
       emptyOutDir: true,

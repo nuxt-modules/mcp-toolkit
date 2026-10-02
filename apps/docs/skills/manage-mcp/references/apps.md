@@ -30,7 +30,7 @@ import ui from '@nuxt/ui/vite'
 export default defineNuxtConfig({
   mcp: {
     apps: {
-      css: ['~/app/mcp/app.css'],
+      css: ['~/mcp/app.css'],
       vitePlugins: [ui({ router: false, colorMode: false })],
       vuePlugins: ['@nuxt/ui/vue-plugin'],
     },
@@ -38,7 +38,7 @@ export default defineNuxtConfig({
 })
 ```
 
-Use Vue-only integrations such as `@nuxt/ui/vite`; the iframe does not share the host Nuxt runtime or module graph. The toolkit always retains its required Vue and single-file plugins. Stylesheets are inlined, and `~`/`@` resolve from the Nuxt source directory. Use `entry` only when replacing the generated Vue mount entry; it cannot be combined with `vuePlugins`.
+Use Vue-only integrations such as `@nuxt/ui/vite`; the iframe does not share the host Nuxt runtime or module graph. The toolkit always retains its required Vue and single-file plugins. Stylesheets are inlined; relative paths resolve from the project root, and Nuxt's path aliases into the project (`~`, `~~`, `#shared`, …) work in stylesheets and in the app's imports. SFCs the app imports from the project get the same auto-imports as the app. Use `entry` only when replacing the generated Vue mount entry; it cannot be combined with `vuePlugins`.
 
 ## Quick Start
 
