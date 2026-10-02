@@ -63,12 +63,12 @@
     "vite-plugin-singlefile": "^2.3.3"
   },
   "peerDependencies": {
-    "@vue/compiler-sfc": "^3.5.43",
-    "agents": ">=0.24.0",
+    "@vue/compiler-sfc": "^3.5.41",
+    "agents": ">=0.20.1",
     "h3": ">=1.15.11",
     "secure-exec": ">=0.3.3",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
-    "vue": "^3.5.43",
+    "vue": "^3.5.41",
     "zod": "^4.1.13"
   },
   "peerDependenciesMeta": {
