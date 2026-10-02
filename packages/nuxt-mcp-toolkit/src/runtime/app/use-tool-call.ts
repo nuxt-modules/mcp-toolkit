@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue'
-import { errorText, useHostBridge, type ToolResultParams } from './host-bridge'
+import { errorText, toToolResultMeta, useHostBridge, type ToolResultMeta, type ToolResultParams } from './host-bridge'
 
 const SAFE_TOOL_NAME = /^[A-Z][\w.-]{0,127}$/i
 const TOOL_CALL_TIMEOUT_MS = 30_000
@@ -13,6 +13,8 @@ export interface UseToolCallReturn<T> {
   error: Ref<Error | null>
   /** Last successful payload returned by `call`. */
   result: Ref<T | null>
+  /** `_meta` of the tool result behind `result`. */
+  meta: Ref<ToolResultMeta | null>
 }
 
 type ToolCallArgs = [params?: Record<string, unknown>] | [name: string, params?: Record<string, unknown>]
@@ -28,6 +30,7 @@ export function useToolCall<T = unknown>(toolName?: string): UseToolCallReturn<T
   const pending = ref(false)
   const error = ref<Error | null>(null)
   const result = ref<T | null>(null) as Ref<T | null>
+  const meta = ref<ToolResultMeta | null>(null)
 
   const invoke = async (name: string, params: Record<string, unknown>): Promise<T | null> => {
     if (typeof name !== 'string' || !SAFE_TOOL_NAME.test(name)) {
@@ -48,7 +51,10 @@ export function useToolCall<T = unknown>(toolName?: string): UseToolCallReturn<T
         throw new Error(errorText((raw as ToolResultParams).content) ?? `useToolCall: the "${name}" tool call failed.`)
       }
       const next = pickStructured<T>(raw)
-      if (next !== null) result.value = next
+      if (next !== null) {
+        result.value = next
+        meta.value = pickMeta(raw)
+      }
       return next
     }
     catch (err) {
@@ -69,11 +75,16 @@ export function useToolCall<T = unknown>(toolName?: string): UseToolCallReturn<T
     return invoke(name, params ?? {})
   }) as UseToolCallReturn<T>['call']
 
-  return { call, pending, error, result }
+  return { call, pending, error, result, meta }
 }
 
 function pickStructured<T>(raw: unknown): T | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
   return ((r.structuredContent ?? r.output) as T | undefined) ?? null
+}
+
+function pickMeta(raw: unknown): ToolResultMeta | null {
+  if (!raw || typeof raw !== 'object') return null
+  return toToolResultMeta((raw as Record<string, unknown>)._meta) ?? null
 }

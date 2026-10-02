@@ -690,7 +690,7 @@ const { data, sendPrompt } = useMcpApp<{ swatches: { name: string, hex: string }
 
 Each SFC becomes a tool, a UI resource at `ui://mcp-app/<name>`, and a single-file HTML bundle. The handler runs server-side; the host renders the HTML from the `ui://` resource and pushes `structuredContent` into the iframe.
 
-`useMcpApp<T>()` exposes `data`, `loading`, `error`, `hostContext`, `hostCapabilities`, `callTool(name, params)`, `sendPrompt(prompt)`, `openLink(url)`, `requestDisplayMode(mode)`, `updateModelContext(params)`, and `downloadFile(contents)`.
+`useMcpApp<T>()` exposes `data`, `meta`, `loading`, `error`, `hostContext`, `hostCapabilities`, `callTool(name, params)`, `sendPrompt(prompt)`, `openLink(url)`, `requestDisplayMode(mode)`, `updateModelContext(params)`, and `downloadFile(contents)`.
 
 CSP is strict by default — opt extra origins in:
 

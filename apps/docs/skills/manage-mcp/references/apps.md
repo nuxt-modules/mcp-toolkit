@@ -147,6 +147,7 @@ Auto-imported into every MCP App SFC. Returns the iframe ↔ host bridge:
 const {
   initialData,        // Ref<T | null>            — first payload the view receives, never updated after
   data,               // Ref<T | null>            — structuredContent pushed by the host, refreshed by callTool
+  meta,               // Ref<ToolResultMeta | null> — _meta of the result that set data, hidden from the model
   loading,            // Ref<boolean>             — true until first payload arrives or the call fails
   error,              // Ref<Error | null>        — bridge / transport / payload errors
   pending,            // Ref<boolean>             — true while a callTool() is in flight
@@ -161,7 +162,7 @@ const {
 } = useMcpApp<MyPayload>()
 ```
 
-Use `initialData` for bootstrap values (IDs, query params) that must survive later `callTool` refreshes overwriting `data`.
+Use `initialData` for bootstrap values (IDs, query params) that must survive later `callTool` refreshes overwriting `data`. Put view-only payloads (SVG markup, chart series) in the tool result's `_meta` under a namespaced key (`my-app/icon`) and read them from `meta`, so they stay out of the model's context.
 
 ### Adapt to host theme & layout
 

@@ -1,12 +1,12 @@
 import type { Ref } from 'vue'
-import type { HostCapabilities, HostContext } from './host-bridge'
+import type { HostCapabilities, HostContext, ToolResultMeta } from './host-bridge'
 import { useMcpAppData } from './use-mcp-app-data'
 import { useFollowUp } from './use-follow-up'
 import { useToolCall } from './use-tool-call'
 import { useExternalLink } from './use-external-link'
 import { useHostRequests, type UseHostRequestsReturn } from './use-host-requests'
 
-export type { DisplayMode, HostCapabilities, HostContext, McpAppRequestError } from './host-bridge'
+export type { DisplayMode, HostCapabilities, HostContext, McpAppRequestError, ToolResultMeta } from './host-bridge'
 export type { DownloadFileContent } from './use-host-requests'
 export type { UseToolCallReturn } from './use-tool-call'
 export { useToolCall } from './use-tool-call'
@@ -16,6 +16,8 @@ export interface UseMcpAppReturn<T = unknown> extends UseHostRequestsReturn {
   initialData: Ref<T | null>
   /** Latest `structuredContent`, refreshed via `tool-result` and `callTool`. */
   data: Ref<T | null>
+  /** `_meta` of the tool result that set `data`. */
+  meta: Ref<ToolResultMeta | null>
   /** Last error from the host, the transport, a malformed payload, or a failed {@link callTool}. */
   error: Ref<Error | null>
   /** One-way latch: `true` until the first payload arrives or the tool call fails, `false` forever after. */
@@ -42,7 +44,7 @@ export interface UseMcpAppReturn<T = unknown> extends UseHostRequestsReturn {
  * Auto-imported into `app/mcp/*.vue` SFCs — usually no explicit import needed.
  */
 export function useMcpApp<T = unknown>(): UseMcpAppReturn<T> {
-  const { initialData, data, loading, error, hostContext, hostCapabilities } = useMcpAppData<T>()
+  const { initialData, data, meta, loading, error, hostContext, hostCapabilities } = useMcpAppData<T>()
   const sendPrompt = useFollowUp()
   const openLink = useExternalLink()
   const tool = useToolCall<T>()
@@ -52,6 +54,7 @@ export function useMcpApp<T = unknown>(): UseMcpAppReturn<T> {
     return tool.call(name, params).then((next) => {
       if (next !== null) {
         data.value = next
+        meta.value = tool.meta.value
         loading.value = false
       }
       else if (tool.error.value) {
@@ -65,6 +68,7 @@ export function useMcpApp<T = unknown>(): UseMcpAppReturn<T> {
   return {
     initialData,
     data,
+    meta,
     error,
     loading,
     pending: tool.pending,

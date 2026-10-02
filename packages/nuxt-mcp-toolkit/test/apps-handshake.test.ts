@@ -328,6 +328,105 @@ describe('useMcpApp (host bridge)', () => {
     scope.stop()
   })
 
+  it('exposes the tool result `_meta` as `meta`, refreshed by tool-result and callTool', async () => {
+    const { useMcpApp } = await import('../src/runtime/app/use-mcp-app')
+    const scope = effectScope()
+    let api: ReturnType<typeof useMcpApp> | undefined
+    scope.run(() => {
+      api = useMcpApp()
+    })
+
+    expect(api?.meta.value).toBeNull()
+    dispatch({
+      jsonrpc: '2.0',
+      method: 'ui/notifications/tool-result',
+      params: { structuredContent: { total: 1 }, _meta: { svg: '<svg/>' } },
+    })
+    expect(api?.meta.value).toEqual({ svg: '<svg/>' })
+
+    let late: ReturnType<typeof useMcpApp> | undefined
+    scope.run(() => {
+      late = useMcpApp()
+    })
+    expect(late?.meta.value).toEqual({ svg: '<svg/>' })
+
+    const callPromise = api!.callTool('refresh')
+    await completeHandshake()
+    reply('tools/call', { result: { structuredContent: { total: 2 }, _meta: { svg: '<svg id="2"/>' } } })
+    await callPromise
+    expect(api?.meta.value).toEqual({ svg: '<svg id="2"/>' })
+
+    const secondCall = api!.callTool('refresh')
+    await flush()
+    reply('tools/call', { result: { structuredContent: { total: 3 } } })
+    await secondCall
+    expect(api?.meta.value).toBeNull()
+
+    dispatch({
+      jsonrpc: '2.0',
+      method: 'ui/notifications/tool-result',
+      params: { structuredContent: { total: 4 }, _meta: { svg: '<svg id="4"/>' } },
+    })
+    expect(api?.meta.value).toEqual({ svg: '<svg id="4"/>' })
+
+    dispatch({
+      jsonrpc: '2.0',
+      method: 'ui/notifications/tool-result',
+      params: { structuredContent: { total: 5 }, _meta: 'not an object' },
+    })
+    expect(api?.meta.value).toBeNull()
+    scope.stop()
+  })
+
+  it('reads `meta` from `window.openai.toolResponseMetadata` on ChatGPT', async () => {
+    const openai = {
+      toolOutput: { total: 1 },
+      toolResponseMetadata: { svg: '<svg/>' },
+      callTool: async () => ({ structuredContent: { total: 4 } }),
+    }
+    win.openai = openai
+
+    const { useMcpApp } = await import('../src/runtime/app/use-mcp-app')
+    const scope = effectScope()
+    let api: ReturnType<typeof useMcpApp> | undefined
+    scope.run(() => {
+      api = useMcpApp()
+    })
+    expect(api?.meta.value).toEqual({ svg: '<svg/>' })
+
+    // `openai:set_globals` carries only the globals that changed.
+    openai.toolOutput = { total: 2 }
+    openai.toolResponseMetadata = { svg: '<svg id="2"/>' }
+    win.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolOutput: openai.toolOutput } } }))
+    expect(api?.data.value).toEqual({ total: 2 })
+    expect(api?.meta.value).toEqual({ svg: '<svg id="2"/>' })
+
+    openai.toolResponseMetadata = { svg: '<svg id="3"/>' }
+    win.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { toolResponseMetadata: openai.toolResponseMetadata } } }))
+    expect(api?.data.value).toEqual({ total: 2 })
+    expect(api?.meta.value).toEqual({ svg: '<svg id="3"/>' })
+
+    // An event for another global must not replace the `callTool` result with `window.openai.toolOutput`.
+    await api?.callTool('refresh')
+    win.dispatchEvent(new CustomEvent('openai:set_globals', { detail: { globals: { theme: 'dark' } } }))
+    expect(api?.data.value).toEqual({ total: 4 })
+    expect(api?.meta.value).toBeNull()
+    scope.stop()
+  })
+
+  it('unwraps `_meta` when ChatGPT passes `toolResponseMetadata` as the MCP result envelope', async () => {
+    win.openai = {
+      toolOutput: { total: 1 },
+      toolResponseMetadata: { status: 'success', mcp_tool_result: { structuredContent: { total: 1 }, _meta: { svg: '<svg/>' } } },
+    }
+
+    const { useMcpApp } = await import('../src/runtime/app/use-mcp-app')
+    const scope = effectScope()
+    const api = scope.run(() => useMcpApp())!
+    expect(api.meta.value).toEqual({ svg: '<svg/>' })
+    scope.stop()
+  })
+
   it('keeps `initialData` at the first payload when `data` is refreshed by callTool or tool-result', async () => {
     const { useMcpApp } = await import('../src/runtime/app/use-mcp-app')
     const scope = effectScope()
@@ -461,6 +560,25 @@ describe('internal composables', () => {
     send!('Open the checkout')
     expect(win.posted.find(p => p.method === 'ui/message')).toBeDefined()
     expect(win.posted.find(p => p.type === 'prompt')).toBeDefined()
+    scope.stop()
+  })
+
+  it('useToolCall exposes the `_meta` of a `window.openai.callTool` result as `meta`', async () => {
+    const results = [
+      { structuredContent: { png: 'base64' }, _meta: { 'my-app/size': 512 } },
+      { structuredContent: { png: 'base64' }, _meta: ['not', 'an', 'object'] },
+    ]
+    win.openai = { callTool: async () => results.shift() }
+    const { useToolCall } = await import('../src/runtime/app/use-tool-call')
+    const scope = effectScope()
+    const tool = scope.run(() => useToolCall('get_icon_png'))!
+
+    await tool.call({ iconId: 'a' })
+    expect(tool.result.value).toEqual({ png: 'base64' })
+    expect(tool.meta.value).toEqual({ 'my-app/size': 512 })
+
+    await tool.call({ iconId: 'b' })
+    expect(tool.meta.value).toBeNull()
     scope.stop()
   })
 

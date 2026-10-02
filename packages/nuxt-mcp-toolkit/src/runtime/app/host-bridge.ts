@@ -48,6 +48,7 @@ export interface HostCapabilities {
 /** Subset of the ChatGPT Apps SDK global injected on iframe `window`. */
 export interface OpenAiAppsGlobal {
   toolOutput?: unknown
+  toolResponseMetadata?: Record<string, unknown> | null
   callTool?: (name: string, args: Record<string, unknown>) => Promise<unknown>
   openExternal?: (params: { href: string }) => void
   sendFollowUpMessage?: (params: { prompt: string, scrollToBottom?: boolean }) => void
@@ -59,7 +60,7 @@ declare global {
     openai?: OpenAiAppsGlobal
   }
   interface WindowEventMap {
-    'openai:set_globals': CustomEvent<{ globals?: { toolOutput?: unknown } }>
+    'openai:set_globals': CustomEvent<{ globals?: Pick<OpenAiAppsGlobal, 'toolOutput' | 'toolResponseMetadata'> }>
   }
 }
 
@@ -76,8 +77,21 @@ export function createRequestError(message: string, fields: Pick<McpAppRequestEr
   return Object.assign(new Error(message), fields)
 }
 
+/** `_meta` of a tool result — data for the view that hosts keep out of the model's context. */
+export type ToolResultMeta = Record<string, unknown>
+
+export function toToolResultMeta(value: unknown): ToolResultMeta | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as ToolResultMeta : undefined
+}
+
+/** ChatGPT documents `toolResponseMetadata` as the MCP result envelope, but has also passed the bare `_meta`. */
+function openAiResultMeta(metadata: unknown): ToolResultMeta | undefined {
+  const mcpToolResult = toToolResultMeta(toToolResultMeta(metadata)?.mcp_tool_result)
+  return mcpToolResult ? toToolResultMeta(mcpToolResult._meta) : toToolResultMeta(metadata)
+}
+
 /** What the host pushed for the tool call that opened the view. */
-export type ToolOutcome = { data: unknown } | { error: Error }
+export type ToolOutcome = { data: unknown, meta?: ToolResultMeta } | { error: Error }
 
 export interface HostBridge {
   /** Negotiated host context. `null` until the handshake completes, then kept current by `host-context-changed`. */
@@ -90,6 +104,8 @@ export interface HostBridge {
   error: Ref<Error | null>
   /** Initial payload from `window.openai.toolOutput`. */
   initialData: unknown
+  /** Initial `_meta` from `window.openai.toolResponseMetadata`. */
+  initialMeta: ToolResultMeta | undefined
   /** `window.openai`, if ChatGPT injected it. */
   openai: OpenAiAppsGlobal | undefined
   /**
@@ -127,6 +143,7 @@ export interface ToolResultParams {
   isError?: boolean
   content?: Array<{ type: string, text?: unknown }>
   structuredContent?: unknown
+  _meta?: unknown
 }
 
 export function errorText(content: ToolResultParams['content']): string | undefined {
@@ -169,9 +186,10 @@ function createBridge(): HostBridge {
 
   const openai = typeof window !== 'undefined' ? window.openai : undefined
   const initialData = openai?.toolOutput
+  const initialMeta = openAiResultMeta(openai?.toolResponseMetadata)
 
   if (!hasHostWindow()) {
-    return makeNoopBridge({ hostContext, hostCapabilities, initialized, error, initialData, openai, setError })
+    return makeNoopBridge({ hostContext, hostCapabilities, initialized, error, initialData, initialMeta, openai, setError })
   }
 
   let nextId = 1
@@ -183,8 +201,8 @@ function createBridge(): HostBridge {
     latestToolResult = outcome
     for (const sub of toolResultSubs) sub(outcome)
   }
-  const publishToolResult = (next: unknown): void => {
-    if (next !== undefined) publish({ data: next })
+  const publishToolResult = (next: unknown, meta?: ToolResultMeta): void => {
+    if (next !== undefined) publish({ data: next, meta })
   }
   const publishToolFailure = (message: string): void => {
     const err = new Error(message)
@@ -241,7 +259,7 @@ function createBridge(): HostBridge {
     if (data.method === 'ui/notifications/tool-result') {
       const params = data.params as ToolResultParams | undefined
       if (params?.isError) publishToolFailure(errorText(params.content) ?? 'useMcpApp: the tool call failed.')
-      else publishToolResult(params?.structuredContent)
+      else publishToolResult(params?.structuredContent, toToolResultMeta(params?._meta))
       return
     }
     if (data.method === 'ui/notifications/tool-cancelled') {
@@ -259,12 +277,18 @@ function createBridge(): HostBridge {
     }
   }
 
-  const onOpenAiSetGlobals = (event: Event): void => {
-    publishToolResult((event as CustomEvent<{ globals?: { toolOutput?: unknown } }>).detail?.globals?.toolOutput)
+  // The event carries only the globals that changed, so the other one is read from `window.openai`.
+  const onOpenAiSetGlobals = (event: WindowEventMap['openai:set_globals']): void => {
+    const globals = event.detail?.globals
+    if (globals?.toolOutput === undefined && globals?.toolResponseMetadata === undefined) return
+    publishToolResult(
+      globals.toolOutput ?? window.openai?.toolOutput,
+      openAiResultMeta(globals.toolResponseMetadata ?? window.openai?.toolResponseMetadata),
+    )
   }
 
   window.addEventListener('message', onMessage)
-  window.addEventListener('openai:set_globals', onOpenAiSetGlobals as EventListener)
+  window.addEventListener('openai:set_globals', onOpenAiSetGlobals)
 
   // Cursor-class hosts only subscribe to iframe messages once they receive this
   // legacy ready signal. https://mcpui.dev/guide/embeddable-ui#ui-lifecycle-iframe-ready
@@ -305,6 +329,7 @@ function createBridge(): HostBridge {
     initialized,
     error,
     initialData,
+    initialMeta,
     openai,
     request,
     notify,
@@ -324,6 +349,7 @@ function makeNoopBridge(state: {
   initialized: Ref<boolean>
   error: Ref<Error | null>
   initialData: unknown
+  initialMeta: ToolResultMeta | undefined
   openai: OpenAiAppsGlobal | undefined
   setError: (err: unknown) => void
 }): HostBridge {
@@ -336,6 +362,7 @@ function makeNoopBridge(state: {
     initialized: state.initialized,
     error: state.error,
     initialData: state.initialData,
+    initialMeta: state.initialMeta,
     openai: state.openai,
     request: () => {
       noop()
