@@ -1,5 +1,25 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.23.0
+
+### Minor Changes
+
+- [#362](https://github.com/nuxt-modules/mcp-toolkit/pull/362) [`24b872c`](https://github.com/nuxt-modules/mcp-toolkit/commit/24b872c648674ae7d8cc7b26c9eb9ffae76f759a) Thanks [@johannschopplich](https://github.com/johannschopplich)! - Expose the tool result `_meta` as `meta` in `useMcpApp()` and `useToolCall()`, so views can receive data that hosts keep out of the model's context. The `ToolResultMeta` type is exported.
+
+### Patch Changes
+
+- [#372](https://github.com/nuxt-modules/mcp-toolkit/pull/372) [`fab36c5`](https://github.com/nuxt-modules/mcp-toolkit/commit/fab36c57887a9922efba5066a6363a8f4c863000) Thanks [@HugoRCD](https://github.com/HugoRCD)! - MCP App bundles now handle modules imported from the project like the app SFC itself. A component with `<script setup lang="ts">` no longer fails `nuxt prepare` and `nuxt build` on a clean checkout with `TSCONFIG_ERROR`. Imported SFCs get the same auto-imports (`ref`, `computed`, `useMcpApp`, …). Nuxt's path aliases into the project, such as `~~` and `#shared`, resolve. Side-effect imports like `import './app.css'` and relative `mcp.apps.css` paths resolve as well, from the SFC's directory and the project root respectively.
+
+- [#365](https://github.com/nuxt-modules/mcp-toolkit/pull/365) [`beea029`](https://github.com/nuxt-modules/mcp-toolkit/commit/beea02944a5a592769fb198cdb0120e577ed968d) Thanks [@johannschopplich](https://github.com/johannschopplich)! - Title the `ui://` resource of an SFC app like its tool, from the SFC filename, instead of the raw app name.
+
+- [#367](https://github.com/nuxt-modules/mcp-toolkit/pull/367) [`a1010f9`](https://github.com/nuxt-modules/mcp-toolkit/commit/a1010f9a14dc2b408563dbb9026c3b53a1b51d1c) Thanks [@johannschopplich](https://github.com/johannschopplich)! - Set `error` in `useToolCall` when the tool result reports `isError`. `useMcpApp().callTool` now sets `loading` to `false` even before the host pushes a tool result, and writes a failed call into `error`.
+
+- [#363](https://github.com/nuxt-modules/mcp-toolkit/pull/363) [`3301aa8`](https://github.com/nuxt-modules/mcp-toolkit/commit/3301aa8d9076a558580e46828ccd45c5abc903dd) Thanks [@johannschopplich](https://github.com/johannschopplich)! - On Cloudflare Workers, MCP requests no longer fail with "unsupported server" when `agents` resolves its own copy of `@modelcontextprotocol/sdk`, and the SDK v1 deprecation warning of `agents` is gone. The module now serves requests through `createLegacyMcpHandler` from `agents/mcp`.
+
+- [#369](https://github.com/nuxt-modules/mcp-toolkit/pull/369) [`c03285f`](https://github.com/nuxt-modules/mcp-toolkit/commit/c03285ff9ea3b815c78c3d9cace90e0f1d734a8d) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Accept `agents` from 0.20.1 and `vue` / `@vue/compiler-sfc` from 3.5.41 again. 0.22.0 raised these peer ranges without a code change that needed them, so apps on the older versions got unmet-peer warnings.
+
+- [#370](https://github.com/nuxt-modules/mcp-toolkit/pull/370) [`825c956`](https://github.com/nuxt-modules/mcp-toolkit/commit/825c95639f4becde880824a362ace7c0f7da5796) Thanks [@renovate](https://github.com/apps/renovate)! - Update the MCP TypeScript SDK dependency to 1.32.0.
+
 ## 0.22.0
 
 ### Minor Changes
