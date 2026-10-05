@@ -20,14 +20,14 @@ allowBuilds:
 
 overrides:
   '@nuxtjs/mcp-toolkit': workspace:*
-  unhead: ^3.4.1
-  '@unhead/vue': ^3.4.1
+  unhead: ^3.4.2
+  '@unhead/vue': ^3.4.2
   # 2.0.0 is the first stable 2.x and still has CVEs patched in 2.0.1-rc.15+.
-  'h3@2.0.0': 2.0.1-rc.32
+  'h3@2.0.0': 2.0.1
   # @ai-sdk/provider-utils@4 still pulls undici 5.29.0 (WebSocket DoS CVEs).
   'undici@5.29.0': 6.29.0
   # Docus and Nuxt Studio still constrain Sharp to the vulnerable 0.34 release.
-  'sharp@<0.35.0': 0.35.4
+  'sharp@<0.35.0': 0.35.5
 
 minimumReleaseAge: 2880
 
