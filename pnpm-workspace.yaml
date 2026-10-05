@@ -59,3 +59,6 @@ minimumReleaseAgeExclude:
   - '@modelcontextprotocol/server@2.0.0'
   - 'h3-mcp@0.2.0'
   - 'h3@2.0.1-rc.27'
+  - 'evlog@2.30.0'
+  - 'h3@2.0.1'
+  - 'rou3@1.0.0'
