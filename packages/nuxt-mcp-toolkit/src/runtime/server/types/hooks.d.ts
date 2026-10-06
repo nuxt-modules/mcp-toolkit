@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import type { McpResolvedConfig } from '../mcp/utils'
 
 declare module '@nuxt/schema' {
@@ -53,6 +54,21 @@ declare module 'nitropack/types' {
      */
     'mcp:server:created': (ctx: {
       server: McpServer
+      event: H3Event
+    }) => void | Promise<void>
+    /**
+     * Fires once per tool call, after the handler settles, cache hits included. A thrown error has already become an `isError` result.
+     * @example
+     * ```ts
+     * nitroApp.hooks.hook('mcp:tool:called', ({ name, result, durationMs }) => {
+     *   console.log(name, result.isError ? 'error' : 'success', durationMs)
+     * })
+     * ```
+     */
+    'mcp:tool:called': (ctx: {
+      name: string
+      result: CallToolResult
+      durationMs: number
       event: H3Event
     }) => void | Promise<void>
   }

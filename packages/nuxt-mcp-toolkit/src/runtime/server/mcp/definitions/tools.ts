@@ -129,6 +129,7 @@ export function normalizeErrorToResult(error: unknown): CallToolResult {
 export function registerToolFromDefinition(
   server: McpServer,
   tool: McpToolDefinition,
+  onCalled?: (call: { name: string, result: CallToolResult, durationMs: number }) => Promise<void>,
 ) {
   const { name, title } = enrichNameTitle({
     name: tool.name,
@@ -156,13 +157,16 @@ export function registerToolFromDefinition(
   // Normalize returns and catch thrown errors into isError results
   const normalizedHandler: ToolCallback<ZodRawShape> = async (...args: unknown[]) => {
     rememberRequestNotifier(args)
+    const startedAt = performance.now()
+    let result: CallToolResult
     try {
-      const result = await (handler as (...a: unknown[]) => unknown)(...args)
-      return normalizeToolResult(result as McpToolCallbackResult)
+      result = normalizeToolResult(await (handler as (...a: unknown[]) => unknown)(...args) as McpToolCallbackResult)
     }
     catch (error) {
-      return normalizeErrorToResult(error)
+      result = normalizeErrorToResult(error)
     }
+    await onCalled?.({ name, result, durationMs: performance.now() - startedAt })
+    return result
   }
 
   const group = tool.group ?? (tool._meta?.group as string | undefined)

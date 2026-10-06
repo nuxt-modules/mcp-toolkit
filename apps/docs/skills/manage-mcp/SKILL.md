@@ -471,10 +471,10 @@ See [middleware patterns →](./references/middleware.md).
 
 ## Nitro Runtime Hooks
 
-Two per-request Nitro hooks fire during the MCP request lifecycle. Subscribe from a `server/plugins/*.ts` plugin to mutate the resolved config or reach the SDK `McpServer` instance from anywhere — no need to own a `defineMcpHandler`. Listeners that throw are logged and the request continues.
+Three per-request Nitro hooks fire during the MCP request lifecycle. Subscribe from a `server/plugins/*.ts` plugin to mutate the resolved config, reach the SDK `McpServer` instance, or observe tool calls from anywhere — no need to own a `defineMcpHandler`. Listeners that throw are logged and the request continues.
 
 ```
-defineMcpHandler middleware → mcp:config:resolved → X-MCP-Tools allowlist → createMcpServer → mcp:server:created → transport
+defineMcpHandler middleware → mcp:config:resolved → X-MCP-Tools allowlist → createMcpServer → mcp:server:created → transport → mcp:tool:called
 ```
 
 ### `mcp:config:resolved` — mutate tools/resources/prompts per request
@@ -505,6 +505,20 @@ export default defineNitroPlugin((nitroApp) => {
         content: [{ type: 'text', text: String(event.context.userId ?? 'anonymous') }],
       }),
     )
+  })
+})
+```
+
+### `mcp:tool:called` — observe tool calls
+
+Fires once per `tools/call` after the tool settles, cache hits included. Thrown errors are already `isError` results. Use it for usage metrics, latency, or audit logs.
+
+```typescript [server/plugins/mcp-metrics.ts]
+import { metric } from '@vercel/functions'
+
+export default defineNitroPlugin((nitroApp) => {
+  nitroApp.hooks.hook('mcp:tool:called', ({ name, result, durationMs }) => {
+    metric('mcp.tool.duration_ms', durationMs, { toolName: name, outcome: result.isError ? 'error' : 'success' })
   })
 })
 ```
@@ -1002,6 +1016,7 @@ export default defineNuxtConfig({
 | --- | --- |
 | `mcp:config:resolved` | Per request, after dynamic resolvers — mutate `config.tools / resources / prompts / instructions / icons / name`. `X-MCP-Tools` is applied after this hook. |
 | `mcp:server:created` | Per request, after every definition is registered — call `server.registerTool(...)`, `getSdkServer(server).setRequestHandler(...)`, etc. |
+| `mcp:tool:called` | Per tool call, after it settles (cache hits included) — receives `name`, `result`, `durationMs`, `event`. |
 
 ### Debug
 

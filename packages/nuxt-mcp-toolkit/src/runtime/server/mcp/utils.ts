@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { createError, eventHandler, readBody, sendRedirect } from 'h3'
 import type { H3Event } from 'h3'
 import { useNitroApp } from 'nitropack/runtime'
@@ -117,7 +118,10 @@ function registerEmptyDefinitionFallbacks(server: McpServer, config: McpResolved
   }
 }
 
-export async function createMcpServer(config: McpResolvedConfig): Promise<McpServer> {
+/**
+ * Build the per-request `McpServer`. Passing the request's `event` fires `mcp:tool:called` for each tool call.
+ */
+export async function createMcpServer(config: McpResolvedConfig, event?: H3Event): Promise<McpServer> {
   const server = new McpServer({
     name: config.name,
     version: config.version,
@@ -140,8 +144,12 @@ export async function createMcpServer(config: McpResolvedConfig): Promise<McpSer
     toolsToRegister = createCodemodeTools(toolsToRegister, codeModeOptions)
   }
 
+  const onToolCalled = event
+    ? (call: { name: string, result: CallToolResult, durationMs: number }) => callMcpHook('mcp:tool:called', { ...call, event })
+    : undefined
+
   for (const tool of toolsToRegister) {
-    registerToolFromDefinition(server, tool)
+    registerToolFromDefinition(server, tool, onToolCalled)
   }
 
   for (const resource of config.resources) {
@@ -286,6 +294,10 @@ async function callMcpHook(
   name: 'mcp:server:created',
   ctx: { server: McpServer, event: H3Event },
 ): Promise<void>
+async function callMcpHook(
+  name: 'mcp:tool:called',
+  ctx: { name: string, result: CallToolResult, durationMs: number, event: H3Event },
+): Promise<void>
 async function callMcpHook(name: string, ctx: unknown): Promise<void> {
   try {
     const hooks = useNitroApp().hooks as { callHook: (name: string, ctx: unknown) => Promise<void> }
@@ -334,7 +346,7 @@ export function createMcpHandler(config: CreateMcpHandlerConfig) {
       const staticConfig = await resolveDynamicDefinitions(resolvedConfig, event)
       await callMcpHook('mcp:config:resolved', { config: staticConfig, event })
       applyMcpToolsHeader(staticConfig, event)
-      const server = await createMcpServer(staticConfig)
+      const server = await createMcpServer(staticConfig, event)
       await callMcpHook('mcp:server:created', { server, event })
       return handleMcpRequest(() => server, event)
     }
