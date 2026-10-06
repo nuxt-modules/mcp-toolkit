@@ -8,6 +8,43 @@ function serve(...tools: ReturnType<typeof defineMcpTool>[]) {
   return createMcpHandler({ name: 'test', version: '1.0.0', tools })
 }
 
+describe('onToolCall', () => {
+  it('reports each call once it settles, a thrown error as an isError result', async () => {
+    const calls: { name: string; isError: boolean; durationMs: number; path: string }[] = []
+
+    await using client = await createMcpTestClient(
+      createMcpHandler({
+        tools: [
+          defineMcpTool({ name: 'ping', handler: () => 'pong' }),
+          defineMcpTool({
+            name: 'fail',
+            handler: () => {
+              throw new Error('failed')
+            },
+          }),
+        ],
+        onToolCall: ({ name, result, durationMs, event }) => {
+          calls.push({
+            name,
+            isError: 'isError' in result && result.isError === true,
+            durationMs,
+            path: event.url.pathname,
+          })
+        },
+      }),
+    )
+
+    await client.callTool({ name: 'ping' })
+    await client.callTool({ name: 'fail' })
+
+    expect(calls.map(({ name, isError, path }) => ({ name, isError, path }))).toEqual([
+      { name: 'ping', isError: false, path: '/mcp' },
+      { name: 'fail', isError: true, path: '/mcp' },
+    ])
+    for (const call of calls) expect(call.durationMs).toBeGreaterThanOrEqual(0)
+  })
+})
+
 describe('defineMcpTool', () => {
   it('exposes the tool with its metadata and calls it', async () => {
     await using client = await createMcpTestClient(

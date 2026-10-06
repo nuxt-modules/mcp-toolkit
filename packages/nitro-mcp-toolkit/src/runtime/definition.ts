@@ -1,5 +1,6 @@
 import type { HandlerOptions as EngineOptions } from 'h3-mcp'
 import type { McpNotifier } from './context.ts'
+import type { McpToolCallListener } from './tool.ts'
 
 /**
  * The four arrays the engine takes its definitions from, derived from its own
@@ -61,7 +62,12 @@ export interface McpDefinition {
    *
    * @internal
    */
-  readonly build: (identity: McpIdentity, into: McpDefinitionBuckets, notify: McpNotifier) => void
+  readonly build: (
+    identity: McpIdentity,
+    into: McpDefinitionBuckets,
+    notify: McpNotifier,
+    onToolCall?: McpToolCallListener,
+  ) => void
 }
 
 /**

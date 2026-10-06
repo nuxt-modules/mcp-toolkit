@@ -4,6 +4,7 @@ import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './t
 import { resolveDefinitions, summarize } from './validate.ts'
 import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
 import type { McpNotifier } from './context.ts'
+import type { McpToolCallListener } from './tool.ts'
 import type {
   McpDefinitionBuckets,
   McpDefinitionSummary,
@@ -42,6 +43,21 @@ export interface McpHandlerOptions extends EngineWiring {
    * ```
    */
   origin?: EngineWiring['origin']
+  /**
+   * Called once per tool call that settles into a result, with its duration.
+   * An error it throws reaches the client.
+   *
+   * @example
+   * ```ts
+   * createMcpHandler({
+   *   tools,
+   *   onToolCall: ({ name, result, durationMs }) => {
+   *     metric('mcp.tool.duration_ms', durationMs, { toolName: name, outcome: result.isError ? 'error' : 'success' })
+   *   },
+   * })
+   * ```
+   */
+  onToolCall?: McpToolCallListener
 }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
@@ -142,6 +158,7 @@ export function createMcpHandler(
     origin,
     auth,
     onListen: userOnListen,
+    onToolCall,
     ...wiring
   } = options
 
@@ -166,7 +183,7 @@ export function createMcpHandler(
   }
 
   for (const { definition, identity } of registrations) {
-    definition.build(identity, buckets, notify)
+    definition.build(identity, buckets, notify, onToolCall)
   }
 
   const toolNames = new Set(tools.map((tool) => tool.name!))

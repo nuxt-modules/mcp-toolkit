@@ -14,6 +14,7 @@ interface StandardServerEntry {
 // served, so this goes through a full build rather than the module's own output.
 describe('a built Nitro app using the module', () => {
   let nitro: Nitro
+  let server: StandardServerEntry
   let client: Client
   let adminClient: Client
 
@@ -21,9 +22,10 @@ describe('a built Nitro app using the module', () => {
     nitro = await createNitro({ rootDir: fixtureDir, dev: false, preset: 'standard', modules })
     await build(nitro)
 
-    const { default: server } = (await import(
+    const entry = (await import(
       /* @vite-ignore */ `${nitro.options.output.serverDir}/index.mjs`
     )) as { default: StandardServerEntry }
+    server = entry.default
 
     const handler = { fetch: (request: Request) => Promise.resolve(server.fetch(request)) }
 
@@ -96,6 +98,19 @@ describe('a built Nitro app using the module', () => {
     expect(adminClient.getServerCapabilities()?.extensions).toEqual({
       'fixture/stamp': { stamped: true },
     })
+  })
+
+  it('fires mcp:tool:called for tool calls on every endpoint', async () => {
+    await client.callTool({ name: 'deep' })
+    await adminClient.callTool({ name: 'purge' })
+
+    const response = await server.fetch(new Request('http://localhost/tool-calls'))
+    const calls = (await response.json()) as { name: string; path: string }[]
+
+    expect(calls.slice(-2)).toEqual([
+      { name: 'deep', path: '/mcp' },
+      { name: 'purge', path: '/admin/mcp' },
+    ])
   })
 
   it('leaves a server without a plugins file advertising no extension', () => {

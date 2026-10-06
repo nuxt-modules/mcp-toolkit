@@ -109,8 +109,10 @@ export function renderHandler(
     .map(([key, value]) => line(key, value))
 
   if (oauthId) options.push('  auth: oauth.auth,')
+  options.push(`  onToolCall: (call) => useNitroHooks().callHook('mcp:tool:called', call),`)
 
   const imports = [
+    `import { useNitroHooks } from 'nitro/app'`,
     `import { createMcpHandler } from 'nitro-mcp-toolkit'`,
     ...(oauthId ? [`import { oauth } from ${JSON.stringify(oauthId)}`] : []),
     ...(pluginsPath ? [`import plugins from ${JSON.stringify(pluginsPath)}`] : []),

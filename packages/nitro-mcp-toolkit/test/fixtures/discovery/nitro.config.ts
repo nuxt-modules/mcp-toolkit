@@ -3,6 +3,8 @@ import { defineConfig } from 'nitro'
 
 export default defineConfig({
   compatibilityDate: '2026-07-01',
+  // Scans the plugin and route that record `mcp:tool:called`.
+  serverDir: 'server',
   // Lets the definition files import the public specifier while resolving to
   // source, so the e2e run never depends on a previous build. The `mcp()`
   // instances come from the tests, which mount the same two servers a

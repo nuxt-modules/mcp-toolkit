@@ -269,6 +269,27 @@ handler: async ({ id }) => {
 
 Resources and prompts don't have an `isError` field on the wire, so a thrown error there surfaces as a JSON-RPC-level error instead — the client's `readResource`/`getPrompt` call rejects rather than returning a result.
 
+### Tracking tool calls
+
+Every tool call that settles into a result fires `mcp:tool:called` on an endpoint `mcp()` serves, with the tool `name`, the `result` the client receives, `durationMs` and the `event`. A thrown error has already become an `isError` result, so the hook sees failures too. Subscribe from a Nitro plugin, for instance to send Vercel Custom Metrics with [`metric()`](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package):
+
+```ts
+// server/plugins/mcp-metrics.ts
+import { metric } from '@vercel/functions'
+import { definePlugin } from 'nitro'
+
+export default definePlugin((nitroApp) => {
+  nitroApp.hooks.hook('mcp:tool:called', ({ name, result, durationMs }) => {
+    metric('mcp.tool.duration_ms', durationMs, {
+      toolName: name,
+      outcome: 'isError' in result && result.isError ? 'error' : 'success',
+    })
+  })
+})
+```
+
+A handler mounted by hand takes the same listener as `createMcpHandler({ onToolCall })`. An error the listener throws reaches the client, so keep it to recording.
+
 ## Resources
 
 A resource is data addressed by URI. Return a string for the simple case.

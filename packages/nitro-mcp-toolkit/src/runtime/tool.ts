@@ -75,6 +75,17 @@ export interface McpToolDefinitionWithoutInput<
   handler: (event: McpEvent) => Awaitable<McpToolReturn<Output>>
 }
 
+/** A tool call that settled into a result, as `onToolCall` receives it. */
+export interface McpToolCall {
+  name: string
+  /** What the client receives. A thrown error has already become an `isError` result. */
+  result: CallToolResult | InputRequiredResult
+  durationMs: number
+  event: H3Event
+}
+
+export type McpToolCallListener = (call: McpToolCall) => Awaitable<void>
+
 async function settle(
   run: () => Awaitable<unknown>,
   hasOutputSchema: boolean,
@@ -86,6 +97,20 @@ async function settle(
     if (McpJsonRpcError.isMcpJsonRpcError(error)) throw error
     return toErrorResult(error)
   }
+}
+
+async function report(
+  name: string,
+  event: H3Event,
+  onToolCall: McpToolCallListener | undefined,
+  call: () => Promise<CallToolResult | InputRequiredResult>,
+): Promise<CallToolResult | InputRequiredResult> {
+  if (!onToolCall) return call()
+
+  const startedAt = performance.now()
+  const result = await call()
+  await onToolCall({ name, result, durationMs: performance.now() - startedAt, event })
+  return result
 }
 
 /**
@@ -125,7 +150,7 @@ export function defineMcpTool(
     group,
     tags,
     scopes,
-    build(identity, into, notify) {
+    build(identity, into, notify, onToolCall) {
       const advertised = {
         name: identity.name,
         title: identity.title,
@@ -142,10 +167,12 @@ export function defineMcpTool(
           ...advertised,
           inputSchema: resolveSchema(inputSchema),
           handler: (args: StandardTypedV1.InferOutput<Schema>, event: H3Event) =>
-            settle(() => {
-              requireScopes(event, scopes, 'tool', identity.name)
-              return handler(args, attachNotify(event, notify))
-            }, hasOutputSchema),
+            report(identity.name, event, onToolCall, () =>
+              settle(() => {
+                requireScopes(event, scopes, 'tool', identity.name)
+                return handler(args, attachNotify(event, notify))
+              }, hasOutputSchema),
+            ),
         })
         return
       }
@@ -154,10 +181,12 @@ export function defineMcpTool(
       into.tools.push({
         ...advertised,
         handler: (event: H3Event) =>
-          settle(() => {
-            requireScopes(event, scopes, 'tool', identity.name)
-            return handler(attachNotify(event, notify))
-          }, hasOutputSchema),
+          report(identity.name, event, onToolCall, () =>
+            settle(() => {
+              requireScopes(event, scopes, 'tool', identity.name)
+              return handler(attachNotify(event, notify))
+            }, hasOutputSchema),
+          ),
       })
     },
   }
