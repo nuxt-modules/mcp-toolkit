@@ -1,5 +1,24 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.0
+
+### Minor Changes
+
+- [#373](https://github.com/nuxt-modules/mcp-toolkit/pull/373) [`533ca55`](https://github.com/nuxt-modules/mcp-toolkit/commit/533ca554fd47dd70c60a84ac750659c2ab212c5e) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add the `mcp:tool:called` Nitro runtime hook. It fires once per tool call with the tool `name`, its normalized `result`, `durationMs` and the request `event`, after the tool settles. Cache hits are included, and a thrown error arrives as an `isError` result, so the hook can feed usage metrics or audit logs.
+
+  ```ts
+  export default defineNitroPlugin((nitroApp) => {
+    nitroApp.hooks.hook("mcp:tool:called", ({ name, result, durationMs }) => {
+      metric("mcp.tool.duration_ms", durationMs, {
+        toolName: name,
+        outcome: result.isError ? "error" : "success",
+      });
+    });
+  });
+  ```
+
+  The runtime hook types (`mcp:config:resolved`, `mcp:server:created`, `mcp:tool:called`) now load in the server tsconfig. They were added to `include` without their extension, so `nitroApp.hooks.hook('mcp:…')` did not typecheck in server code.
+
 ## 0.23.0
 
 ### Minor Changes
