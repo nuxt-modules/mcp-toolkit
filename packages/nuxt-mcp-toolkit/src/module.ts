@@ -1,10 +1,12 @@
 import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, hasNuxtModule, logger } from '@nuxt/kit'
 import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
+import { ROUTES } from './runtime/server/mcp/constants'
 import { setupAutoImports } from './setup/auto-imports'
 import { buildDefaultPaths, setupDefinitionsLoader } from './setup/definitions'
 import { probeAppsDir } from './setup/mcp-apps/discover'
 import { setupEvlog } from './setup/evlog'
 import { setupNitroAliases } from './setup/nitro-aliases'
+import { addOAuthMetadataHandlers } from './setup/oauth-metadata'
 import { name, version } from '../package.json'
 import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
 import type { McpConfig, McpDefaultHandlerStrategy, McpSecurityConfig } from './runtime/server/mcp/config'
@@ -268,14 +270,8 @@ function registerServerHandlers(route: string, resolver: ReturnType<typeof creat
   addServerHandler({ route: `${route}/deeplink`, handler: resolver.resolve('runtime/server/mcp/deeplink') })
   addServerHandler({ route: `${route}/badge.svg`, handler: resolver.resolve('runtime/server/mcp/badge-image') })
 
-  // OAuth discovery endpoints (RFC 9728 / RFC 8414). MCP clients probe
-  // these on connect; absent a real handler Nuxt would serve an HTML 404
-  // and break clients that try to parse the body as JSON.
-  const oauthHandler = resolver.resolve('runtime/server/mcp/oauth-metadata')
-  addServerHandler({ route: '/.well-known/oauth-protected-resource', handler: oauthHandler })
-  addServerHandler({ route: '/.well-known/oauth-protected-resource/**', handler: oauthHandler })
-  addServerHandler({ route: '/.well-known/oauth-authorization-server', handler: oauthHandler })
-  addServerHandler({ route: '/.well-known/oauth-authorization-server/**', handler: oauthHandler })
-  addServerHandler({ route: '/.well-known/openid-configuration', handler: oauthHandler })
-  addServerHandler({ route: '/.well-known/openid-configuration/**', handler: oauthHandler })
+  addOAuthMetadataHandlers(resolver)
+  // Some clients append the well-known suffix to the endpoint instead of using the RFC 9728 form.
+  addOAuthMetadataHandlers(resolver, route)
+  addOAuthMetadataHandlers(resolver, ROUTES.CUSTOM_HANDLER)
 }
