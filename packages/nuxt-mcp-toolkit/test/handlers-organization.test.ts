@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { setup } from '@nuxt/test-utils/e2e'
+import { setup, fetch } from '@nuxt/test-utils/e2e'
 import {
   cleanupMcpTests,
   createMcpClient,
@@ -130,5 +130,14 @@ describe('Handlers Organization', async () => {
         await client.close()
       }
     })
+  })
+
+  it('answers path-appended OAuth discovery probes with a JSON 404', async () => {
+    for (const path of ['/mcp/.well-known/oauth-protected-resource', '/mcp/admin/.well-known/oauth-protected-resource']) {
+      const res = await fetch(path)
+      expect(res.status).toBe(404)
+      expect(res.headers.get('content-type')).toContain('application/json')
+      expect(await res.json()).toMatchObject({ error: 'not_found' })
+    }
   })
 })
