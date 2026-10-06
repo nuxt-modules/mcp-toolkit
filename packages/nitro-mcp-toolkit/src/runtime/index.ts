@@ -56,7 +56,13 @@ export type {
   McpTool,
 } from './definition.ts'
 export type { McpToolResult, McpToolValue } from './results.ts'
-export type { McpToolDefinition, McpToolDefinitionWithoutInput, McpToolReturn } from './tool.ts'
+export type {
+  McpToolCall,
+  McpToolCallListener,
+  McpToolDefinition,
+  McpToolDefinitionWithoutInput,
+  McpToolReturn,
+} from './tool.ts'
 
 export type {
   AuthCredentials,

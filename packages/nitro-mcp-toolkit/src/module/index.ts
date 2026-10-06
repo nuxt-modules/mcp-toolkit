@@ -13,6 +13,7 @@ import {
 } from './template.ts'
 import { watchDefinitions } from './watch.ts'
 import type { McpModuleOptions } from './options.ts'
+import type { McpToolCall } from '../runtime/tool.ts'
 import type { NitroModule } from 'nitro/types'
 
 export type {
@@ -21,6 +22,26 @@ export type {
   McpServerOptions,
   ResolvedMcpModuleOptions,
 } from './options.ts'
+
+declare module 'nitro/types' {
+  interface NitroRuntimeHooks {
+    /**
+     * Fires once per tool call that settles into a result, on every endpoint the
+     * module serves. An error a listener throws reaches the client.
+     *
+     * @example
+     * ```ts
+     * // server/plugins/mcp-metrics.ts
+     * export default definePlugin((nitroApp) => {
+     *   nitroApp.hooks.hook('mcp:tool:called', ({ name, result, durationMs }) => {
+     *     metric('mcp.tool.duration_ms', durationMs, { toolName: name, outcome: result.isError ? 'error' : 'success' })
+     *   })
+     * })
+     * ```
+     */
+    'mcp:tool:called': (call: McpToolCall) => void | Promise<void>
+  }
+}
 
 /**
  * Serve an MCP endpoint from the files under `dir`: every definition in
