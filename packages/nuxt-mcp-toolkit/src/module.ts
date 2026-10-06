@@ -249,7 +249,7 @@ export default defineNuxtModule<ModuleOptions>({
 
 function registerTypeReferences(nuxt: import('@nuxt/schema').Nuxt, resolver: ReturnType<typeof createResolver>) {
   const virtualModulesDts = resolver.resolve('runtime/types/virtual-modules.d.ts')
-  const hooksDts = resolver.resolve('runtime/server/types/hooks')
+  const hooksDts = resolver.resolve('runtime/server/types/hooks.d.ts')
 
   nuxt.hook('prepare:types', ({ references }) => {
     references.push({ path: virtualModulesDts })

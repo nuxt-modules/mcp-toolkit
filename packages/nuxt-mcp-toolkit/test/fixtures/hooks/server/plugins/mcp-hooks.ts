@@ -1,4 +1,5 @@
 import { defineNitroPlugin } from 'nitropack/runtime'
+import { toolCalls } from '../utils/tool-calls'
 
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('mcp:config:resolved', ({ config }) => {
@@ -25,5 +26,9 @@ export default defineNitroPlugin((nitroApp) => {
 
   nitroApp.hooks.hook('mcp:server:created', () => {
     throw new Error('intentional hook failure — should be swallowed')
+  })
+
+  nitroApp.hooks.hook('mcp:tool:called', ({ name, result, durationMs, event }) => {
+    toolCalls.push({ name, isError: result.isError === true, durationMs, path: event.path })
   })
 })

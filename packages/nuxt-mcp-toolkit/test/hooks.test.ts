@@ -1,6 +1,7 @@
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, afterAll } from 'vitest'
-import { setup, $fetch } from '@nuxt/test-utils/e2e'
+import { setup, $fetch, useTestContext } from '@nuxt/test-utils/e2e'
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { cleanupMcpTests, createMcpClient } from './helpers/mcp-setup.js'
 
@@ -11,6 +12,14 @@ describe('MCP Nitro Hooks', async () => {
 
   afterAll(async () => {
     await cleanupMcpTests()
+  })
+
+  it('includes the runtime hook types in the server tsconfig', () => {
+    const include = useTestContext().nuxt?.options.nitro.typescript?.tsConfig?.include ?? []
+    const hooksDts = include.flatMap(path => path?.includes('server/types/hooks') ? [path] : [])
+
+    expect(hooksDts).toHaveLength(1)
+    expect(hooksDts.every(path => existsSync(path))).toBe(true)
   })
 
   it('should render the page', async () => {
@@ -57,6 +66,34 @@ describe('MCP Nitro Hooks', async () => {
     }
     finally {
       await client.close()
+    }
+  })
+
+  it('mcp:tool:called reports every call, including cache hits and thrown errors', async () => {
+    const client: Client = await createMcpClient('/mcp', 'hooks-tool-called')
+    try {
+      const first = await client.callTool({ name: 'cached_tool', arguments: {} })
+      const second = await client.callTool({ name: 'cached_tool', arguments: {} })
+      const failed = await client.callTool({ name: 'failing_tool', arguments: {} })
+
+      expect(first.content).toEqual([{ type: 'text', text: 'runs: 1' }])
+      expect(second.content).toEqual([{ type: 'text', text: 'runs: 1' }])
+      expect(failed.isError).toBe(true)
+    }
+    finally {
+      await client.close()
+    }
+
+    const calls = await $fetch<{ name: string, isError: boolean, durationMs: number, path: string }[]>('/api/tool-calls')
+    const reported = calls.filter(call => call.name === 'cached_tool' || call.name === 'failing_tool')
+
+    expect(reported.map(({ name, isError, path }) => ({ name, isError, path }))).toEqual([
+      { name: 'cached_tool', isError: false, path: '/mcp' },
+      { name: 'cached_tool', isError: false, path: '/mcp' },
+      { name: 'failing_tool', isError: true, path: '/mcp' },
+    ])
+    for (const call of reported) {
+      expect(call.durationMs).toBeGreaterThanOrEqual(0)
     }
   })
 
