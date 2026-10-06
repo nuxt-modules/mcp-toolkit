@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.1
+
+### Patch Changes
+
+- [#376](https://github.com/nuxt-modules/mcp-toolkit/pull/376) [`b25a922`](https://github.com/nuxt-modules/mcp-toolkit/commit/b25a9222b6ce2d9bae858cdc697e980ef267cdff) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Load the runtime hook types (`mcp:config:resolved`, `mcp:server:created`, `mcp:tool:called`) in server code of apps that install the module. They were added to the server tsconfig `include`, which excludes `node_modules`, so `nitroApp.hooks.hook('mcp:…')` still did not typecheck. They are now referenced from the generated Nitro types instead.
+
 ## 0.24.0
 
 ### Minor Changes
