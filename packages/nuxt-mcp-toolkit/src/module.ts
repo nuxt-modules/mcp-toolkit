@@ -256,12 +256,11 @@ function registerTypeReferences(nuxt: import('@nuxt/schema').Nuxt, resolver: Ret
     references.push({ path: hooksDts })
   })
 
-  const nitroOptions = nuxt.options.nitro
-  if (!nitroOptions) return
-  nitroOptions.typescript ??= {}
-  nitroOptions.typescript.tsConfig ??= {}
-  nitroOptions.typescript.tsConfig.include ??= []
-  nitroOptions.typescript.tsConfig.include.push(virtualModulesDts, hooksDts)
+  // A reference, not a tsconfig `include`: the server tsconfig excludes `node_modules`, where the module is installed.
+  nuxt.hook('nitro:prepare:types', ({ references }) => {
+    references.push({ path: virtualModulesDts })
+    references.push({ path: hooksDts })
+  })
 }
 
 function registerServerHandlers(route: string, resolver: ReturnType<typeof createResolver>) {

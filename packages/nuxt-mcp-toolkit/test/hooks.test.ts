@@ -1,4 +1,6 @@
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, afterAll } from 'vitest'
 import { setup, $fetch, useTestContext } from '@nuxt/test-utils/e2e'
@@ -14,9 +16,11 @@ describe('MCP Nitro Hooks', async () => {
     await cleanupMcpTests()
   })
 
-  it('includes the runtime hook types in the server tsconfig', () => {
-    const include = useTestContext().nuxt?.options.nitro.typescript?.tsConfig?.include ?? []
-    const hooksDts = include.flatMap(path => path?.includes('server/types/hooks') ? [path] : [])
+  it('references the runtime hook types from the server types', async () => {
+    const typesDir = join(useTestContext().nuxt?.options.buildDir ?? '', 'types')
+    const nitroTypes = await readFile(join(typesDir, 'nitro-nuxt.d.ts'), 'utf8')
+    const hooksDts = [...nitroTypes.matchAll(/<reference path="([^"]*server\/types\/hooks\.d\.ts)" \/>/g)]
+      .flatMap(([, path]) => path ? [resolve(typesDir, path)] : [])
 
     expect(hooksDts).toHaveLength(1)
     expect(hooksDts.every(path => existsSync(path))).toBe(true)
