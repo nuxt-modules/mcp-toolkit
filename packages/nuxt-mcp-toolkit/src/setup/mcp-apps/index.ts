@@ -1,8 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { resolve as resolvePath } from 'node:path'
-import type { Resolver } from '@nuxt/kit'
+import type { Resolver, NuxtLogger } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
-import type { ConsolaInstance } from 'consola'
 import type { LoadedFile } from '../../runtime/server/mcp/loaders/utils'
 import { type DiscoveredApp, discoverApps } from './discover'
 import { parseSfcApp, type McpAppStaticFields } from './parse-sfc'
@@ -57,7 +56,7 @@ export async function setupMcpApps(
   nuxt: Nuxt,
   appsDir: string | undefined,
   resolver: Resolver,
-  log: ConsolaInstance,
+  log: NuxtLogger,
   options?: McpAppsOptions,
 ): Promise<McpAppsResult> {
   const dir = appsDir ?? APPS_DIR_DEFAULT

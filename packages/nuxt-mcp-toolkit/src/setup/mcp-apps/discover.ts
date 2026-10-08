@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { resolve as resolvePath, basename, sep, relative as relativePath } from 'node:path'
 import { getLayerDirectories } from '@nuxt/kit'
 import { glob } from 'tinyglobby'
-import type { ConsolaInstance } from 'consola'
+import type { NuxtLogger } from '@nuxt/kit'
 
 export interface DiscoveredApp {
   /** Kebab-case app name derived from the SFC filename. */
@@ -58,7 +58,7 @@ export function probeAppsDir(appsDir: string): boolean {
 }
 
 /** Discover `.vue` SFCs across every Nuxt layer; later layers win on collision. */
-export async function discoverApps(appsDir: string, log?: ConsolaInstance): Promise<DiscoveredApp[]> {
+export async function discoverApps(appsDir: string, log?: NuxtLogger): Promise<DiscoveredApp[]> {
   const layers = getLayerDirectories()
   const seen = new Map<string, DiscoveredApp>()
   const skipped: string[] = []

@@ -1,8 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve as resolvePath } from 'node:path'
-import type { Resolver } from '@nuxt/kit'
-import type { ConsolaInstance } from 'consola'
+import type { Resolver, NuxtLogger } from '@nuxt/kit'
 import type { InlineConfig } from 'vite'
 import { appSourcePlugin } from './app-source'
 import type { DiscoveredApp } from './discover'
@@ -19,7 +18,7 @@ export async function bundleAppHtml(
   bundleSource: string,
   buildRoot: string,
   resolver: Resolver,
-  log: ConsolaInstance,
+  log: NuxtLogger,
   options: BundleOptions,
 ): Promise<string> {
   const entryDir = resolvePath(buildRoot, '__entry__', app.name)

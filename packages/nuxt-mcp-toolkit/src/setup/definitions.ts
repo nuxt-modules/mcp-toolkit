@@ -1,7 +1,6 @@
 import { addServerHandler } from '@nuxt/kit'
-import type { Resolver } from '@nuxt/kit'
+import type { Resolver, NuxtLogger } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
-import type { ConsolaInstance } from 'consola'
 import { loadAllDefinitions } from '../runtime/server/mcp/loaders'
 import { ROUTES } from '../runtime/server/mcp/constants'
 import { probeAppsDir } from './mcp-apps/discover'
@@ -39,7 +38,7 @@ export function setupDefinitionsLoader(
   paths: DefinitionsPaths,
   options: ModuleOptions,
   resolver: Resolver,
-  log: ConsolaInstance,
+  log: NuxtLogger,
   config: DefinitionsLoaderConfig,
 ): void {
   let mcpSummary: string | null = null
