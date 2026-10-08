@@ -1,3 +1,4 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createMcpTransportHandler } from './types'
 import { getHeader, toWebRequest } from '../compat'
 import { validateOrigin } from './security'
@@ -30,6 +31,14 @@ function createJsonRpcErrorResponse(status: number, code: number, message: strin
   })
 }
 
+export async function handleCloudflareRequest(createServer: () => McpServer, request: Request, cf?: CloudflareContext): Promise<Response> {
+  // `createMcpHandler` deprecates SDK v1 servers and rejects one from an SDK copy other than
+  // its own — `agents` pins an exact SDK version. The legacy handler takes any v1 server.
+  const { createLegacyMcpHandler } = await import('agents/mcp')
+  const handler = createLegacyMcpHandler(createServer(), { route: '' })
+  return handler(request, cf?.env ?? {}, cf?.ctx ?? fallbackCtx)
+}
+
 export default createMcpTransportHandler(async (createServer, event) => {
   const securityConfig = config.security ?? {}
   const originError = validateOrigin(event, securityConfig)
@@ -44,13 +53,9 @@ export default createMcpTransportHandler(async (createServer, event) => {
     await markSessionInvalidated(sessionId)
   }
 
-  const server = createServer()
-  event.context._mcpServer = server
-  // `createMcpHandler` deprecates SDK v1 servers and rejects one from an SDK copy other than
-  // its own — `agents` pins an exact SDK version. The legacy handler takes any v1 server.
-  const { createLegacyMcpHandler } = await import('agents/mcp')
-  const handler = createLegacyMcpHandler(server, { route: '' })
-  const request = toWebRequest(event)
-  const cf = event.context.cloudflare as CloudflareContext | undefined
-  return handler(request, cf?.env ?? {}, cf?.ctx ?? fallbackCtx)
+  return handleCloudflareRequest(() => {
+    const server = createServer()
+    event.context._mcpServer = server
+    return server
+  }, toWebRequest(event), event.context.cloudflare as CloudflareContext | undefined)
 })
