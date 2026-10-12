@@ -12,6 +12,16 @@ export function getRequestSessionId(event: H3Event): string | undefined {
   return getHeader(event, 'mcp-session-id')
 }
 
+export function setActiveSessionId(event: H3Event, sessionId: string): void {
+  event.context._mcpSessionId = sessionId
+}
+
+/** The session id the transport accepted for this request, as opposed to whatever the client sent. */
+export function getActiveSessionId(event: H3Event): string | undefined {
+  const sessionId = event.context._mcpSessionId
+  return typeof sessionId === 'string' ? sessionId : undefined
+}
+
 export function requestSessionInvalidation(event: H3Event): boolean {
   const sessionId = getRequestSessionId(event)
   if (!sessionId) return false

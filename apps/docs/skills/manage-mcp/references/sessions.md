@@ -32,6 +32,8 @@ export default defineNuxtConfig({
 
 When sessions are on the server assigns an `Mcp-Session-Id` header on `initialize` and the client sends it back on every subsequent request.
 
+Sessions need the Node server runtime: on Cloudflare Workers the transport is stateless, never assigns an id, and `useMcpSession()` throws. `useMcpSession()` works in tool, resource and prompt handlers for server-assigned sessions only — not in `middleware`, and not for an id the client made up.
+
 ## `useMcpSession<T>()`
 
 Auto-imported into every server file. Returns a typed key-value store backed by [unstorage](https://unstorage.unjs.io). The composable itself is **synchronous** — only the store methods are async.

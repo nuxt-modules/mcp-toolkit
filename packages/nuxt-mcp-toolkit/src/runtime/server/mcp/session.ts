@@ -1,8 +1,6 @@
 import { useStorage, useEvent } from 'nitropack/runtime'
 import type { Storage } from 'unstorage'
-import { getHeader } from './compat'
-import { isValidSessionId } from './providers/security'
-import { requestSessionInvalidation } from './session-state'
+import { getActiveSessionId, requestSessionInvalidation } from './session-state'
 
 export interface McpSessionStore<T = Record<string, unknown>> {
   get<K extends keyof T & string>(key: K): Promise<T[K] | null>
@@ -17,15 +15,13 @@ export interface McpSessionStore<T = Record<string, unknown>> {
 
 export function useMcpSession<T = Record<string, unknown>>(): McpSessionStore<T> {
   const event = useEvent()
-  const sessionId = getHeader(event, 'mcp-session-id')
+  const sessionId = getActiveSessionId(event)
   if (!sessionId) {
     throw new Error(
-      'No active MCP session. Ensure `mcp.sessions` is enabled '
-      + 'and `nitro.experimental.asyncContext` is true.',
+      'No active MCP session. Ensure `mcp.sessions` is enabled, '
+      + '`nitro.experimental.asyncContext` is true, and the server runs on Node '
+      + '(Cloudflare Workers are stateless).',
     )
-  }
-  if (!isValidSessionId(sessionId)) {
-    throw new Error('Invalid MCP session ID format')
   }
 
   const storage = useStorage(`mcp:sessions:${sessionId}`)

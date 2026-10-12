@@ -4,7 +4,7 @@ import type { H3Event } from 'h3'
 import { useStorage } from 'nitropack/runtime'
 import { getHeader, getNodeResponse, toWebRequest } from '../compat'
 import { validateOrigin, isValidSessionId } from './security'
-import { clearSessionInvalidation, isSessionInvalidated, isSessionInvalidationRequested, markSessionInvalidated } from '../session-state'
+import { clearSessionInvalidation, isSessionInvalidated, isSessionInvalidationRequested, markSessionInvalidated, setActiveSessionId } from '../session-state'
 import config from '#nuxt-mcp-toolkit/config.mjs'
 import { createMcpTransportHandler } from './types'
 
@@ -124,6 +124,7 @@ export default createMcpTransportHandler(async (createServer, event) => {
 
     session.lastAccessed = Date.now()
     event.context._mcpServer = session.server
+    setActiveSessionId(event, sessionId)
 
     if (isSessionInvalidationRequested(event)) {
       await markSessionInvalidated(sessionId)
