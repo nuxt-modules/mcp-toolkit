@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createMcpTransportHandler } from './types'
 import { getHeader, toWebRequest } from '../compat'
-import { validateOrigin } from './security'
+import { isValidSessionId, validateOrigin } from './security'
 import { isSessionInvalidated, isSessionInvalidationRequested, markSessionInvalidated } from '../session-state'
 import config from '#nuxt-mcp-toolkit/config.mjs'
 
@@ -31,6 +31,25 @@ function createJsonRpcErrorResponse(status: number, code: number, message: strin
   })
 }
 
+export async function checkCloudflareSession(sessionId: string | undefined, invalidationRequested: boolean): Promise<Response | null> {
+  if (!sessionId) return null
+
+  // The id becomes part of a storage key, so it must not reach `useStorage` unchecked.
+  if (!isValidSessionId(sessionId)) {
+    return createJsonRpcErrorResponse(400, -32_600, 'Invalid session ID format')
+  }
+
+  if (await isSessionInvalidated(sessionId)) {
+    return createJsonRpcErrorResponse(404, -32_001, 'Session not found')
+  }
+
+  if (invalidationRequested) {
+    await markSessionInvalidated(sessionId)
+  }
+
+  return null
+}
+
 export async function handleCloudflareRequest(createServer: () => McpServer, request: Request, cf?: CloudflareContext): Promise<Response> {
   // `createMcpHandler` deprecates SDK v1 servers and rejects one from an SDK copy other than
   // its own — `agents` pins an exact SDK version. The legacy handler takes any v1 server.
@@ -44,14 +63,8 @@ export default createMcpTransportHandler(async (createServer, event) => {
   const originError = validateOrigin(event, securityConfig)
   if (originError) return originError
 
-  const sessionId = getHeader(event, 'mcp-session-id')
-  if (sessionId && await isSessionInvalidated(sessionId)) {
-    return createJsonRpcErrorResponse(404, -32_001, 'Session not found')
-  }
-
-  if (sessionId && isSessionInvalidationRequested(event)) {
-    await markSessionInvalidated(sessionId)
-  }
+  const sessionError = await checkCloudflareSession(getHeader(event, 'mcp-session-id'), isSessionInvalidationRequested(event))
+  if (sessionError) return sessionError
 
   return handleCloudflareRequest(() => {
     const server = createServer()
