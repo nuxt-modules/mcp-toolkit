@@ -1,5 +1,16 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.2
+
+### Patch Changes
+
+- [#378](https://github.com/nuxt-modules/mcp-toolkit/pull/378) [`8b6bba8`](https://github.com/nuxt-modules/mcp-toolkit/commit/8b6bba8cbd639d7ce223056543ef51fcc2632edf) Thanks [@larbish](https://github.com/larbish)! - OAuth discovery probes that append the well-known suffix to the MCP endpoint, such as `/mcp/.well-known/oauth-protected-resource` or `/mcp/admin/.well-known/oauth-authorization-server`, now get the same JSON 404 as the root `/.well-known/*` probes. Before, they fell through to the Nuxt page renderer: clients got an HTML page back, and with evlog enabled the page 404 was logged as an error under the MCP service. It is now an `info` event with status 404.
+
+- [#385](https://github.com/nuxt-modules/mcp-toolkit/pull/385) [`ec0d225`](https://github.com/nuxt-modules/mcp-toolkit/commit/ec0d225e38918b052005935f4b2b1f872e4e96b8) Thanks [@HugoRCD](https://github.com/HugoRCD)! - The `MCP-Session-Id` header no longer reaches session storage unless the server assigned that session.
+
+  - `useMcpSession()` now uses the session the Node transport matched for the request, instead of reading the header. Before, with `mcp.sessions` off, a client could send any UUID and a tool calling `useMcpSession()` would read and write the store for that id. It now throws `No active MCP session`, as the docs already described. It also throws when called from `middleware`, which runs before the session is checked.
+  - On Cloudflare Workers the provider no longer reads or writes `mcp:sessions-meta:*`. The Workers transport is stateless and never assigns a session id, so the id it received was always client-chosen and was used unchecked in a storage key. `invalidateMcpSession()` has nothing to invalidate there; return 401/403 from middleware to reject a request.
+
 ## 0.24.1
 
 ### Patch Changes
