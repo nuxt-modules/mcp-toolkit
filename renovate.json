@@ -5,6 +5,8 @@
   ],
   "schedule": ["before 3am on Monday"],
   "timezone": "UTC",
+  "minimumReleaseAge": "2 days",
+  "internalChecksFilter": "strict",
   "packageRules": [
     {
       "description": "Only raise a peer dependency floor when the code needs it",
