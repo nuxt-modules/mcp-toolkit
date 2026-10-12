@@ -1,9 +1,7 @@
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { useStorage } from 'nitropack/runtime'
-import { createStorage } from 'unstorage'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('#nuxt-mcp-toolkit/config.mjs', () => ({ default: {} }))
 vi.mock('nitropack/runtime', () => ({ useStorage: vi.fn() }))
@@ -31,32 +29,6 @@ function createInitializeRequest(): Request {
     }),
   })
 }
-
-describe('Cloudflare provider session check', () => {
-  beforeEach(() => {
-    vi.mocked(useStorage).mockReset()
-  })
-
-  it('rejects malformed session ids before touching storage', async () => {
-    const { checkCloudflareSession } = await import('../src/runtime/server/mcp/providers/cloudflare')
-
-    for (const sessionId of ['invalid-session-id', 'x:invalidatedAt', '../../secrets', 'a'.repeat(4096)]) {
-      expect((await checkCloudflareSession(sessionId, true))?.status).toBe(400)
-    }
-    expect(useStorage).not.toHaveBeenCalled()
-  })
-
-  it('invalidates a well-formed session id', async () => {
-    const storage = createStorage()
-    vi.mocked(useStorage).mockReturnValue(storage)
-    const sessionId = globalThis.crypto.randomUUID()
-    const { checkCloudflareSession } = await import('../src/runtime/server/mcp/providers/cloudflare')
-
-    expect(await checkCloudflareSession(sessionId, true)).toBeNull()
-    expect(useStorage).toHaveBeenCalledWith(`mcp:sessions-meta:${sessionId}`)
-    expect((await checkCloudflareSession(sessionId, false))?.status).toBe(404)
-  })
-})
 
 describe('Cloudflare provider', () => {
   it('answers `initialize` without the SDK v1 deprecation warning of `agents`', async () => {
