@@ -70,6 +70,8 @@ function generateBadgeSVG(options: BadgeOptions): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
   <rect x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" rx="4" fill="#${color}" stroke="#${borderColor}"/>
@@ -78,24 +80,30 @@ function generateBadgeSVG(options: BadgeOptions): string {
 </svg>`
 }
 
+/** Colors are hex values without `#` (`fff`, `171717`, `17171780`); anything else uses the default. */
+export function hexColor(value: unknown, fallback: string): string {
+  return typeof value === 'string' && /^(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ? value : fallback
+}
+
 export default defineEventHandler((event) => {
   const query = getQuery(event)
 
-  const ide = (query.ide as SupportedIDE) || 'cursor'
-  const ideConfig = IDE_CONFIG[ide] || IDE_CONFIG.cursor
+  const ide: SupportedIDE = query.ide === 'vscode' ? 'vscode' : 'cursor'
+  const ideConfig = IDE_CONFIG[ide]
 
   const options: BadgeOptions = {
     ide,
-    label: (query.label as string) || ideConfig.defaultLabel,
-    color: (query.color as string) || '171717',
-    textColor: (query.textColor as string) || 'ffffff',
-    borderColor: (query.borderColor as string) || '404040',
+    label: (typeof query.label === 'string' && query.label) || ideConfig.defaultLabel,
+    color: hexColor(query.color, '171717'),
+    textColor: hexColor(query.textColor, 'ffffff'),
+    borderColor: hexColor(query.borderColor, '404040'),
     showIcon: query.icon !== 'false',
   }
 
   const svg = generateBadgeSVG(options)
 
   setHeader(event, 'Content-Type', 'image/svg+xml')
+  setHeader(event, 'Content-Security-Policy', 'default-src \'none\'; style-src \'unsafe-inline\'; sandbox')
   setHeader(event, 'Cache-Control', 'public, max-age=86400')
 
   return svg
