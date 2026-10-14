@@ -55,7 +55,8 @@ export default defineNuxtConfig({
   nitro: {
     externals: {
       // Vercel serverless bundles externalize unhead but fail to trace dist/server.mjs.
-      inline: ['minimark', 'unhead', '@unhead/vue', '@unhead/dom', '@unhead/schema'],
+      // Docus needs `ai` v7 and nuxt-studio needs v6; only one can be hoisted as an external, so bundle each.
+      inline: ['minimark', 'unhead', '@unhead/vue', '@unhead/dom', '@unhead/schema', 'ai/', '@ai-sdk/'],
     },
   },
 
