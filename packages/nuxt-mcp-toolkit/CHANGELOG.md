@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.3
+
+### Patch Changes
+
+- [#387](https://github.com/nuxt-modules/mcp-toolkit/pull/387) [`cfdd08e`](https://github.com/nuxt-modules/mcp-toolkit/commit/cfdd08eada42dc3c8a971ba65c5123d261873cf6) Thanks [@HugoRCD](https://github.com/HugoRCD)! - The install badge (`/mcp/badge.svg`) now only accepts hex values for `color`, `textColor` and `borderColor`, without the `#`, and uses the default color for anything else. `label` escaping also covers quotes, and the response sends a restrictive `Content-Security-Policy`. Badges rendered as images look the same.
+
 ## 0.24.2
 
 ### Patch Changes
