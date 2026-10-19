@@ -167,7 +167,7 @@ overrides:
   unhead: ^3.4.3
   '@unhead/vue': ^3.4.3
   h3@2.0.0: 2.0.2
-  undici@5.29.0: 6.29.1
+  undici@5.29.0: 8.12.2
   sharp@<0.35.0: 0.35.5
 
 importers:
