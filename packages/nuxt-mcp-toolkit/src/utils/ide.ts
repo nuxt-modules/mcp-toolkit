@@ -28,14 +28,22 @@ export function detectIDE(): IDE | null {
   if (ipc.includes('/Cursor/')) return 'cursor'
   if (ipc.includes('/Code/')) return 'vscode'
 
-  // Fallback: walk up the process tree to find Cursor or VS Code
+  // Fallback: walk up the process tree to find Cursor or VS Code.
+  // One `ps` call reads the whole table; two calls per ancestor blocked startup for ~0.4s.
   try {
+    const processes = new Map<number, { ppid: number, name: string }>()
+    const table = execSync('ps -A -o pid=,ppid=,comm=', { stdio: ['pipe', 'pipe', 'ignore'] }).toString()
+    for (const line of table.split('\n')) {
+      const match = line.match(/^\s*(\d+)\s+(\d+)\s+(\S.*)$/)
+      if (match) processes.set(Number(match[1]), { ppid: Number(match[2]), name: match[3]!.toLowerCase() })
+    }
     let pid = process.ppid
     for (let i = 0; i < 10 && pid > 1; i++) {
-      const name = execSync(`ps -o comm= -p ${pid}`, { stdio: ['pipe', 'pipe', 'ignore'] }).toString().toLowerCase()
-      if (name.includes('cursor')) return 'cursor'
-      if (name.includes('code helper') || name.includes('code.app')) return 'vscode'
-      pid = Number.parseInt(execSync(`ps -o ppid= -p ${pid}`, { stdio: ['pipe', 'pipe', 'ignore'] }).toString().trim())
+      const entry = processes.get(pid)
+      if (!entry) break
+      if (entry.name.includes('cursor')) return 'cursor'
+      if (entry.name.includes('code helper') || entry.name.includes('code.app')) return 'vscode'
+      pid = entry.ppid
     }
   }
   catch {
