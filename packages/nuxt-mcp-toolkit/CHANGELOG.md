@@ -1,5 +1,13 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.3
+
+### Patch Changes
+
+- [#387](https://github.com/nuxt-modules/mcp-toolkit/pull/387) [`cfdd08e`](https://github.com/nuxt-modules/mcp-toolkit/commit/cfdd08eada42dc3c8a971ba65c5123d261873cf6) Thanks [@HugoRCD](https://github.com/HugoRCD)! - The install badge (`/mcp/badge.svg`) now only accepts hex values for `color`, `textColor` and `borderColor`, without the `#`, and uses the default color for anything else. `label` escaping also covers quotes, and the response sends a restrictive `Content-Security-Policy`. Badges rendered as images look the same.
+
+- [#396](https://github.com/nuxt-modules/mcp-toolkit/pull/396) [`a561e1f`](https://github.com/nuxt-modules/mcp-toolkit/commit/a561e1fdb389d66c45300f9cee9ee813e12e6d60) Thanks [@onmax](https://github.com/onmax)! - IDE detection at dev server start reads the process table with one `ps` call instead of two per parent process, so `nuxt dev` no longer blocks for about 0.4 s when no IDE environment variable is set.
+
 ## 0.24.2
 
 ### Patch Changes
