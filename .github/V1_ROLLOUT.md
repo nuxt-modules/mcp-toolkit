@@ -32,7 +32,7 @@ The migration targets MCP `2026-07-28`, the current published revision checked o
 
 Review the Nuxt API against the protocol and the shared engine before porting it. An old public API is not a reason to keep its implementation or add a compatibility wrapper. Preserve useful Nuxt integration and document breaking changes; remove obsolete behavior and dependencies in the same implementation step.
 
-The current Nitro runtime targets this revision and delegates protocol handling to pinned `h3-mcp`. The current Nuxt runtime still uses SDK v1 and connection-oriented helpers. Removing Apps does not complete that migration or establish conformance.
+The Nitro runtime targets this revision and delegates protocol handling to pinned `h3-mcp`. Step 5 moves Nuxt onto that shared runtime and removes the SDK v1 server implementation. Integration and consumer tests validate this wiring; the broader compatibility gate still applies before publishing a beta.
 
 | Existing surface | 1.0 decision | Reason and replacement |
 | --- | --- | --- |

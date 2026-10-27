@@ -64,6 +64,16 @@ export default defineNuxtConfig({
     },
   },
 
+  agentDiscovery: {
+    discovery: {
+      mcpServerCard: false,
+      links: [
+        { href: '/.well-known/mcp/server-card.json', rel: 'service-desc', type: 'application/json', anchor: '/mcp', title: 'MCP server card' },
+        { href: '/mcp', rel: 'service', title: 'MCP endpoint', header: false },
+      ],
+    },
+  },
+
   icon: {
     customCollections: [
       {

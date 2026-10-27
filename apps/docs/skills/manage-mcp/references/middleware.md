@@ -1,196 +1,66 @@
-# Middleware Patterns
+# Middleware — 1.0
 
-Middleware lives on `defineMcpHandler` — there is **no separate `defineMcpMiddleware`** function. The signature is:
+## Middleware and authentication
 
-```typescript
-type McpMiddleware = (
-  event: H3Event,
-  next: () => Promise<Response>
-) => Promise<Response | void> | Response | void
-```
+Use ordinary Nuxt server middleware for application context. The Nitro 2 adapter carries that context into the shared MCP event.
 
-If you don't call `next()`, it's called automatically after your middleware returns. Call it explicitly if you need to inspect/modify the response or measure timing.
+```ts [server/middleware/mcp-user.ts]
+import { defineEventHandler } from 'nuxt/server'
 
-## Where to put middleware
-
-| File | Effect |
-| --- | --- |
-| `server/mcp/index.ts` | Override the default `/mcp` handler — middleware runs for every request to the default route. |
-| `server/mcp/handlers/<name>/index.ts` | Folder handler — middleware runs only for `/mcp/<name>`. Tools/resources/prompts in `handlers/<name>/{tools,resources,prompts}/` are auto-attached. |
-
-## Soft Authentication (recommended)
-
-::callout{icon="i-lucide-triangle-alert" color="warning"}
-For manually configured API keys without OAuth metadata, set context on success and guard every protected operation. A `401` can trigger OAuth discovery. For an OAuth resource server, that is intentional: return `401` with its `WWW-Authenticate` metadata challenge. Do not apply this API-key recipe’s soft authentication to Nitro’s `createMcpOAuth` flow.
-::
-
-```typescript [server/mcp/index.ts]
-export default defineMcpHandler({
-  middleware: async (event) => {
-    const apiKey = getHeader(event, 'authorization')?.replace('Bearer ', '')
-    if (!apiKey) return
-
-    const user = await verifyApiKey(apiKey).catch(() => null)
-    if (user) event.context.user = user
-    // No throw — unauthenticated requests still see public tools
-  },
+export default defineEventHandler(async (event) => {
+  event.context.user = await authenticateRequest(event)
 })
 ```
 
-```typescript [server/mcp/tools/list-todos.ts]
-import { z } from 'zod'
+Use endpoint `oauth` for JWT verification and `scopes` on definitions for operation-level checks. A static `auth.tokens` list protects an entire endpoint. A custom resource verifier belongs in a manually composed route.
 
-export default defineMcpTool({
-  description: 'List the current user’s todos',
-  enabled: event => Boolean(event.context.user), // hidden when unauthenticated
-  handler: async () => {
-    const event = useEvent()
-    return listTodos(event.context.user.id)
+`enabled(event)` is removed. Required scopes gate invocation while static metadata remains listed. If even a tool's existence is sensitive, put it on a separately authenticated endpoint. Client-provided headers and arguments are not user identity.
+
+## Authentication
+
+```ts
+mcp: {
+  servers: {
+    default: {},
+    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
   },
-})
-```
-
-For a tool that *should* surface to the LLM but can't run, return a friendly message instead of throwing:
-
-```typescript
-handler: async () => {
-  const event = useEvent()
-  if (!event.context.user) return 'Sign in first, then re-run this tool.'
-  return listTodos(event.context.user.id)
 }
 ```
 
-## Better Auth API Keys
+For OAuth, configure `oauth: { resource, authorizationServers, jwt: { jwks, issuer, audience } }`. Provider connectors are available at `nitro-mcp-toolkit/oauth/clerk`, `/okta`, and `/workos` and return this same configuration. The toolkit verifies access tokens and serves protected-resource metadata; it does not issue tokens.
 
-Same pattern with [`better-auth`](https://www.better-auth.com)'s API-key plugin:
+Put `scopes: ['projects:write']` on a definition to require all listed scopes. Claims come from `event.context.oauth`; absent claims fail closed. Scope checks protect invocation and application completion/enumeration callbacks, while static catalog metadata stays listed.
 
-```typescript [server/mcp/index.ts]
-import { auth } from '~/lib/auth'
+A custom verifier belongs in `createMcpOAuth({ verify })` and a manually composed route. Enforce verified user and tenant boundaries in application queries. A client-provided role header or tool argument is not authorization.
 
-export default defineMcpHandler({
-  middleware: async (event) => {
-    const headers = getRequestHeaders(event)
-    const session = await auth.api.getSession({ headers: new Headers(headers as Record<string, string>) })
-    if (session) {
-      event.context.user = session.user
-      event.context.session = session.session
-    }
-  },
+## Tool call hooks
+
+```ts [server/plugins/mcp-metrics.ts]
+export default defineNitroPlugin((app) => {
+  app.hooks.hook('mcp:tool:called', ({ name, result, durationMs, event }) => {
+    console.log({ name, durationMs, user: event.context.oauth?.sub, result })
+  })
 })
 ```
 
-`useMcpLogger()` automatically tags every wide event with `user.id` / `user.email` / `session.id` from `event.context.user` and `event.context.session`.
+Configured endpoints fire the hook after a tool settles into a result, including application failures converted to `isError`. A listener error reaches the caller; keep observers focused on recording.
 
-## Logging Middleware (with `next()` for timing)
+Manually composed handlers accept `onToolCall` with the same payload. Use a Nitro 3 plugin's explicit `definePlugin` import in a Nitro 3 app.
 
-Use `extractToolNames` to capture which tools were called from the JSON-RPC body:
+`mcp:server:created` and `mcp:config:resolved` are removed with the SDK-server runtime. Compose definitions, endpoint options, and extension plugins directly.
 
-```typescript
-import { extractToolNames } from '@nuxtjs/mcp-toolkit/server'
+## Logging and progress
 
-export default defineMcpHandler({
-  middleware: async (event, next) => {
-    const requestId = crypto.randomUUID()
-    event.context.requestId = requestId
+Keep server diagnostics in the application logger or tool-call hook. MCP Logging is deprecated; existing engine logging support follows the selected protocol revision, including a per-request log level for modern clients.
 
-    const start = performance.now()
-    const response = await next()
-    const tools = await extractToolNames(event)
-
-    console.log(`[mcp] ${requestId} ${tools.join(',') || 'rpc'} took ${(performance.now() - start).toFixed(1)}ms`)
-    return response
-  },
-})
-```
-
-For structured wide events on every MCP request, prefer [`useMcpLogger()`](https://mcp-toolkit.nuxt.dev/advanced/logging) — it tags `mcp.tool`, `mcp.session_id`, `mcp.request_id`, `service`, etc. automatically.
-
-## Hard Reject (admin-only handler)
-
-When middleware *must* reject (e.g. an internal admin endpoint that should never be public), return a `403` — not a `401`:
-
-```typescript [server/mcp/handlers/admin/index.ts]
-export default defineMcpHandler({
-  description: 'Admin tools — IP-allowlisted.',
-  middleware: async (event) => {
-    const ip = getRequestIP(event, { xForwardedFor: true })
-    if (!ALLOWED_IPS.includes(ip)) {
-      throw createError({ statusCode: 403, message: 'Forbidden' })
-    }
-  },
-})
-```
-
-## Rate Limiting
-
-Lean on [`nitro-rate-limit`](https://github.com/atinux/nitro-rate-limit) or implement per-user counters using a `useStorage` driver — keep the work outside middleware so other tools' caching keeps working:
-
-```typescript
-const counters = new Map<string, { count: number, resetAt: number }>()
-
-export default defineMcpHandler({
-  middleware: async (event) => {
-    const userId = event.context.user?.id ?? getRequestIP(event)
-    const now = Date.now()
-    const window = 60_000
-    const limit = 100
-
-    const bucket = counters.get(userId) ?? { count: 0, resetAt: now + window }
-    if (now > bucket.resetAt) {
-      bucket.count = 0
-      bucket.resetAt = now + window
-    }
-    bucket.count++
-    counters.set(userId, bucket)
-
-    if (bucket.count > limit) {
-      throw createError({ statusCode: 429, message: 'Rate limit exceeded' })
-    }
-  },
-})
-```
-
-## CORS
-
-Cross-origin browser clients are gated by `mcp.security.allowedOrigins`. Configure it in `nuxt.config.ts` rather than via middleware:
-
-```typescript [nuxt.config.ts]
-export default defineNuxtConfig({
-  mcp: {
-    security: {
-      allowedOrigins: ['https://app.example.com'], // or '*' to disable Origin checks (use with care)
-    },
-  },
-})
-```
-
-## Compose multiple concerns
-
-Middleware is one function, but you can compose helpers:
-
-```typescript
-async function withAuth(event: H3Event) {
-  const apiKey = getHeader(event, 'authorization')?.replace('Bearer ', '')
-  if (!apiKey) return
-  const user = await verifyApiKey(apiKey).catch(() => null)
-  if (user) event.context.user = user
+```ts
+handler: async (args, event) => {
+  event.context.mcp.log?.('info', { message: 'Starting' }, 'projects')
+  event.context.mcp.progress?.(0, 10, 'Starting')
+  return runTask(args, event.context.mcp.signal)
 }
-
-async function withRequestId(event: H3Event) {
-  event.context.requestId = crypto.randomUUID()
-}
-
-export default defineMcpHandler({
-  middleware: async (event, next) => {
-    await withAuth(event)
-    await withRequestId(event)
-    return next()
-  },
-})
 ```
 
-## See also
+The engine handles the notification transport on both eras. A plain JSON response has no stream for notifications, so these functions may do nothing when the client did not request a channel. Progress uses the client's token; never invent one.
 
-- [Middleware docs](https://mcp-toolkit.nuxt.dev/advanced/middleware)
-- [Authentication examples](https://mcp-toolkit.nuxt.dev/examples/authentication)
-- [Logging](https://mcp-toolkit.nuxt.dev/advanced/logging) — `useMcpLogger()` and evlog
+Use your application logger for server-side logs and the `mcp:tool:called` hook for metrics. The old `useMcpLogger` wrapper is removed. Keep private server diagnostics out of client-visible notifications.

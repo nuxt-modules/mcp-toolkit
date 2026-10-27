@@ -1,12 +1,8 @@
+import { readFile } from 'node:fs/promises'
+
 export default defineMcpResource({
   name: 'project-readme',
-  file: 'README.md',
-  metadata: {
-    description: 'Project README file',
-    annotations: {
-      audience: ['user'],
-      priority: 0.8,
-      lastModified: new Date().toISOString(),
-    },
-  },
+  uri: 'file:///README.md',
+  mimeType: 'text/markdown',
+  handler: () => readFile('README.md', 'utf8'),
 })

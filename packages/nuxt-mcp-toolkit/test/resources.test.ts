@@ -22,9 +22,6 @@ describe('Resources', async () => {
 
   it('should list resources via MCP client', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const resources = await client.listResources()
 
@@ -35,9 +32,6 @@ describe('Resources', async () => {
 
   it('should include the test_resource in the resources list', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const resources = await client.listResources()
     const testResource = resources.resources.find(resource => resource.name === 'test_resource')
@@ -49,9 +43,6 @@ describe('Resources', async () => {
 
   it('should be able to read the test_resource', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.readResource({
       uri: 'test://resource/test',
@@ -75,9 +66,6 @@ describe('Resources', async () => {
 
   it('should be able to read the file_resource', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const resources = await client.listResources()
     const fileResource = resources.resources.find(resource => resource.name === 'file_resource')

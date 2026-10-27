@@ -22,9 +22,6 @@ describe('Auto-generated name and title', async () => {
 
   it('should auto-generate name and title from filename for tools', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const tools = await client.listTools()
     const tool = tools.tools.find(t => t.name === 'list-documentation')
@@ -36,9 +33,6 @@ describe('Auto-generated name and title', async () => {
 
   it('should use explicit name when provided (tools)', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const tools = await client.listTools()
     const tool = tools.tools.find(t => t.name === 'custom-name')
@@ -50,9 +44,6 @@ describe('Auto-generated name and title', async () => {
 
   it('should auto-generate name from filename for resources', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const resources = await client.listResources()
     const resource = resources.resources.find(r => r.name === 'project-readme')
@@ -63,9 +54,6 @@ describe('Auto-generated name and title', async () => {
 
   it('should auto-generate name and title from filename for prompts', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const prompts = await client.listPrompts()
     const prompt = prompts.prompts.find(p => p.name === 'greeting-message')

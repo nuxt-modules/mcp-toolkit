@@ -1,0 +1,5 @@
+{
+  "name": "shared-engine-fixture",
+  "private": true,
+  "type": "module"
+}

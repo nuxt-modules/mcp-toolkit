@@ -1,4 +1,4 @@
-import { defineEventHandler, getRequestURL, getQuery, setHeader } from 'h3'
+import { defineEventHandler, getQuery } from 'nuxt/server'
 import mcpConfig from '#nuxt-mcp-toolkit/config.mjs'
 
 export type SupportedIDE = 'cursor' | 'vscode'
@@ -13,7 +13,7 @@ const IDE_CONFIGS: Record<SupportedIDE, IDEConfig> = {
     name: 'Cursor',
     generateDeeplink: (serverName: string, mcpUrl: string) => {
       const config = { type: 'http', url: mcpUrl }
-      const configBase64 = Buffer.from(JSON.stringify(config)).toString('base64')
+      const configBase64 = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(config))))
       return `cursor://anysphere.cursor-deeplink/mcp/install?name=${encodeURIComponent(serverName)}&config=${encodeURIComponent(configBase64)}`
     },
   },
@@ -47,17 +47,16 @@ function escapeJs(str: string): string {
 }
 
 export default defineEventHandler((event) => {
-  const requestUrl = getRequestURL(event)
+  const requestUrl = event.url
   const query = getQuery(event)
 
-  const ide = (query.ide as SupportedIDE) || 'cursor'
-  const ideConfig = IDE_CONFIGS[ide]
-  if (!ideConfig) {
-    setHeader(event, 'Location', '/')
-    return new Response(null, { status: 302 })
+  const ide = query.ide ?? 'cursor'
+  if (ide !== 'cursor' && ide !== 'vscode') {
+    return new Response(null, { status: 302, headers: { location: '/' } })
   }
+  const ideConfig = IDE_CONFIGS[ide]
 
-  const serverName = (query.name as string) || mcpConfig.name || 'mcp-server'
+  const serverName = (typeof query.name === 'string' && query.name) || mcpConfig.name || 'mcp-server'
 
   // Build the MCP server URL (the /mcp endpoint)
   const mcpUrl = `${requestUrl.origin}${mcpConfig.route || '/mcp'}`
@@ -70,7 +69,7 @@ export default defineEventHandler((event) => {
   const jsDeeplink = escapeJs(deeplink)
 
   // Return HTML page that redirects via JavaScript (for custom protocol support)
-  setHeader(event, 'Content-Type', 'text/html; charset=utf-8')
+  event.res.headers.set('Content-Type', 'text/html; charset=utf-8')
 
   return `<!DOCTYPE html>
 <html lang="en">

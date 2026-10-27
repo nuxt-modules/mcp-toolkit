@@ -4,9 +4,9 @@ import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
 export default defineMcpPrompt({
   name: 'iterate',
   description: 'Bootstraps an AI session: ask clarifying questions, then extend this MCP server.',
-  inputSchema: {
+  inputSchema: z.object({
     goal: z.string().describe('Initial idea or domain for the MCP (details can follow in chat)'),
-  },
+  }),
   handler: async ({ goal }) => {
     return {
       messages: [

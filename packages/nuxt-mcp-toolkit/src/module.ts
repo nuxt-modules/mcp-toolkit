@@ -1,261 +1,82 @@
-import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, hasNuxtModule, logger } from '@nuxt/kit'
-import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
-import { ROUTES } from './runtime/server/mcp/constants'
+import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, getLayerDirectories, getNitroVersion, hasNuxtModule, logger, resolveServerVariant } from '@nuxt/kit'
+import mcp from 'nitro-mcp-toolkit/module/nitro2'
+import mcp3 from 'nitro-mcp-toolkit/module'
+import { resolve as resolvePath } from 'pathe'
 import { setupAutoImports } from './setup/auto-imports'
-import { buildDefaultPaths, setupDefinitionsLoader } from './setup/definitions'
-import { setupEvlog } from './setup/evlog'
-import { setupNitroAliases } from './setup/nitro-aliases'
-import { addOAuthMetadataHandlers } from './setup/oauth-metadata'
+import type { McpModuleOptions } from 'nitro-mcp-toolkit/module/nitro2'
 import { name, version } from '../package.json'
-import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
-import type { McpConfig, McpDefaultHandlerStrategy, McpSecurityConfig } from './runtime/server/mcp/config'
-
-const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
 export const { resolve } = createResolver(import.meta.url)
-
-export type * from './runtime/server/types'
-
 export type McpHeaderValue = string | string[] | null | undefined
+export interface McpInspectorConfig { headers?: Record<string, McpHeaderValue> }
 
-export interface McpInspectorConfig {
-  headers?: Record<string, McpHeaderValue>
-}
-
-export interface ModuleOptions {
-  /**
-   * Enable or disable the MCP server
-   * @default true
-   */
+export interface ModuleOptions extends Omit<McpModuleOptions, 'include'> {
   enabled?: boolean
-  /**
-   * The route path for the MCP server endpoint
-   * @default '/mcp'
-   */
-  route?: string
-  /**
-   * URL to redirect to when a browser accesses the MCP endpoint
-   * @default '/'
-   */
-  browserRedirect?: string
-  /**
-   * The name of the MCP server
-   * @default Site name from site config or 'Docus Documentation'
-   */
-  name?: string
-  /**
-   * The version of the MCP server
-   * @default '1.0.0'
-   */
-  version?: string
-  /**
-   * A human-readable description of this MCP server.
-   * Part of `serverInfo` sent during initialization — used by clients
-   * to display what this server is in UI (e.g. server lists, tooltips).
-   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
-   */
-  description?: string
-  /**
-   * Operational instructions for AI agents on how to use this server.
-   * Unlike `description` (which identifies the server), `instructions`
-   * guide the LLM on workflows, constraints, and tool relationships.
-   * Typically injected into the model's system prompt by the client.
-   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
-   */
-  instructions?: string
-  /**
-   * Icons for this MCP server, displayed by clients in their UI.
-   * Each icon specifies an image URL, MIME type, optional sizes, and optional theme.
-   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle#initialization
-   *
-   * @example
-   * ```ts
-   * icons: [{ src: 'https://example.com/icon.png', mimeType: 'image/png', sizes: ['64x64'] }]
-   * ```
-   */
-  icons?: McpIcon[]
-  /**
-   * Base directory for MCP definitions relative to server directory
-   * The module will look for tools, resources, and prompts in subdirectories
-   * @default 'mcp'
-   */
-  dir?: string
-  /**
-   * Configuration for the DevTools inspector launcher.
-   * Useful when the server requires HTTP headers such as `Authorization`.
-   */
-  inspector?: McpInspectorConfig
-  /**
-   * How the default `/mcp` handler picks up auto-discovered definitions when
-   * named handlers exist (`server/mcp/handlers/<name>/` or `handlers: 'name'` field).
-   *
-   * - `'orphans'` (default): the default handler only sees definitions that
-   *   aren't attached to a named handler. Each definition lives in exactly
-   *   one place. When no named handlers exist, behaves like `'all'`.
-   * - `'all'`: pre-multi-handler behaviour — the default handler sees every
-   *   discovered definition. Useful when you want a "kitchen sink" route in
-   *   addition to specialized ones.
-   *
-   * @default 'orphans'
-   * @see https://mcp-toolkit.nuxt.dev/handlers/organization
-   */
-  defaultHandlerStrategy?: McpDefaultHandlerStrategy
-  /**
-   * Auto-import MCP helpers (`defineMcpTool`, `defineMcpResource`, etc.),
-   * types (`McpRequestExtra`, `McpToolExtra`, …), and the `InstallButton` component.
-   *
-   * Set to `false` to disable all auto-imports and require explicit imports
-   * from `@nuxtjs/mcp-toolkit/server`.
-   * @default true
-   */
   autoImports?: boolean
-  /**
-   * Enable MCP session management (stateful transport).
-   * When enabled, the server assigns session IDs and maintains state across requests,
-   * enabling SSE streaming, server-to-client notifications, and session continuity.
-   *
-   * Pass `true` for defaults or an object to configure session behavior.
-   * @default false
-   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#session-management
-   */
-  sessions?: boolean | {
-    enabled?: boolean
-    /**
-     * Maximum session duration in milliseconds. Sessions inactive longer than this are cleaned up.
-     * @default 1800000 (30 minutes)
-     */
-    maxDuration?: number
-    /**
-     * Maximum number of concurrent sessions. Returns 503 when exceeded.
-     * @default 1000
-     */
-    maxSessions?: number
-  }
-  /**
-   * Security configuration for the MCP server.
-   * @see https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#security-warning
-   */
-  security?: McpSecurityConfig
-  /**
-   * Advertise this MCP server in `/llms.txt` when
-   * [`nuxt-llms`](https://github.com/nuxt-content/nuxt-llms) is registered.
-   *
-   * Appends an `## MCP Server` section listing the streamable HTTP endpoint so
-   * agents that discover the site through llms.txt can connect without any
-   * out-of-band configuration. No-op when `nuxt-llms` is not installed.
-   *
-   * @default true
-   */
+  /** Named endpoints. Directories are relative to each Nuxt layer's server directory. */
+  servers?: Record<string, Omit<McpModuleOptions, 'include'>>
+  inspector?: McpInspectorConfig
   llms?: boolean
-  /**
-   * Server-side observability for MCP requests via [evlog](https://evlog.dev).
-   *
-   * Install `evlog` and register the `evlog/nuxt` module to enable wide
-   * events on every MCP request — configure everything from the top-level
-   * `evlog: { … }` key in nuxt.config.
-   *
-   * - `undefined` (default): on if `evlog/nuxt` is registered, off otherwise.
-   * - `true`: assert `evlog/nuxt` is registered; throw at build otherwise.
-   * - `false`: opt out.
-   *
-   * @see https://evlog.dev
-   */
-  logging?: boolean
 }
 
 export default defineNuxtModule<ModuleOptions>({
-  meta: {
-    name,
-    version,
-    configKey: 'mcp',
-    docs: 'https://mcp-toolkit.nuxt.dev/getting-started/installation',
-    mcp: 'https://mcp-toolkit.nuxt.dev/mcp',
-  },
-  defaults: defaultMcpConfig,
-  async setup(options, nuxt) {
+  meta: { name, version, configKey: 'mcp', compatibility: { nuxt: '>=4.6.0' } },
+  defaults: { enabled: true, autoImports: true, name: 'nuxt-mcp-server', route: '/mcp', llms: true },
+  setup(options, nuxt) {
     if (!options.enabled) return
-
-    const nitroOptions = nuxt.options.nitro
-    const isGenerating = (nuxt.options as { _generate?: boolean })._generate === true
-    if (nitroOptions?.static || isGenerating) {
-      log.warn('@nuxtjs/mcp-toolkit is not compatible with `nuxt generate` as it needs a server to run.')
+    if (nuxt.options.nitro.static || ('_generate' in nuxt.options && nuxt.options._generate === true)) {
+      logger.warn('MCP endpoints require a server and cannot be generated as static files.')
       return
     }
-
-    if (typeof options.sessions === 'boolean') {
-      options.sessions = { enabled: options.sessions }
-    }
-
-    const mcpConfig = getMcpConfig(options as Partial<McpConfig>)
-    if (mcpConfig.sessions.enabled) {
-      nitroOptions.storage ??= {}
-      nitroOptions.storage['mcp:sessions'] ??= { driver: 'memory' }
-      nitroOptions.storage['mcp:sessions-meta'] ??= { driver: 'memory' }
+    const nitroVersion = getNitroVersion(nuxt)
+    if ((nitroVersion !== 2 && nitroVersion !== 3) || !resolveServerVariant({ nitro2: true, nitro3: true })) {
+      throw new Error('@nuxtjs/mcp-toolkit requires a Nitro 2 or Nitro 3 server builder.')
     }
 
     const resolver = createResolver(import.meta.url)
-
-    setupEvlog(nuxt, options)
-
-    if (options.autoImports !== false) {
-      setupAutoImports(resolver)
-    }
+    const { enabled: _enabled, autoImports, servers, inspector: _inspector, llms, ...defaults } = options
+    const layers = getLayerDirectories()
+    const baseRoute = defaults.route ?? '/mcp'
+    const configured = new Map(Object.entries(servers ?? { default: {} }))
+    const instances: (ReturnType<typeof mcp> | ReturnType<typeof mcp3>)[] = []
+    const createModule = nitroVersion === 2 ? mcp : mcp3
+    if (autoImports) setupAutoImports(resolver)
 
     addServerTemplate({
       filename: '#nuxt-mcp-toolkit/config.mjs',
-      getContents: () => `export default ${JSON.stringify(mcpConfig)}`,
+      getContents: () => `export default ${JSON.stringify({ name: options.name, route: baseRoute, description: options.description, websiteUrl: options.websiteUrl })}`,
     })
 
-    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log)
-
-    registerTypeReferences(nuxt, resolver)
-
-    const aliases = setupNitroAliases(nuxt, resolver)
-
-    addServerTemplate({
-      filename: '#nuxt-mcp-toolkit/transport.mjs',
-      getContents: () => {
-        const provider = aliases.isCloudflare() ? 'cloudflare' : 'node'
-        return `export { default } from '${resolver.resolve(`runtime/server/mcp/providers/${provider}`)}'`
-      },
+    nuxt.hook('modules:done', () => {
+      for (const [key, server] of configured) {
+        const { dir = key === 'default' ? 'mcp' : `mcp-${key}`, ...config } = { ...defaults, ...server }
+        const dirs = typeof dir === 'string' ? [dir] : dir
+        instances.push(createModule({
+          ...config,
+          route: server.route ?? (key === 'default' ? baseRoute : `${baseRoute}/${key}`),
+          dir: [...new Set(dirs.flatMap(root => layers.map(layer => resolvePath(layer.server, root))))],
+        }))
+      }
     })
 
-    registerServerHandlers(options.route!, resolver)
+    nuxt.hook('nitro:config', (config) => {
+      config.modules ??= []
+      config.modules.push(...instances)
+    })
+    const hooks = resolver.resolve('runtime/server/types/hooks.d.ts')
+    const virtual = resolver.resolve('runtime/types/virtual-modules.d.ts')
+    nuxt.hook('prepare:types', ({ references }) => {
+      references.push({ path: hooks }, { path: virtual })
+    })
+    nuxt.hook('nitro:prepare:types', ({ references }) => {
+      references.push({ path: hooks }, { path: virtual })
+    })
 
-    if (options.llms !== false && hasNuxtModule('nuxt-llms')) {
-      addServerPlugin(resolver.resolve('runtime/server/plugins/llms'))
-    }
-
+    addServerHandler({ route: `${baseRoute}/deeplink`, handler: resolver.resolve('runtime/server/mcp/deeplink') })
+    addServerHandler({ route: `${baseRoute}/badge.svg`, handler: resolver.resolve('runtime/server/mcp/badge-image') })
+    if (llms && hasNuxtModule('nuxt-llms')) addServerPlugin(resolver.resolve('runtime/server/plugins/llms'))
     if (nuxt.options.dev) {
-      const { addDevToolsCustomTabs } = await import('./runtime/server/mcp/devtools')
-      addDevToolsCustomTabs(nuxt, options)
+      void import('./runtime/server/mcp/devtools').then(({ addDevToolsCustomTabs }) => addDevToolsCustomTabs(nuxt, options))
     }
   },
 })
-
-function registerTypeReferences(nuxt: import('@nuxt/schema').Nuxt, resolver: ReturnType<typeof createResolver>) {
-  const virtualModulesDts = resolver.resolve('runtime/types/virtual-modules.d.ts')
-  const hooksDts = resolver.resolve('runtime/server/types/hooks.d.ts')
-
-  nuxt.hook('prepare:types', ({ references }) => {
-    references.push({ path: virtualModulesDts })
-    references.push({ path: hooksDts })
-  })
-
-  // A reference, not a tsconfig `include`: the server tsconfig excludes `node_modules`, where the module is installed.
-  nuxt.hook('nitro:prepare:types', ({ references }) => {
-    references.push({ path: virtualModulesDts })
-    references.push({ path: hooksDts })
-  })
-}
-
-function registerServerHandlers(route: string, resolver: ReturnType<typeof createResolver>) {
-  addServerHandler({ route, handler: resolver.resolve('runtime/server/mcp/handler') })
-  addServerHandler({ route: `${route}/deeplink`, handler: resolver.resolve('runtime/server/mcp/deeplink') })
-  addServerHandler({ route: `${route}/badge.svg`, handler: resolver.resolve('runtime/server/mcp/badge-image') })
-
-  addOAuthMetadataHandlers(resolver)
-  // Some clients append the well-known suffix to the endpoint instead of using the RFC 9728 form.
-  addOAuthMetadataHandlers(resolver, route)
-  addOAuthMetadataHandlers(resolver, ROUTES.CUSTOM_HANDLER)
-}

@@ -19,12 +19,8 @@ function buildMcpLlmsSection(options: LlmsOptions): LLMsSection {
     },
   ]
 
-  if (config.browserRedirect && config.browserRedirect !== '/') {
-    links.push({
-      title: 'MCP documentation',
-      description: 'How to connect to this MCP server.',
-      href: joinUrl(options.domain, config.browserRedirect),
-    })
+  if (config.websiteUrl) {
+    links.push({ title: 'MCP documentation', href: config.websiteUrl })
   }
 
   return {

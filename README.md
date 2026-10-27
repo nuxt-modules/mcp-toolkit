@@ -15,7 +15,7 @@
 
 A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server directly in your Nuxt application. Define MCP tools, resources, and prompts with zero configuration - just create files and they're automatically discovered and registered.
 
-The 1.0 beta defers built-in MCP Apps support. Move Vue App handlers into regular server-side tools; see the [beta migration guide](apps/docs/content/1.getting-started/7.beta-migration.md).
+The 1.0 beta uses the shared Nitro MCP runtime and requires Nuxt 4.6 or later. Use complete Standard Schema inputs, explicit request events, and independent endpoint directories; see the [Nuxt package guide](packages/nuxt-mcp-toolkit/README.md) and [beta migration guide](apps/docs/content/1.getting-started/7.beta-migration.md). Built-in MCP Apps are deferred.
 
 ## ✨ Features
 
@@ -23,10 +23,10 @@ The 1.0 beta defers built-in MCP Apps support. Move Vue App handlers into regula
 
 - 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
 - 📦 **File-based** - Organize definitions in intuitive directory structures
-- 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single app
+- 🚀 **Independent Endpoints** - Give each MCP server its own definitions and authentication
 - 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
 - 📝 **TypeScript First** - Full type safety with auto-imports
-- 🔒 **Zod Validation** - Built-in input/output validation
+- 🔒 **Schema Validation** - Typed inputs and outputs with Standard Schema libraries
 - 🤖 **Agent Discovery** - Advertises your server in `llms.txt` when `nuxt-llms` is registered
 
 <!-- /automd -->
