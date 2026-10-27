@@ -1,6 +1,3 @@
-// Default `/mcp` handler. With `defaultHandlerStrategy: 'orphans'` (default)
-// it only exposes definitions that aren't attributed to a named handler — the
-// MCP Apps in `./handlers/apps/` are excluded automatically.
 export default defineMcpHandler({
   middleware: async (event) => {
     const result = await getApiKeyUser(event)

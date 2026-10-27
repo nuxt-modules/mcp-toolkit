@@ -145,6 +145,10 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 
 1.0 work targets `v1`, with small dependent PRs following [the rollout plan](.github/V1_ROLLOUT.md). Stable 0.x work continues on `main`. Do not open the integration branch or its stack against `main` before GA; CI rejects that route.
 
+Built-in MCP Apps are excluded from the 1.0 beta: do not restore `defineMcpApp`, `useMcpApp`, the `/app` package export, `app/mcp` discovery, or Vue widget bundling from the prototype. Move server-side App handlers into regular `server/mcp/tools` definitions. General metadata, resources, and plugins remain supported; a later Apps integration requires its own review.
+
+The 1.0 migration targets the current published MCP specification, presently `2026-07-28`; verify the revision before release. Audit old Nuxt APIs before porting them, following the keep/replace/remove decisions and compatibility gate in [the rollout plan](.github/V1_ROLLOUT.md#specification-alignment). Retire Code Mode, protocol-session helpers, SDK escape hatches, and the old provider runtime instead of wrapping them for API compatibility. Legacy client support belongs in the shared engine; it does not require preserving obsolete toolkit APIs. Do not advertise full specification or client compatibility without tests of the packed framework consumers.
+
 `v1` is in Changesets prerelease mode with the `beta` tag, and its Changesets base branch is `v1`. The release workflow runs automatically after merges into `main` or `v1`: pending changesets open a version PR against that branch, and merging the version PR publishes its packages. Do not merge a version PR, enter or exit prerelease mode, or dispatch a release without the maintainer's explicit instruction. The foundation activates beta mode and includes major changesets for both packages; versions change in the generated version PR.
 
 **Every user-facing change to a published package needs a changeset.** Before opening a PR that touches `packages/nuxt-mcp-toolkit` or `packages/nitro-mcp-toolkit`, run `pnpm changeset` and commit the generated `.changeset/*.md` file alongside the code.
