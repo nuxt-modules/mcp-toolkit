@@ -127,7 +127,7 @@ The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/
 
 ## Releasing
 
-Both published packages go through the same flow: add a changeset, merge, and the `release` workflow opens a "Version Packages" PR; merging that PR publishes to npm under the `latest` dist-tag and creates a GitHub Release per package. `nitro-mcp-toolkit` used to release from a separate manual `release-alpha` workflow under an `alpha` tag while it was pre-alpha; it has since graduated onto this single track. It still stays pre-1.0 (`0.x`), so a breaking change there is a `minor` changeset, not `major` — the conventional reading of semver below 1.0.
+Both published packages go through the same flow: add a changeset, merge, and the `release` workflow opens a "Version Packages" PR; merging that PR publishes to npm and creates a GitHub Release per package. `main` publishes stable 0.x versions under `latest`, while `v1` publishes `1.0.0-beta.N` under `beta`. Breaking changes on the stable 0.x line use `minor` changesets; the 1.0 stack uses `major` changesets.
 
 **The two packages publish from two different npm accounts, which one bearer token can't authenticate.** `@nuxtjs/mcp-toolkit` is scoped to the Nuxt org and uses `NPM_TOKEN`; `nitro-mcp-toolkit` is unscoped and owned by a personal account, so that same token gets a 404 on it — npm's way of saying "not authorized". It publishes with `NPM_TOKEN_ALPHA` instead, a granular token scoped to that one package (the name is a holdover from the old alpha-only workflow, not a claim about the release channel). `changeset publish` publishes every package needing a release in one command, shelling out to `pnpm publish` per package with no way to pass it a different token per call — so the split happens one level down, in pnpm's own auth resolution: the `release` workflow writes a registry-wide `_authToken` (falls through to unscoped packages, i.e. `nitro-mcp-toolkit`) plus a `@nuxtjs`-scoped override in `~/.npmrc` before publishing, rather than relying on `setup-node`'s single-token `registry-url` input. Do not add a third package under a third npm account without re-checking this — pnpm's scope-based auth only branches on the `@scope` prefix, so a second unscoped package would collide with `nitro-mcp-toolkit` on the same fallback key.
 
@@ -139,11 +139,17 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 
 ## Changesets
 
+### 1.0 integration branch
+
+1.0 work targets `v1`, with small dependent PRs following [the rollout plan](.github/V1_ROLLOUT.md). Stable 0.x work continues on `main`. Do not open the integration branch or its stack against `main` before GA; CI rejects that route.
+
+`v1` is in Changesets prerelease mode with the `beta` tag, and its Changesets base branch is `v1`. The release workflow runs automatically after merges into `main` or `v1`: pending changesets open a version PR against that branch, and merging the version PR publishes its packages. Do not merge a version PR, enter or exit prerelease mode, or dispatch a release without the maintainer's explicit instruction. The foundation activates beta mode and includes major changesets for both packages; versions change in the generated version PR.
+
 **Every user-facing change to a published package needs a changeset.** Before opening a PR that touches `packages/nuxt-mcp-toolkit` or `packages/nitro-mcp-toolkit`, run `pnpm changeset` and commit the generated `.changeset/*.md` file alongside the code.
 
 - **When to add one:** any change that affects the public API, adds a feature, fixes a bug, or introduces a breaking change in either package.
 - **When you can skip:** changes confined to `apps/*` (docs, playground, mcp-starter, nitro-playground) or repo tooling (CI config, lint config, test refactors) that don't touch a published package.
-- **Bump type:** `patch` for fixes, `minor` for features. Both packages are pre-1.0 (`0.x`), so a breaking change is also `minor`, not `major` — the conventional reading of semver below 1.0 (see [Releasing](#releasing)).
+- **Bump type:** `patch` for fixes, `minor` for features. On `main`, both packages remain pre-1.0 (`0.x`), so a breaking change is also `minor`. The 1.0 migration on `v1` uses `major` changesets to target `1.0.0-beta.N`.
 - **Description:** write from the consumer's perspective — what changed and how to use it. Look at existing files in `.changeset/` for tone and depth.
 
 A PR without a changeset for a user-facing change should not be merged. For the rare change that genuinely needs no release note, run `pnpm changeset add --empty`.
