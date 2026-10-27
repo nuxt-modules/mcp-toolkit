@@ -31,7 +31,7 @@ function onePluginsFile(route: string, paths: string[]): string | undefined {
 }
 
 export function createModule(options: McpModuleOptions, nitro2?: { h3: string }) {
-  const { route, dir, server, oauth } = resolveModuleOptions(options)
+  const { route, dir, server, oauth, include } = resolveModuleOptions(options)
   const slug = slugify(route)
 
   return {
@@ -50,16 +50,19 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
         )
       }
 
-      const definitionsDir = resolve(nitro.options.rootDir, dir)
+      const definitionsDir = (typeof dir === 'string' ? [dir] : dir).map((root) =>
+        resolve(nitro.options.rootDir, root),
+      )
 
       nitro.options.virtual[registryId] = async () =>
-        renderRegistry(await discoverDefinitions(definitionsDir))
+        renderRegistry(await discoverDefinitions(definitionsDir, include))
       // Async like the registry: a plugins file written after setup is picked
       // up by the rebuild the watcher triggers, rather than needing a restart.
       nitro.options.virtual[handlerId] = async () => {
         const pluginsPath = onePluginsFile(route, await discoverPlugins(definitionsDir))
 
         return renderHandler(registryId, server, {
+          ...(include?.plugins?.length ? { extraPlugins: include.plugins } : {}),
           ...(nitro2 ? { nitro2: true } : {}),
           ...(oauth ? { oauthId } : {}),
           ...(pluginsPath ? { pluginsPath } : {}),
@@ -109,10 +112,10 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
         }
       }
 
-      reportDefinitions(nitro, route, definitionsDir)
+      reportDefinitions(nitro, route, definitionsDir, include)
 
       if (nitro.options.dev) {
-        watchDefinitions(nitro, definitionsDir)
+        for (const root of definitionsDir) watchDefinitions(nitro, root)
       }
     },
   }

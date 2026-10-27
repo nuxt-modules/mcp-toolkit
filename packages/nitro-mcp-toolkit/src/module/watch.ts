@@ -108,15 +108,15 @@ export function watchDefinitions(nitro: McpNitro, dir: string): void {
         if (inside) await reloadIfChanged()
 
         for await (const { eventType, filename } of events) {
-          // `rename` is what an added or removed file reports; `change` is an edit.
-          if (eventType !== 'rename' || !filename) continue
-
           if (!inside) {
-            // Follow the directory down as it appears, a segment at a time.
+            // Ancestors can report directory creation as `change`, without a `rename`.
             if (watchableRoot(dir) !== root) break
 
             continue
           }
+
+          // `rename` is what an added or removed file reports; `change` is an edit.
+          if (eventType !== 'rename' || !filename) continue
 
           if (couldChangeServed(dir, resolve(root, filename))) await reloadIfChanged()
         }

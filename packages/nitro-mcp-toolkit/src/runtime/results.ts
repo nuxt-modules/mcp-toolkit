@@ -109,17 +109,35 @@ export function toCallToolResult(value: unknown, hasOutputSchema: boolean): Call
  * @internal
  */
 export function toErrorResult(error: unknown): CallToolResult {
-  if (error instanceof HTTPError) {
-    let text = `[${error.status}] ${error.message}`
-    if (error.data != null) {
+  if (error instanceof Error) {
+    const status = h3Status(error)
+    if (status === undefined) return { content: textBlock(error.message), isError: true }
+
+    let text = `[${status}] ${error.message}`
+    if ('data' in error && error.data != null) {
       text += `\n${JSON.stringify(error.data, null, 2)}`
     }
     return { content: textBlock(text), isError: true }
   }
-  if (error instanceof Error) {
-    return { content: textBlock(error.message), isError: true }
-  }
   return { content: textBlock(String(error)), isError: true }
+}
+
+/**
+ * Only errors an app throws through H3 carry details meant for the client. Other
+ * errors with a status, such as `$fetch` failures, hold an upstream response body.
+ */
+function h3Status(error: Error): number | undefined {
+  if (HTTPError.isError(error)) return error.status
+  // H3 v1 errors, including Nuxt's `createError`, mark their class instead.
+  if (
+    '__h3_error__' in error.constructor &&
+    error.constructor.__h3_error__ === true &&
+    'statusCode' in error &&
+    typeof error.statusCode === 'number'
+  ) {
+    return error.statusCode
+  }
+  return undefined
 }
 
 /**

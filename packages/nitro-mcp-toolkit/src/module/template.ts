@@ -91,6 +91,7 @@ export default oauth.authorizationServerHandler
 
 /** What the handler wires in beyond the registry, when the app asked for it. */
 export interface HandlerWiring {
+  extraPlugins?: readonly string[]
   nitro2?: boolean
   /** The `createMcpOAuth` instance to take `auth` from. */
   oauthId?: string
@@ -104,7 +105,7 @@ export function renderHandler(
   server: McpServerOptions,
   wiring: HandlerWiring = {},
 ): string {
-  const { oauthId, pluginsPath, nitro2 } = wiring
+  const { oauthId, pluginsPath, nitro2, extraPlugins = [] } = wiring
   const options = Object.entries(server)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => line(key, value))
@@ -121,10 +122,21 @@ export function renderHandler(
     `import { createMcpHandler } from 'nitro-mcp-toolkit'`,
     ...(oauthId ? [`import { oauth } from ${JSON.stringify(oauthId)}`] : []),
     ...(pluginsPath ? [`import plugins from ${JSON.stringify(pluginsPath)}`] : []),
+    ...extraPlugins.map(
+      (path, index) => `import extraPlugins${index} from ${JSON.stringify(path)}`,
+    ),
     `import { prompts, resources, tools } from ${JSON.stringify(registryId)}`,
   ]
 
-  const setup = pluginsPath ? ', { extensionPlugins: plugins }' : ''
+  const selectedPlugins = [
+    ...(pluginsPath ? ['...plugins'] : []),
+    ...extraPlugins.map((_path, index) => `...extraPlugins${index}`),
+  ]
+  const setup = extraPlugins.length
+    ? `, { extensionPlugins: [${selectedPlugins.join(', ')}] }`
+    : pluginsPath
+      ? ', { extensionPlugins: plugins }'
+      : ''
 
   return `${BANNER}
 ${imports.join('\n')}

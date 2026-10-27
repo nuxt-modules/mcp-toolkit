@@ -2,6 +2,7 @@ import { basename, relative } from 'pathe'
 import { glob } from 'tinyglobby'
 import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins } from './discover.ts'
 import type { DiscoveredDefinition } from './discover.ts'
+import type { McpModuleOptions } from './options.ts'
 import type { McpNitro } from './nitro.ts'
 
 const SCANNED = new Set<string>(DEFINITION_DIRS)
@@ -48,26 +49,36 @@ function counted(definitions: DiscoveredDefinition[]): string {
  * instance, a renamed folder, `tool/` for `tools/` — is served by nobody and
  * says nothing.
  */
-export function reportDefinitions(nitro: McpNitro, route: string, dir: string): void {
+export function reportDefinitions(
+  nitro: McpNitro,
+  route: string,
+  dir: readonly string[],
+  include?: McpModuleOptions['include'],
+): void {
   let reported: string | undefined
 
   nitro.hooks.hook('compiled', async () => {
     const [definitions, plugins, misnamed] = await Promise.all([
-      discoverDefinitions(dir),
+      discoverDefinitions(dir, include),
       discoverPlugins(dir),
-      nearMisses(dir),
+      Promise.all(
+        dir.map(async (root) => (await nearMisses(root)).map((found) => ({ ...found, root }))),
+      ).then((layers) => layers.flat()),
     ])
     const current = [
       ...definitions.map((definition) => definition.file),
       ...plugins.map((path) => basename(path)),
-      ...misnamed.map((directory) => directory.found),
+      ...(include?.plugins ?? []),
+      ...misnamed.map((directory) => `${directory.root}/${directory.found}`),
     ].join('|')
 
     if (current === reported) return
 
     reported = current
 
-    const where = relative(nitro.options.rootDir, dir) || '.'
+    const where = dir.length
+      ? dir.map((root) => relative(nitro.options.rootDir, root) || '.').join(', ')
+      : 'included modules'
 
     if (definitions.length === 0) {
       nitro.logger.warn(
@@ -76,14 +87,19 @@ export function reportDefinitions(nitro: McpNitro, route: string, dir: string): 
       )
     } else {
       const [pluginsFile] = plugins
-      const installed = pluginsFile ? `, with ${basename(pluginsFile)}` : ''
+      const installed = [
+        ...(pluginsFile ? [basename(pluginsFile)] : []),
+        ...(include?.plugins ?? []),
+      ]
+      const withPlugins = installed.length ? `, with ${installed.join(', ')}` : ''
 
-      nitro.logger.info(`[mcp] ${route} serves ${counted(definitions)} from ${where}${installed}`)
+      nitro.logger.info(`[mcp] ${route} serves ${counted(definitions)} from ${where}${withPlugins}`)
     }
 
-    for (const { found, expected } of misnamed) {
+    for (const { found, expected, root } of misnamed) {
+      const location = relative(nitro.options.rootDir, root) || '.'
       nitro.logger.warn(
-        `[mcp] ${where}/${found} is not scanned, so nothing in it is served. ` +
+        `[mcp] ${location}/${found} is not scanned, so nothing in it is served. ` +
           `Rename it to ${expected} if that is what you meant.`,
       )
     }

@@ -86,6 +86,19 @@ describe('discovering the plugins file', () => {
 })
 
 describe('the generated handler', () => {
+  it('combines generated plugin arrays without a discovered plugins file', () => {
+    const code = renderHandler(
+      '#mcp/mcp/registry',
+      {},
+      {
+        extraPlugins: ['#framework/first.ts', '#framework/second.ts'],
+      },
+    )
+    expect(code).toContain('import extraPlugins0 from "#framework/first.ts"')
+    expect(code).toContain('import extraPlugins1 from "#framework/second.ts"')
+    expect(code).toContain('extensionPlugins: [...extraPlugins0, ...extraPlugins1]')
+  })
+
   it('installs the plugins file as extensionPlugins', () => {
     const code = renderHandler(
       '#mcp/mcp/registry',

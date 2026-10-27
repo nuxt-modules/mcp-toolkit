@@ -54,6 +54,7 @@ export interface McpDefinition {
   readonly tags?: string[]
   /** OAuth scopes the access token must all carry to reach this definition. */
   readonly scopes?: string[]
+  readonly _meta?: Record<string, unknown>
   /** Set for discovered definitions; absent for hand-written ones. */
   readonly source?: McpDefinitionSource
   /**
