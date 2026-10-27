@@ -16,6 +16,7 @@ export default defineBuildConfig({
         './src/runtime/oauth/workos.ts',
         './src/runtime/servers.ts',
         './src/module/index.ts',
+        './src/module/nitro2.ts',
         './src/testing/index.ts',
       ],
       rolldown: {
@@ -24,6 +25,7 @@ export default defineBuildConfig({
         external: [
           'nitro',
           'nitro/types',
+          'nitropack/types',
           'h3',
           'h3-mcp',
           'jose',

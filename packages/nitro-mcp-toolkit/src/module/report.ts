@@ -2,7 +2,7 @@ import { basename, relative } from 'pathe'
 import { glob } from 'tinyglobby'
 import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins } from './discover.ts'
 import type { DiscoveredDefinition } from './discover.ts'
-import type { Nitro } from 'nitro/types'
+import type { McpNitro } from './nitro.ts'
 
 const SCANNED = new Set<string>(DEFINITION_DIRS)
 
@@ -48,7 +48,7 @@ function counted(definitions: DiscoveredDefinition[]): string {
  * instance, a renamed folder, `tool/` for `tools/` — is served by nobody and
  * says nothing.
  */
-export function reportDefinitions(nitro: Nitro, route: string, dir: string): void {
+export function reportDefinitions(nitro: McpNitro, route: string, dir: string): void {
   let reported: string | undefined
 
   nitro.hooks.hook('compiled', async () => {

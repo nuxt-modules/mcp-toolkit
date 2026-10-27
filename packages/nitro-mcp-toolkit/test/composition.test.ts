@@ -44,7 +44,7 @@ describe('composing definitions', () => {
             if (++arrivals === 2) enter()
             await released
             const subject = event.context.oauth?.sub ?? ''
-            seen.set(subject, event.context.mcp.notify)
+            seen.set(subject, event.context.mcp.notifier)
             return subject
           },
         }),

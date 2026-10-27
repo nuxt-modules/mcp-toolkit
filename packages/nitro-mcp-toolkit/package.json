@@ -1,7 +1,7 @@
 {
   "name": "nitro-mcp-toolkit",
   "version": "0.4.0",
-  "description": "Framework-agnostic MCP server toolkit built directly on Nitro v3 and h3-mcp.",
+  "description": "MCP server toolkit for Nitro 2 and Nitro 3, built on h3-mcp.",
   "keywords": [
     "ai",
     "h3",
@@ -49,13 +49,19 @@
     },
     "./module": {
       "types": "./dist/module/index.d.mts",
-      "import": "./dist/module/index.mjs"
+      "import": "./dist/module/index.mjs",
+      "default": "./dist/module/index.mjs"
     },
     "./testing": {
       "types": "./dist/testing/index.d.mts",
       "import": "./dist/testing/index.mjs"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./module/nitro2": {
+      "types": "./dist/module/nitro2.d.mts",
+      "import": "./dist/module/nitro2.mjs",
+      "default": "./dist/module/nitro2.mjs"
+    }
   },
   "publishConfig": {
     "access": "public"
@@ -75,6 +81,7 @@
     "bench:consumer": "node benchmarks/consumer.ts"
   },
   "dependencies": {
+    "h3": "^2.0.8",
     "h3-mcp": "0.2.0",
     "jose": "^6.2.13",
     "pathe": "^2.0.3",
@@ -85,8 +92,8 @@
     "@modelcontextprotocol/client": "2.4.0",
     "@valibot/to-json-schema": "^1.8.0",
     "@vitest/coverage-v8": "^4.1.12",
-    "h3": "2.0.8",
     "nitro": "3.0.260610-beta",
+    "nitropack": "^2.13.4",
     "obuild": "^0.4.45",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.89.0",
@@ -98,8 +105,8 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
-    "h3": "^2.0.1-rc.27",
-    "nitro": "3.0.260610-beta || ^3.0.0"
+    "nitro": "3.0.260610-beta || ^3.0.0",
+    "nitropack": "^2.13.4"
   },
   "peerDependenciesMeta": {
     "@modelcontextprotocol/client": {
@@ -107,9 +114,12 @@
     },
     "nitro": {
       "optional": true
+    },
+    "nitropack": {
+      "optional": true
     }
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   }
 }

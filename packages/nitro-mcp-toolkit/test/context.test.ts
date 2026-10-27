@@ -2,7 +2,7 @@ import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
 import { attachNotify } from '../src/runtime/context.ts'
 import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
-import { createMcpTestClient } from '../src/testing/index.ts'
+import { createMcpTestClient, textOf } from '../src/testing/index.ts'
 import type { McpEvent } from '../src/runtime/index.ts'
 
 /**
@@ -22,6 +22,27 @@ function inspector() {
 }
 
 describe('handler event', () => {
+  it('keeps engine progress callable when a definition receives its notifier', async () => {
+    const handler = createMcpHandler({
+      tools: [
+        defineMcpTool({
+          name: 'progress',
+          handler: (event) => {
+            event.context.mcp.progress?.(1, 1, 'done')
+            return 'progress delivered'
+          },
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+    const result = await client.callTool({
+      name: 'progress',
+      _meta: { progressToken: 'regression' },
+    })
+    expect(result.isError).not.toBe(true)
+    expect(textOf(result)).toBe('progress delivered')
+  })
+
   it('hands the handler the event, signal, notifier and engine context', async () => {
     const { seen, tool } = inspector()
     const handler = createMcpHandler({ tools: [tool] })
@@ -33,7 +54,8 @@ describe('handler event', () => {
     expect(event?.req.url).toBe('http://localhost/mcp')
     expect(event?.context.mcp.signal).toBeInstanceOf(AbortSignal)
     expect(event?.context.mcp.era).toBe('modern')
-    expect(event?.context.mcp.notify).toBe(handler.notify)
+    expect(event?.context.mcp.notify).toBeTypeOf('function')
+    expect(event?.context.mcp.notifier).toBe(handler.notify)
   })
 
   it('shares the event across concurrent requests without mixing them up', async () => {

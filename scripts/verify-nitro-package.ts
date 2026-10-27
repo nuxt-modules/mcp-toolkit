@@ -24,7 +24,7 @@ try {
       ...(engine ? { overrides: { 'h3-mcp': `file:${engine}` } } : {}),
       dependencies: {
         'nitro-mcp-toolkit': `file:${tarball}`,
-        h3: metadata.devDependencies.h3,
+        h3: metadata.dependencies.h3,
         '@modelcontextprotocol/client': metadata.devDependencies['@modelcontextprotocol/client'],
         typescript: metadata.devDependencies.typescript,
         '@types/node': '26.2.0',
@@ -35,12 +35,14 @@ try {
   run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund'])
   const runtimeOnly = JSON.parse(await readFile(join(temporary, 'package-lock.json'), 'utf8'))
   assert(!runtimeOnly.packages['node_modules/nitro'], 'runtime-only installs must not pull Nitro')
+  assert(!runtimeOnly.packages['node_modules/nitropack'], 'runtime-only installs must not pull Nitro 2')
   run('npm', [
     'install',
     '--ignore-scripts',
     '--no-audit',
     '--no-fund',
     `nitro@${metadata.devDependencies.nitro}`,
+    `nitropack@${metadata.devDependencies.nitropack}`,
   ])
 
   await cp(join(root, 'apps/nitro-playground'), join(temporary, 'playground'), {
@@ -58,12 +60,13 @@ import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
 import { okta } from 'nitro-mcp-toolkit/oauth/okta'
 import { workos } from 'nitro-mcp-toolkit/oauth/workos'
 import mcp from 'nitro-mcp-toolkit/module'
+import mcp2 from 'nitro-mcp-toolkit/module/nitro2'
 import { createMcpTestClient } from 'nitro-mcp-toolkit/testing'
 import { z } from 'zod'
 const handler = createMcpHandler({ tools: [defineMcpTool({ name: 'value', outputSchema: z.object({ n: z.number() }), handler: () => toolResult({ content: [], structuredContent: { n: 1 } }) })] })
 await using client = await createMcpTestClient(handler)
 await client.callTool({ name: 'value' })
-void [clerk, okta, workos, mcp]
+void [clerk, okta, workos, mcp, mcp2]
 `,
   )
   await writeFile(
@@ -124,7 +127,39 @@ try {
 `,
   )
   run(process.execPath, ['verify.ts'])
-  console.log('Packed runtime, types, ordinary peer resolution and both Nitro endpoints passed.')
+  await writeFile(join(temporary, 'entry-nitro2.ts'), `
+import { useNitroApp } from 'nitropack/runtime'
+export default {
+  fetch(request) {
+    const url = new URL(request.url)
+    return useNitroApp().localFetch(url.pathname + url.search, {
+      method: request.method, headers: request.headers, body: request.body,
+      signal: request.signal, duplex: 'half',
+    })
+  },
+}
+`)
+  await writeFile(join(temporary, 'verify-nitro2.ts'), `
+import assert from 'node:assert/strict'
+import { createNitro, build } from 'nitropack/core'
+import mcp from 'nitro-mcp-toolkit/module/nitro2'
+import { createMcpTestClient, textOf } from 'nitro-mcp-toolkit/testing'
+const nitro = await createNitro({
+  rootDir: new URL('./', import.meta.url).pathname,
+  preset: 'node-server', entry: './entry-nitro2.ts',
+  modules: [mcp({ dir: 'playground/server/mcp' })],
+})
+try {
+  await build(nitro)
+  const { default: server } = await import('./.output/server/index.mjs')
+  for (const era of ['modern', 'legacy'] as const) {
+    await using client = await createMcpTestClient(server, { era })
+    assert.match(textOf(await client.callTool({ name: 'greet', arguments: { name: 'Consumer' } })), /Hello Consumer/)
+  }
+} finally { await nitro.close() }
+`)
+  run(process.execPath, ['verify-nitro2.ts'])
+  console.log('Packed runtime, types, ordinary peer resolution and Nitro 2/3 endpoints passed.')
 } finally {
   await rm(temporary, { recursive: true, force: true })
 }
