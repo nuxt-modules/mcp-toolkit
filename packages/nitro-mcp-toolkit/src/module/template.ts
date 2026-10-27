@@ -91,6 +91,7 @@ export default oauth.authorizationServerHandler
 
 /** What the handler wires in beyond the registry, when the app asked for it. */
 export interface HandlerWiring {
+  nitro2?: boolean
   /** The `createMcpOAuth` instance to take `auth` from. */
   oauthId?: string
   /** Absolute path of the plugins file, whose default export is installed. */
@@ -103,16 +104,20 @@ export function renderHandler(
   server: McpServerOptions,
   wiring: HandlerWiring = {},
 ): string {
-  const { oauthId, pluginsPath } = wiring
+  const { oauthId, pluginsPath, nitro2 } = wiring
   const options = Object.entries(server)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => line(key, value))
 
   if (oauthId) options.push('  auth: oauth.auth,')
-  options.push(`  onToolCall: (call) => useNitroHooks().callHook('mcp:tool:called', call),`)
+  options.push(
+    `  onToolCall: (call) => ${nitro2 ? 'useNitroApp().hooks' : 'useNitroHooks()'}.callHook('mcp:tool:called', call),`,
+  )
 
   const imports = [
-    `import { useNitroHooks } from 'nitro/app'`,
+    nitro2
+      ? `import { useNitroApp } from 'nitropack/runtime'`
+      : `import { useNitroHooks } from 'nitro/app'`,
     `import { createMcpHandler } from 'nitro-mcp-toolkit'`,
     ...(oauthId ? [`import { oauth } from ${JSON.stringify(oauthId)}`] : []),
     ...(pluginsPath ? [`import plugins from ${JSON.stringify(pluginsPath)}`] : []),
@@ -155,5 +160,43 @@ export function renderServerTypes(instances: readonly { exportName: string }[]):
   import type { McpHandler } from 'nitro-mcp-toolkit'
 ${names}
 }
+`
+}
+
+export function renderNitro2Handler(id: string, h3: string): string {
+  return `${BANNER}
+import { defineEventHandler, toWebRequest } from 'h3'
+import { H3Event } from ${JSON.stringify(h3)}
+import handler from ${JSON.stringify(id)}
+
+export default defineEventHandler(async event => {
+  const request = toWebRequest(event)
+  const disconnected = new AbortController()
+  event.node.res.once('close', () => disconnected.abort())
+  const adapted = new Request(request, {
+    signal: AbortSignal.any([request.signal, disconnected.signal]),
+  })
+  adapted.waitUntil = promise => event.waitUntil(promise)
+  adapted.runtime = { node: event.node, cloudflare: event.context.cloudflare }
+  const response = await handler(new H3Event(adapted, event.context))
+  if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) return response
+  const reader = response.body.getReader()
+  const abort = () => { void reader.cancel() }
+  if (adapted.signal.aborted) abort()
+  else adapted.signal.addEventListener('abort', abort, { once: true })
+  return new Response(new ReadableStream({
+    async pull(controller) {
+      const { done, value } = await reader.read()
+      if (done) {
+        adapted.signal.removeEventListener('abort', abort)
+        controller.close()
+      } else controller.enqueue(value)
+    },
+    cancel(reason) {
+      adapted.signal.removeEventListener('abort', abort)
+      return reader.cancel(reason)
+    },
+  }), response)
+})
 `
 }

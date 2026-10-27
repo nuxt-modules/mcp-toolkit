@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'pathe'
 import { renderServers, renderServerTypes } from './template.ts'
-import type { Nitro } from 'nitro/types'
+import type { McpNitro as Nitro } from './nitro.ts'
 
 export const SERVERS_SPECIFIER = 'nitro-mcp-toolkit/servers'
 
@@ -33,10 +33,8 @@ export function exportName(slug: string): string {
 }
 
 function typesDir(nitro: Nitro): string {
-  return join(
-    nitro.options.rootDir,
-    nitro.options.typescript.generatedTypesDir || 'node_modules/.nitro/types',
-  )
+  const generated = nitro.options.typescript.generatedTypesDir
+  return generated ? join(nitro.options.rootDir, generated) : join(nitro.options.buildDir, 'types')
 }
 
 async function writeServerTypes(nitro: Nitro): Promise<void> {

@@ -1,6 +1,6 @@
 # Nitro MCP Toolkit
 
-Build a [Model Context Protocol](https://modelcontextprotocol.io) server inside any [Nitro](https://nitro.build) v3 app.
+Build a [Model Context Protocol](https://modelcontextprotocol.io) server inside a [Nitro](https://nitro.build) 2 or 3 app.
 
 [h3-mcp](https://mcp.h3.dev) owns the protocol. This package is discovery and DX on top: drop a file under `server/mcp/{tools,resources,prompts}` and it is served.
 
@@ -15,7 +15,7 @@ Targets protocol revision **2026-07-28** and falls back to the 2025 revisions au
 npm install nitro-mcp-toolkit zod
 ```
 
-`h3` is a peer. `nitro` is only needed if you install the module (`nitro-mcp-toolkit/module`); `createMcpHandler` runs on h3 alone.
+H3 v2 is an internal dependency. `nitro` and `nitropack` are optional peers for their module entrypoints; `createMcpHandler` runs without either framework.
 
 Any [Standard Schema](https://standardschema.dev) library works — Zod, Valibot, ArkType. Nothing is auto-imported: every helper is imported explicitly.
 
@@ -46,6 +46,28 @@ export default defineMcpTool({
 ```
 
 Your server answers MCP at `/mcp`, with one tool named `greet` — after the file it lives in.
+
+## Nitro 2
+
+Nitro 2 applications use the adapter entrypoint:
+
+```ts
+// nitro.config.ts
+import { defineNitroConfig } from 'nitropack/config'
+import mcp from 'nitro-mcp-toolkit/module/nitro2'
+
+export default defineNitroConfig({
+  modules: [mcp({ name: 'my-server' })],
+})
+```
+
+Use the same tools, resources, and prompts under `server/mcp`. Requires Nitro 2.13.4+ and Node 20.19+. Nitro 3 continues using `nitro-mcp-toolkit/module`.
+
+The adapter keeps the application's H3 v1 separate from the toolkit's internal H3 v2. Middleware context and response headers are preserved, including when middleware reads the request body. Progress, notifications, and HTTP disconnect cancellation use the shared engine in both protocol modes.
+
+MCP callbacks receive the engine's web-standard `McpEvent`: read `event.req`, `event.url`, and `event.context` there. Nitro 2's H3 v1 helpers can be used in the application's middleware and routes.
+
+H3 v2 is now a toolkit dependency; applications do not need to install it as a peer. The toolkit's broadcast notifier is available as `event.context.mcp.notifier`, leaving the engine's `event.context.mcp.notify` function available for request notifications, progress, and logging. Update existing `event.context.mcp.notify.toolsChanged()` calls to `event.context.mcp.notifier.toolsChanged()`; `handler.notify` is unchanged.
 
 ## Discovery
 
@@ -401,12 +423,12 @@ export default defineMcpTool({
 
 ## Change notifications
 
-`event.context.mcp.notify` tells clients a list changed or a resource updated, from inside a handler on the same server:
+`event.context.mcp.notifier` tells clients a list changed or a resource updated, from inside a handler on the same server:
 
 ```ts
 handler: ({ id }, event) => {
   db.delete(id)
-  event.context.mcp.notify.resourcesChanged()
+  event.context.mcp.notifier.resourcesChanged()
   return 'done'
 }
 ```
@@ -423,6 +445,8 @@ export default () => {
 ```
 
 ## Wiring it by hand
+
+The direct Nitro route example below targets Nitro 3. Nitro 2 applications use the adapter module above.
 
 The module is convenience, never a requirement: `createMcpHandler` returns a value that **is** a Nitro route handler, so a route is all it takes. Reach for this when a server needs something the module's data-only options cannot carry.
 

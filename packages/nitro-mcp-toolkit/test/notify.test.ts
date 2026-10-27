@@ -52,13 +52,13 @@ describe('handler.notify', () => {
   })
 })
 
-describe('event.context.mcp.notify', () => {
+describe('event.context.mcp.notifier', () => {
   it('is the same object as handler.notify, reachable without importing the handler', async () => {
     const seen: string[] = []
     const purge = defineMcpTool({
       name: 'purge',
       handler: (event) => {
-        event.context.mcp.notify.resourcesChanged()
+        event.context.mcp.notifier.resourcesChanged()
         return 'ok'
       },
     })

@@ -8,7 +8,7 @@ import { watch } from 'node:fs/promises'
 import { normalize as nativePath } from 'node:path'
 import { basename, dirname, extname, join, resolve, sep } from 'pathe'
 import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins, isPluginsFile } from './discover.ts'
-import type { Nitro } from 'nitro/types'
+import type { McpNitro } from './nitro.ts'
 
 const DEFINITION_FILE_RE = /\.(?:ts|js|mts|mjs)$/
 
@@ -72,7 +72,7 @@ async function served(dir: string): Promise<string> {
  * from scanning again and comparing, so a missed event costs nothing as long as
  * some later one arrives, and a spurious one costs no rebuild.
  */
-export function watchDefinitions(nitro: Nitro, dir: string): void {
+export function watchDefinitions(nitro: McpNitro, dir: string): void {
   const controller = new AbortController()
 
   nitro.hooks.hook('close', () => controller.abort())

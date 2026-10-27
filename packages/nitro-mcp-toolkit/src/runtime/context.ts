@@ -19,13 +19,13 @@ export interface McpNotifier {
  */
 export type McpEvent = H3Event & {
   context: H3Event['context'] & {
-    mcp: RequestContext & { notify: McpNotifier }
+    mcp: RequestContext & { notifier: McpNotifier }
     oauth?: import('./oauth.ts').McpOAuthClaims
   }
 }
 
 /**
- * Attach this endpoint's list-change notifier to `event.context.mcp` and
+ * Attach this endpoint's list-change notifier to `event.context.mcp.notifier` and
  * hand back the same event. h3-mcp has already populated the rest of the
  * context by the time a definition handler runs.
  *
@@ -39,6 +39,6 @@ export function attachNotify(event: H3Event, notify: McpNotifier): McpEvent {
     )
   }
 
-  Object.assign(mcp, { notify })
+  Object.assign(mcp, { notifier: notify })
   return event as McpEvent
 }
