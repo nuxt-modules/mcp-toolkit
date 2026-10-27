@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- [#398](https://github.com/nuxt-modules/mcp-toolkit/pull/398) [`4e1952d`](https://github.com/nuxt-modules/mcp-toolkit/commit/4e1952de48b97098d0b00419180df4f7790939bf) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Start the 1.0 beta release track for both toolkits. Install `@nuxtjs/mcp-toolkit@beta` or `nitro-mcp-toolkit@beta` to test reviewed 1.0 changes; stable 0.x releases remain on `latest`.
+
 ## 0.24.3
 
 ### Patch Changes
