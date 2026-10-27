@@ -1,5 +1,19 @@
 # nitro-mcp-toolkit
 
+## 1.0.0-beta.0
+
+### Major Changes
+
+- [#399](https://github.com/nuxt-modules/mcp-toolkit/pull/399) [`3754233`](https://github.com/nuxt-modules/mcp-toolkit/commit/375423358d8e84b9a5a6135d961d0a4e94ef6219) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Add Nitro 2 support through `nitro-mcp-toolkit/module/nitro2`, sharing the definition API and engine with Nitro 3. The adapter preserves middleware context, headers, request bodies, notifications, and disconnect cancellation. Requires Nitro 2.13.4+ and Node 20.19+.
+
+  H3 v2 is now an internal dependency rather than a peer, so Nitro 2 applications can retain H3 v1. The Nitro 3 module entrypoint remains `nitro-mcp-toolkit/module`.
+
+  Move the toolkit's request notifier to `event.context.mcp.notifier` to preserve the engine's callable `notify` function and fix progress/logging. Replace calls such as `event.context.mcp.notify.toolsChanged()` with `event.context.mcp.notifier.toolsChanged()`. `handler.notify` is unchanged.
+
+  This is the Nitro transport step of the staged 1.0 migration. Beta publishing follows the reviewed version PR on `v1`.
+
+- [#398](https://github.com/nuxt-modules/mcp-toolkit/pull/398) [`4e1952d`](https://github.com/nuxt-modules/mcp-toolkit/commit/4e1952de48b97098d0b00419180df4f7790939bf) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Start the 1.0 beta release track for both toolkits. Install `@nuxtjs/mcp-toolkit@beta` or `nitro-mcp-toolkit@beta` to test reviewed 1.0 changes; stable 0.x releases remain on `latest`.
+
 ## 0.4.0
 
 ### Minor Changes
