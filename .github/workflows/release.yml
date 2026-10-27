@@ -12,6 +12,7 @@ permissions: {}
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/v1')
     permissions:
       contents: write
       pull-requests: write
@@ -25,6 +26,9 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
+
+      - name: Check release channel
+        run: node scripts/release-channel.ts
 
       # @nuxtjs/mcp-toolkit and nitro-mcp-toolkit publish from two different
       # npm accounts (the Nuxt org vs. a personal account owning the unscoped

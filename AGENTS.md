@@ -139,6 +139,12 @@ A minimal Nuxt app with one tool, one resource, and one prompt (explicit `@nuxtj
 
 ## Changesets
 
+### 1.0 integration branch
+
+1.0 work targets `codex/v1`, with small dependent PRs following [the rollout plan](.github/V1_ROLLOUT.md). Stable 0.x work continues on `main`. Do not open the integration branch or its stack against `main` before GA; CI rejects that route.
+
+Beta publishing is manual through the release workflow on `codex/v1`, after a reviewed Changesets prerelease activation. Do not enter or exit prerelease mode or dispatch a release without the maintainer's explicit instruction. The foundation PR does not activate or publish a beta.
+
 **Every user-facing change to a published package needs a changeset.** Before opening a PR that touches `packages/nuxt-mcp-toolkit` or `packages/nitro-mcp-toolkit`, run `pnpm changeset` and commit the generated `.changeset/*.md` file alongside the code.
 
 - **When to add one:** any change that affects the public API, adds a feature, fixes a bug, or introduces a breaking change in either package.

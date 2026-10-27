@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+      - codex/v1
   pull_request:
     branches:
       - main
+      - codex/v1
+      - codex/v1-*
   workflow_dispatch:
 
 permissions:
@@ -58,6 +61,9 @@ jobs:
 
           - name: Set up pnpm and Node
             uses: ./.github/actions/setup
+
+      - name: Check release policy
+        run: pnpm test:release
 
       - name: Lint
         run: pnpm exec turbo run lint --affected
@@ -304,6 +310,12 @@ jobs:
     needs: [quality, build, examples, test, test-windows, package]
     if: always()
     steps:
+      - name: Keep the 1.0 stack out of main
+        if: github.base_ref == 'main' && startsWith(github.head_ref, 'codex/v1')
+        run: |
+          echo "::error::The 1.0 integration branch and review stack must not merge into main before GA."
+          exit 1
+
       - name: Verify every required job succeeded
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
