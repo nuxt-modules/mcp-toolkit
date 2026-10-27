@@ -4,12 +4,12 @@ on:
   push:
     branches:
       - main
-      - codex/v1
+      - v1
   pull_request:
     branches:
       - main
-      - codex/v1
-      - codex/v1-*
+      - v1
+      - v1-*
   workflow_dispatch:
 
 permissions:
@@ -311,7 +311,7 @@ jobs:
     if: always()
     steps:
       - name: Keep the 1.0 stack out of main
-        if: github.base_ref == 'main' && startsWith(github.head_ref, 'codex/v1')
+        if: github.base_ref == 'main' && startsWith(github.head_ref, 'v1')
         run: |
           echo "::error::The 1.0 integration branch and review stack must not merge into main before GA."
           exit 1

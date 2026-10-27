@@ -8,8 +8,8 @@ export function releaseChannel(branch: string, preState: unknown): 'latest' | 'b
     return 'latest'
   }
 
-  if (branch !== 'codex/v1') {
-    throw new Error('Releases are restricted to main and codex/v1.')
+  if (branch !== 'v1') {
+    throw new Error('Releases are restricted to main and v1.')
   }
 
   if (
@@ -20,7 +20,7 @@ export function releaseChannel(branch: string, preState: unknown): 'latest' | 'b
     || !('tag' in preState)
     || preState.tag !== 'beta'
   ) {
-    throw new Error('codex/v1 requires Changesets prerelease mode with the beta tag.')
+    throw new Error('v1 requires Changesets prerelease mode with the beta tag.')
   }
 
   return 'beta'

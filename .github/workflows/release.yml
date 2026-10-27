@@ -12,7 +12,7 @@ permissions: {}
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/codex/v1')
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/v1')
     permissions:
       contents: write
       pull-requests: write
