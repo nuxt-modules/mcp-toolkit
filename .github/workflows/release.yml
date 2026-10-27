@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - v1
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
@@ -12,7 +13,7 @@ permissions: {}
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/v1')
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/v1'
     permissions:
       contents: write
       pull-requests: write
