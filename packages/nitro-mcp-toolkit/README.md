@@ -87,6 +87,34 @@ In development, adding or deleting a definition file is picked up without a rest
 
 Every build prints what each endpoint ended up serving, and warns when a route is mounted over a directory that holds nothing — which is what a definition sitting somewhere no `mcp()` looks at looks like from the outside.
 
+### Directory overlays and generated modules
+
+Pass multiple directories in priority order to share definitions across applications or layers:
+
+```ts
+mcp({ dir: ['server/mcp', 'layers/base/server/mcp'] })
+```
+
+The first directory containing a relative file wins: `server/mcp/tools/greet.ts` overrides `layers/base/server/mcp/tools/greet.ts`. Other definitions are inherited. Every directory is watched in development. Plugins come from the first directory containing a `plugins.*` file; multiple plugins files in that directory remain an error.
+
+Framework integrations can add generated modules alongside discovered files:
+
+```ts
+mcp({
+  dir: 'server/mcp',
+  include: {
+    tools: ['#framework/generated-tool.ts'],
+    resources: ['#framework/generated-resource.ts'],
+    prompts: ['#framework/generated-prompt.ts'],
+    plugins: ['#framework/plugins.ts'],
+  },
+})
+```
+
+Each tool, resource, or prompt module defaults to one definition. A plugins module defaults to a `defineMcpPlugins(...)` array, appended after the discovered plugins. Module specifiers are imported as written, so Nitro virtual modules work too. Included definitions are additive; duplicate names still fail validation. Generated definitions can name themselves, or take their name and title from the module basename.
+
+Use `dir: []` for a server composed entirely of included modules.
+
 ### Groups and tags
 
 A definition can carry a `group` and free-form `tags`, on all three kinds:
@@ -100,6 +128,17 @@ export default defineMcpTool({
 ```
 
 Both are advertised in the definition's `_meta`, so a client sees them in `tools/list` and can sort or filter on them. The group defaults to the subdirectory the file sits in, which is why most files only ever set `tags`.
+
+Tools, resources (including templates), and prompts also accept custom `_meta` for client extensions:
+
+```ts
+export default defineMcpTool({
+  _meta: { 'example.com/widget': { enabled: true } },
+  handler: () => 'Ready',
+})
+```
+
+Declared `group`, non-empty `tags`, and non-empty `scopes` take precedence over conflicting `_meta` entries. Metadata does not grant authorization; declare required scopes in the definition's `scopes` field.
 
 ### Plugins
 
@@ -133,6 +172,9 @@ mcp({
   websiteUrl: 'https://example.com',
   instructions: 'What the model is told about this server as a whole',
   era: 'dual', // or 'modern', for a 2026-07-28-only endpoint
+  session: { enabled: true, maxSessions: 100 }, // legacy protocol sessions
+  logging: true, // advertise client logging
+  limits: { maxBodySize: 4 * 1024 * 1024 }, // engine request limits, in bytes
   origin: { allow: ['https://app.example.com'] }, // browser clients, see below
   auth: { tokens: [process.env.MCP_TOKEN!] }, // require a credential, see Authentication below
 })
@@ -467,6 +509,17 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [g
 Handwritten definitions name themselves, since no filename is there to do it.
 
 The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps.
+
+Framework adapters can pass request context by reference with `handler.fetch(request, context)`:
+
+```ts
+const context = { user: authenticatedUser }
+const response = await handler.fetch(request, context)
+```
+
+Authenticate before calling the handler. Shared definitions receive the current request's context on each invocation; use a separate context for each request. The toolkit also preserves numeric `status` or `statusCode` and `data` from thrown HTTP errors across H3 versions.
+
+Extension authors can import the engine's `StandardTypedV1`, `ResourceLink`, and `EmbeddedResource` types from `nitro-mcp-toolkit`.
 
 ## Authentication
 

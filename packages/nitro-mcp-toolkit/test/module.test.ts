@@ -186,6 +186,39 @@ describe('the mcp() module', () => {
     await guarded.close()
   })
 
+  it('keeps framework imports out of serialized server options', async () => {
+    const composed = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [
+        mcp({
+          dir: ['server/missing', 'server/mcp-admin'],
+          include: {
+            tools: ['#framework/generated-tool.mjs'],
+            plugins: ['#framework/plugins.mjs'],
+          },
+          session: { enabled: true, maxSessions: 10 },
+          logging: true,
+          limits: { maxBodySize: 8192 },
+        }),
+      ],
+    })
+
+    const handler = await render(composed, '#mcp/mcp/handler')
+    const registry = await render(composed, '#mcp/mcp/registry')
+    expect(registry).toContain('import _1 from "#framework/generated-tool.mjs"')
+    expect(handler).toContain('import plugins from "<fixture>/server/mcp-admin/plugins.ts"')
+    expect(handler).toContain('import extraPlugins0 from "#framework/plugins.mjs"')
+    expect(handler).toContain('extensionPlugins: [...plugins, ...extraPlugins0]')
+    expect(handler).toContain('session: {"enabled":true,"maxSessions":10}')
+    expect(handler).toContain('logging: true')
+    expect(handler).toContain('limits: {"maxBodySize":8192}')
+    expect(handler).not.toContain('include:')
+    expect(handler).not.toContain('dir:')
+    await composed.close()
+  })
+
   it('refuses oauth together with a static token list', () => {
     expect(() =>
       mcp({
@@ -374,6 +407,45 @@ describe('an empty definitions directory', () => {
 // A definition nobody serves is otherwise silent: the route is still mounted,
 // and the files it never reached look exactly like the ones it did.
 describe('the report of what each endpoint serves', () => {
+  it('reports a server composed entirely of included modules', async () => {
+    const reporting = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [mcp({ dir: [], include: { tools: ['#framework/tool.ts'] } })],
+    })
+    const info = logs(reporting, 'info')
+    await reporting.hooks.callHook('compiled', reporting)
+    expect(info()).toEqual(['[mcp] /mcp serves 1 tool from included modules'])
+    await reporting.close()
+  })
+
+  it('reports included modules and locates a near miss in its own directory', async () => {
+    const root = await tempApp('nitro-mcp-overlay-report-')
+    await mkdir(join(root, 'app/tool'), { recursive: true })
+    await mkdir(join(root, 'base'), { recursive: true })
+    const reporting = await createNitro({
+      rootDir: root,
+      dev: false,
+      preset: 'standard',
+      modules: [
+        mcp({
+          dir: ['app', 'base'],
+          include: { tools: ['#framework/tool.mjs'], plugins: ['#framework/plugins.mjs'] },
+        }),
+      ],
+    })
+    const info = logs(reporting, 'info')
+    const warnings = logs(reporting, 'warn')
+    await reporting.hooks.callHook('compiled', reporting)
+    expect(info()).toEqual(['[mcp] /mcp serves 1 tool from app, base, with #framework/plugins.mjs'])
+    expect(warnings()).toEqual([
+      '[mcp] app/tool is not scanned, so nothing in it is served. Rename it to tools if that is what you meant.',
+    ])
+    await reporting.close()
+    await rm(root, { recursive: true, force: true })
+  })
+
   it('lists every instance, and stays quiet until the set changes', async () => {
     const reporting = await createNitro({
       rootDir: fixtureDir,
@@ -447,6 +519,44 @@ describe('the report of what each endpoint serves', () => {
 // A file already in the registry reaches the bundler through its import; a file
 // nobody imports yet needs the registry generated again first.
 describe('watching for definitions in development', () => {
+  it('rebuilds for overrides and inherited files in every overlay root', async () => {
+    const root = await tempApp('nitro-mcp-watch-overlays-')
+    for (const layer of ['app', 'base'])
+      await mkdir(join(root, layer, 'tools'), { recursive: true })
+    await writeFile(join(root, 'base/tools/shared.ts'), 'export default {}')
+    const composed = await createNitro({
+      rootDir: root,
+      dev: true,
+      preset: 'nitro-dev',
+      modules: [mcp({ dir: ['app', 'base'] })],
+    })
+    let reloads = 0
+    composed.hooks.hook('rollup:reload', () => {
+      reloads += 1
+    })
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      await writeFile(join(root, 'app/tools/shared.ts'), 'export default {}')
+      await vi.waitFor(() => expect(reloads).toBeGreaterThan(0), { timeout: 10_000 })
+      const overridden = await render(composed, '#mcp/mcp/registry')
+      expect(overridden).toContain('/app/tools/shared.ts')
+      expect(overridden).not.toContain('/base/tools/shared.ts')
+
+      const beforeRemoval = reloads
+      await rm(join(root, 'app/tools/shared.ts'))
+      await vi.waitFor(() => expect(reloads).toBeGreaterThan(beforeRemoval), { timeout: 10_000 })
+      expect(await render(composed, '#mcp/mcp/registry')).toContain('/base/tools/shared.ts')
+
+      const beforeInherited = reloads
+      await writeFile(join(root, 'base/tools/inherited.ts'), 'export default {}')
+      await vi.waitFor(() => expect(reloads).toBeGreaterThan(beforeInherited), { timeout: 10_000 })
+      expect(await render(composed, '#mcp/mcp/registry')).toContain('/base/tools/inherited.ts')
+    } finally {
+      await composed.close()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   let root: string
   let nitro: Nitro
   let reloads: number

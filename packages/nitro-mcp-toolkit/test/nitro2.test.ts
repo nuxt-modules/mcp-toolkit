@@ -11,6 +11,7 @@ import { z } from 'zod'
 import mcp from '../src/module/nitro2.ts'
 import { MODERN_PROTOCOL_VERSION } from '../src/runtime/index.ts'
 import { createMcpTestClient, textOf } from '../src/testing/index.ts'
+import { composedOptions, composedVirtual } from './helpers/composed-server.ts'
 
 describe('a built Nitro 2 app', () => {
   let root: string
@@ -111,6 +112,7 @@ export default defineNitroPlugin(app => {
         normalize(fileURLToPath(new URL('../../../node_modules', import.meta.url))),
       ],
       alias: { 'nitro-mcp-toolkit': toolkit },
+      virtual: composedVirtual,
       handlers: [
         { handler: join(root, 'middleware.ts'), middleware: true },
         ...['signals', 'catalog', 'notify', 'calls'].map((name) => ({
@@ -121,6 +123,7 @@ export default defineNitroPlugin(app => {
       plugins: [join(root, 'plugin.ts')],
       modules: [
         mcp(),
+        mcp(composedOptions),
         mcp({ route: '/admin/mcp', dir: 'server/mcp-admin', auth: { tokens: ['demo-token'] } }),
         mcp({
           route: '/oauth/mcp',
@@ -168,6 +171,54 @@ export default defineNitroPlugin(app => {
       )
     },
   )
+
+  it.each(['modern', 'legacy'] as const)(
+    'serves overlays and generated imports to %s clients',
+    async (era) => {
+      await using composed = await createMcpTestClient(handler, {
+        era,
+        url: `${origin}/composed/mcp`,
+      })
+      const { tools } = await composed.listTools()
+      expect(tools.map((tool) => tool.name)).toEqual(['inherited', 'message', 'generated'])
+      expect(tools.find((tool) => tool.name === 'message')?._meta).toEqual({
+        'fixture/custom': true,
+      })
+      expect(textOf(await composed.callTool({ name: 'message' }))).toBe('app')
+      expect(textOf(await composed.callTool({ name: 'inherited' }))).toBe('inherited')
+      expect(textOf(await composed.callTool({ name: 'generated' }))).toBe('generated')
+      expect(textOf(await composed.readResource({ uri: 'docs://included' }))).toBe(
+        'Included resource',
+      )
+      expect(textOf(await composed.getPrompt({ name: 'included-prompt' }))).toBe('Included prompt')
+      expect(composed.getServerCapabilities()?.logging).toEqual({})
+      expect(composed.getServerCapabilities()?.extensions).toEqual(
+        era === 'modern'
+          ? {
+              'fixture/app': { enabled: true },
+              'fixture/generated': { enabled: true },
+            }
+          : undefined,
+      )
+    },
+  )
+
+  it('enforces the configured request body limit', async () => {
+    const response = await fetch(`${origin}/composed/mcp`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'mcp-protocol-version': MODERN_PROTOCOL_VERSION,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'message', arguments: { padding: 'x'.repeat(9000) } },
+      }),
+    })
+    expect(response.status).toBe(413)
+  })
 
   it.for(['2025-03-26', '2025-06-18', '2025-11-25'])(
     'negotiates protocol revision %s',

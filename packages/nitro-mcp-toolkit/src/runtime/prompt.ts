@@ -30,6 +30,7 @@ interface McpPromptMetadata {
    * The prompt still appears in `prompts/list`.
    */
   scopes?: string[]
+  _meta?: Record<string, unknown>
   icons?: Icon[]
 }
 
@@ -83,7 +84,7 @@ export function defineMcpPrompt(
     | McpPromptDefinitionWithArguments
     | McpPromptDefinitionWithoutInput,
 ): McpPrompt {
-  const { name, title, description, group, tags, scopes, icons } = definition
+  const { name, title, description, group, tags, scopes, _meta, icons } = definition
 
   return {
     kind: 'prompt',
@@ -93,13 +94,14 @@ export function defineMcpPrompt(
     group,
     tags,
     scopes,
+    _meta,
     build(identity, into, notify) {
       const advertised = {
         name: identity.name,
         title: identity.title,
         description,
         icons,
-        _meta: resolveMeta(identity.group, tags, scopes),
+        _meta: resolveMeta(identity.group, tags, scopes, _meta),
       }
 
       if ('inputSchema' in definition && definition.inputSchema) {

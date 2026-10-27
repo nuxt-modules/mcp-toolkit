@@ -1,4 +1,5 @@
 import { H3Event, toResponse } from 'h3'
+import type { H3EventContext } from 'h3'
 import { defineMcpHandler } from 'h3-mcp'
 import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
@@ -116,7 +117,7 @@ export interface McpHandler {
    * Serve one request outside of Nitro: Deno, Bun, a test, or any runtime that
    * speaks `fetch`.
    */
-  fetch: (request: Request) => Promise<Response>
+  fetch: (request: Request, context?: H3EventContext) => Promise<Response>
   /**
    * Everything this endpoint serves, as plain JSON — the full catalog, not the
    * per-request `X-MCP-Tools` subset.
@@ -255,7 +256,7 @@ export function createMcpHandler(
   }
 
   return Object.assign(run, {
-    fetch: (request: Request) => run(new H3Event(request)),
+    fetch: (request: Request, context?: H3EventContext) => run(new H3Event(request, context)),
     definitions: Object.freeze(summarize(registrations)),
     notify,
   })

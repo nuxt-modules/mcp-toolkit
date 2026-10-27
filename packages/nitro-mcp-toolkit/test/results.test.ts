@@ -96,6 +96,27 @@ describe('result coercion', () => {
       content: [{ type: 'text', text: 'plain string' }],
     })
   })
+
+  it.each([{ statusCode: 404 }, { status: 404 }])(
+    'preserves portable HTTP error details from %j',
+    async (status) => {
+      const handler = createMcpHandler({
+        tools: [
+          defineMcpTool({
+            name: 'missing',
+            handler: () => {
+              throw Object.assign(new Error('Not found'), status, { data: { id: 'demo' } })
+            },
+          }),
+        ],
+      })
+      await using client = await createMcpTestClient(handler)
+      expect(await client.callTool({ name: 'missing' })).toMatchObject({
+        isError: true,
+        content: [{ type: 'text', text: '[404] Not found\n{\n  "id": "demo"\n}' }],
+      })
+    },
+  )
 })
 
 it.each(['modern', 'legacy'] as const)(

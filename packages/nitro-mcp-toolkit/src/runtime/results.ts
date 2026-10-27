@@ -1,4 +1,3 @@
-import { HTTPError } from 'h3'
 import type { CallToolResult, ContentBlock, InputRequiredResult } from 'h3-mcp'
 
 const TOOL_RESULT = Symbol.for('nitro-mcp-toolkit.toolResult')
@@ -109,15 +108,14 @@ export function toCallToolResult(value: unknown, hasOutputSchema: boolean): Call
  * @internal
  */
 export function toErrorResult(error: unknown): CallToolResult {
-  if (error instanceof HTTPError) {
-    let text = `[${error.status}] ${error.message}`
-    if (error.data != null) {
+  if (error instanceof Error) {
+    const status =
+      'status' in error ? error.status : 'statusCode' in error ? error.statusCode : undefined
+    let text = typeof status === 'number' ? `[${status}] ${error.message}` : error.message
+    if (typeof status === 'number' && 'data' in error && error.data != null) {
       text += `\n${JSON.stringify(error.data, null, 2)}`
     }
     return { content: textBlock(text), isError: true }
-  }
-  if (error instanceof Error) {
-    return { content: textBlock(error.message), isError: true }
   }
   return { content: textBlock(String(error)), isError: true }
 }
