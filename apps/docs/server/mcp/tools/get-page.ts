@@ -13,10 +13,9 @@ WHEN TO USE: Use this tool when you know the EXACT path to a documentation page.
 WHEN NOT TO USE: If you don't know the exact path and need to search/explore, use list-pages first.
 
 WORKFLOW: This tool returns the complete page content including title, description, and full markdown. Use this when you need to provide detailed answers or code examples from specific documentation pages.`,
-  inputSchema: {
+  inputSchema: z.object({
     path: z.string().describe('The page path from list-pages or provided by the user (e.g., /getting-started/installation)'),
-  },
-  cache: '1h',
+  }),
   handler: async ({ path }) => {
     const event = useEvent()
     const siteUrl = getRequestURL(event).origin

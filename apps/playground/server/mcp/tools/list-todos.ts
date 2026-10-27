@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from 'hub:db'
 
@@ -11,7 +12,7 @@ export default defineMcpTool({
     destructiveHint: false,
     openWorldHint: false,
   },
-  inputSchema: {},
+  inputSchema: z.object({}),
   handler: async () => {
     const event = useEvent()
     const userId = event.context.userId as string

@@ -30,6 +30,19 @@
       "dependsOn": ["^dev:prepare"],
       "outputs": ["dist/**", ".output/**", ".nuxt/**"]
     },
+    "@nuxtjs/mcp-toolkit#dev:prepare": {
+      "dependsOn": ["nitro-mcp-toolkit#build"],
+      "outputs": ["dist/**", ".nuxt/**"]
+    },
+    "nitro-mcp-toolkit-playground#dev:prepare": {
+      "dependsOn": ["nitro-mcp-toolkit#build"],
+      "outputs": ["node_modules/.nitro/**"]
+    },
+    "nitro-mcp-toolkit-playground#dev": {
+      "dependsOn": ["nitro-mcp-toolkit#dev:prepare"],
+      "cache": false,
+      "persistent": true
+    },
     "lint": {
       "dependsOn": ["dev:prepare"]
     },

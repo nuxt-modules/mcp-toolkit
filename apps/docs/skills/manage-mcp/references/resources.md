@@ -1,182 +1,46 @@
-# Resource Examples
+# Resources — 1.0
 
-`defineMcpResource` exposes read-only data addressable by URI. The toolkit auto-discovers any file under `server/mcp/resources/`. Two shapes:
+## Resources
 
-- **File shorthand** — set `file: '…'` and the toolkit auto-generates the URI, MIME type, and handler.
-- **Standard / template** — set `uri` (string or `ResourceTemplate`) and a `handler`.
-
-## File Shorthand (zero handler)
-
-```typescript [server/mcp/resources/readme.ts]
+```ts
 export default defineMcpResource({
-  description: 'Project README file',
-  file: 'README.md', // URI auto-generated as file:///…/README.md
+  uri: 'docs://readme',
+  mimeType: 'text/markdown',
+  handler: () => '# Project documentation',
 })
 ```
 
-The MIME type is inferred from the extension (`.md` → `text/markdown`, `.json` → `application/json`, etc.). Override via `metadata.mimeType` if needed.
+Create the file under `server/mcp/resources`. A string is wrapped as a resource contents result. Return `{ contents: [...] }` for multiple contents, binary data, or content-specific metadata.
 
-## Static Resource (custom URI + handler)
+Use `uriTemplate` for a family of addresses. Resources can carry `scopes`; unauthorized reads and application enumeration callbacks fail before application code runs.
 
-```typescript [server/mcp/resources/config.ts]
+## Resource templates
+
+```ts
 export default defineMcpResource({
-  description: 'Application configuration',
-  uri: 'config:///app',
-  metadata: { mimeType: 'application/json' },
-  handler: async (uri) => ({
-    contents: [{
-      uri: uri.toString(),
-      mimeType: 'application/json',
-      text: JSON.stringify({
-        environment: process.env.NODE_ENV,
-        apiUrl: process.env.API_URL,
-        features: { darkMode: true, analytics: false },
-      }, null, 2),
-    }],
+  uriTemplate: 'docs://{slug}',
+  list: () => pages.map(slug => ({ name: slug, uri: `docs://${slug}` })),
+  complete: context => ({ values: pages.filter(slug => slug.startsWith(context.argument.value)) }),
+  handler: (uri, { slug }, event) => renderPage(slug, event.context.oauth?.sub),
+})
+```
+
+Static handlers receive `(uri, event)`. Template handlers receive `(uri, variables, event)`. `list` returns resource descriptors directly, and `complete` returns completion values.
+
+Use `uriTemplate`, rather than constructing an SDK `ResourceTemplate`. The engine owns RFC 6570 matching. Validate application paths and enforce row or tenant ownership before reading data.
+
+## Resource content and metadata
+
+`mimeType`, `icons`, and `_meta` live directly on a resource definition. `cache` contains protocol cache hints, rather than a server-side cache duration string.
+
+```ts
+export default defineMcpResource({
+  uri: 'docs://guide',
+  mimeType: 'text/markdown',
+  handler: uri => ({
+    contents: [{ uri: uri.href, text: '# Guide', mimeType: 'text/markdown' }],
   }),
 })
 ```
 
-## Database Resource (with caching)
-
-```typescript [server/mcp/resources/users.ts]
-import { useDrizzle } from '~/server/utils/drizzle'
-import { users as usersTable } from '~/server/db/schema'
-
-export default defineMcpResource({
-  description: 'List recent users',
-  uri: 'db:///users',
-  metadata: { mimeType: 'application/json' },
-  cache: '1m',
-  handler: async (uri) => {
-    const users = await useDrizzle().select().from(usersTable).limit(100)
-    return {
-      contents: [{
-        uri: uri.toString(),
-        mimeType: 'application/json',
-        text: JSON.stringify(users, null, 2),
-      }],
-    }
-  },
-})
-```
-
-## Template Resource (URI variables)
-
-For URI patterns with placeholders, pass a `ResourceTemplate` from the SDK:
-
-```typescript [server/mcp/resources/user.ts]
-import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
-
-export default defineMcpResource({
-  description: 'Fetch a user by ID',
-  uri: new ResourceTemplate('user:///{id}', { list: undefined }),
-  metadata: { mimeType: 'application/json' },
-  handler: async (uri, { id }) => {
-    const user = await getUser(String(id))
-    if (!user) {
-      throw createError({ statusCode: 404, message: `User ${id} not found` })
-    }
-    return {
-      contents: [{
-        uri: uri.toString(),
-        mimeType: 'application/json',
-        text: JSON.stringify(user, null, 2),
-      }],
-    }
-  },
-})
-```
-
-The second handler argument is the parsed URI variables (`{ id }`). For collections, set `list: () => ({ resources: [...] })` on the template to advertise enumerable items.
-
-## Resource with Annotations
-
-`metadata.annotations` lets clients prioritize and filter what they show:
-
-```typescript
-export default defineMcpResource({
-  description: 'Project README',
-  file: 'README.md',
-  metadata: {
-    mimeType: 'text/markdown',
-    annotations: {
-      audience: ['user', 'assistant'], // who should see it
-      priority: 0.8,                    // 0-1, helps clients pick
-      lastModified: new Date().toISOString(),
-    },
-  },
-})
-```
-
-Anything else under `metadata` is forwarded as `_meta` in the listing response — handy for custom UI fields.
-
-## Conditional Visibility (`enabled`)
-
-Hide a resource per request — runs after middleware so `event.context` is available:
-
-```typescript [server/mcp/resources/private-keys.ts]
-export default defineMcpResource({
-  description: 'Private API keys for the current user',
-  uri: 'config:///keys',
-  enabled: event => Boolean(event.context.user?.isAdmin),
-  metadata: { mimeType: 'application/json' },
-  handler: async (uri) => {
-    const event = useEvent()
-    const keys = await listKeys(event.context.user.id)
-    return {
-      contents: [{
-        uri: uri.toString(),
-        mimeType: 'application/json',
-        text: JSON.stringify(keys),
-      }],
-    }
-  },
-})
-```
-
-## Groups & Tags
-
-Auto-inferred from subfolders — `server/mcp/resources/admin/keys.ts` → `group: 'admin'`. Override explicitly:
-
-```typescript
-export default defineMcpResource({
-  group: 'admin',
-  tags: ['secret'],
-  description: 'Sensitive resource',
-  // ...
-})
-```
-
-`listMcpResources({ group: 'admin' })` and `getMcpResources({ tags: ['secret'] })` filter by these.
-
-## Binary Content
-
-Return `blob` (base64) instead of `text` for binary payloads:
-
-```typescript [server/mcp/resources/logo.ts]
-import { readFile } from 'node:fs/promises'
-
-export default defineMcpResource({
-  description: 'Project logo',
-  uri: 'asset:///logo',
-  metadata: { mimeType: 'image/png' },
-  handler: async (uri) => {
-    const buffer = await readFile('public/logo.png')
-    return {
-      contents: [{
-        uri: uri.toString(),
-        mimeType: 'image/png',
-        blob: buffer.toString('base64'),
-      }],
-    }
-  },
-})
-```
-
-## See also
-
-- [Resources docs](https://mcp-toolkit.nuxt.dev/resources/overview)
-- [Static resources & structure](https://mcp-toolkit.nuxt.dev/resources/static-and-structure)
-- [Templates & handlers](https://mcp-toolkit.nuxt.dev/resources/templates-and-handlers)
-- [Metadata, content & errors](https://mcp-toolkit.nuxt.dev/resources/content-metadata-errors)
+For binary resources, return a `contents` entry with `blob` containing base64 data. A thrown error rejects `resources/read` with a JSON-RPC error. Return public error messages without private datastore details.

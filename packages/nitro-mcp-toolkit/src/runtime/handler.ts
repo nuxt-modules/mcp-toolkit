@@ -1,5 +1,5 @@
 import { H3Event, toResponse } from 'h3'
-import type { H3EventContext } from 'h3'
+import type { H3Event as McpRequestEvent, H3EventContext } from 'h3/generic'
 import { defineMcpHandler } from 'h3-mcp'
 import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
@@ -112,7 +112,7 @@ function createNotifier(): {
  * exposes the web-standard `fetch` face for any other runtime.
  */
 export interface McpHandler {
-  (event: H3Event): Promise<Response>
+  (event: McpRequestEvent): Promise<Response>
   /**
    * Serve one request outside of Nitro: Deno, Bun, a test, or any runtime that
    * speaks `fetch`.

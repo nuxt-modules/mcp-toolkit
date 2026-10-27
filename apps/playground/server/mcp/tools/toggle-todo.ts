@@ -11,9 +11,9 @@ export default defineMcpTool({
     idempotentHint: true,
     openWorldHint: false,
   },
-  inputSchema: {
+  inputSchema: z.object({
     id: z.number().describe('The ID of the todo to toggle'),
-  },
+  }),
   handler: async ({ id }) => {
     const event = useEvent()
     const userId = event.context.userId as string

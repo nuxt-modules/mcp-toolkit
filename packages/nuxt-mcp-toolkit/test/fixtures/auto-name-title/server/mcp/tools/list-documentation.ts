@@ -1,9 +1,10 @@
-import { defineMcpTool } from '../../../../../../src/runtime/server/types'
+import { z } from 'zod'
+import { defineMcpTool } from '../../../../../../src/runtime/server/index'
 
 // name and title are auto-generated from filename
 export default defineMcpTool({
   description: 'List all documentation files',
-  inputSchema: {},
+  inputSchema: z.object({}),
   handler: async () => {
     return {
       content: [{

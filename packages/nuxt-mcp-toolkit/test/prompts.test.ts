@@ -22,9 +22,6 @@ describe('Prompts', async () => {
 
   it('should list prompts via MCP client', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const prompts = await client.listPrompts()
 
@@ -35,9 +32,6 @@ describe('Prompts', async () => {
 
   it('should include the test_prompt in the prompts list', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const prompts = await client.listPrompts()
     const testPrompt = prompts.prompts.find(prompt => prompt.name === 'test_prompt')
@@ -49,9 +43,6 @@ describe('Prompts', async () => {
 
   it('should be able to get the test_prompt', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.getPrompt({
       name: 'test_prompt',
@@ -74,9 +65,6 @@ describe('Prompts', async () => {
 
   it('should auto-wrap a string return into a GetPromptResult', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.getPrompt({
       name: 'string_prompt',
@@ -94,11 +82,8 @@ describe('Prompts', async () => {
     }
   })
 
-  it('should use the role field when wrapping a string return', async () => {
+  it('returns an explicit assistant message', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.getPrompt({
       name: 'assistant_prompt',

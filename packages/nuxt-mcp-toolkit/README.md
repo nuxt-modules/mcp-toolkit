@@ -1,159 +1,86 @@
-![Nuxt MCP Toolkit](https://raw.githubusercontent.com/nuxt-modules/mcp-toolkit/main/assets/banner.jpg)
-
-[![Install MCP in Cursor](https://mcp-toolkit.nuxt.dev/mcp/badge.svg)](https://mcp-toolkit.nuxt.dev/mcp/deeplink)
-[![Install MCP in VS Code](https://mcp-toolkit.nuxt.dev/mcp/badge.svg?ide=vscode)](https://mcp-toolkit.nuxt.dev/mcp/deeplink?ide=vscode)
-
 # Nuxt MCP Toolkit
 
-<!-- automd:badges color="black" license name="@nuxtjs/mcp-toolkit" -->
+Build [Model Context Protocol](https://modelcontextprotocol.io) servers in Nuxt. The module adds file discovery, layers, auto-imports, and development tooling to the shared `nitro-mcp-toolkit` engine.
 
-[![npm version](https://img.shields.io/npm/v/@nuxtjs/mcp-toolkit?color=black)](https://npmjs.com/package/@nuxtjs/mcp-toolkit)
-[![npm downloads](https://img.shields.io/npm/dm/@nuxtjs/mcp-toolkit?color=black)](https://npm.chart.dev/@nuxtjs/mcp-toolkit)
-[![license](https://img.shields.io/github/license/nuxt-modules/mcp-toolkit?color=black)](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE)
+Requires Nuxt 4.6 or later. The default endpoint supports the modern `2026-07-28` protocol and 2025 Streamable HTTP clients.
 
-<!-- /automd -->
+## Install
 
-A Nuxt module to easily create a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server directly in your Nuxt application. Define MCP tools, resources, and prompts with zero configuration - just create files and they're automatically discovered and registered.
-
-The 1.0 beta defers built-in MCP Apps support. Move Vue App handlers into regular server-side tools; see the [beta migration guide](https://github.com/nuxt-modules/mcp-toolkit/blob/v1/apps/docs/content/1.getting-started/7.beta-migration.md).
-
-## ✨ Features
-
-<!-- automd:file src="../../.github/snippets/features.md" -->
-
-- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
-- 📦 **File-based** - Organize definitions in intuitive directory structures
-- 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single app
-- 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
-- 📝 **TypeScript First** - Full type safety with auto-imports
-- 🔒 **Zod Validation** - Built-in input/output validation
-- 🤖 **Agent Discovery** - Advertises your server in `llms.txt` when `nuxt-llms` is registered
-
-<!-- /automd -->
-
-## 🚀 Installation
-
-<!-- automd:file src="../../.github/snippets/installation.md" -->
-
-Use `nuxt` to install the module automatically:
-
-```bash
-npx nuxt add mcp
+```sh
+pnpm add @nuxtjs/mcp-toolkit zod
 ```
 
-Or install manually:
-
-```bash
-# npm
-npm install -D @nuxtjs/mcp-toolkit zod
-
-# yarn
-yarn add -D @nuxtjs/mcp-toolkit zod
-
-# pnpm
-pnpm add -D @nuxtjs/mcp-toolkit zod
-
-# bun
-bun add -D @nuxtjs/mcp-toolkit zod
-```
-
-<!-- /automd -->
-
-## 📖 Quick Start
-
-Add the module to your `nuxt.config.ts`:
-
-```typescript
+```ts
 export default defineNuxtConfig({
   modules: ['@nuxtjs/mcp-toolkit'],
-  mcp: {
-    name: 'My MCP Server',
-    version: '1.0.0',
-  },
+  mcp: { name: 'My server', version: '1.0.0' },
 })
 ```
 
-Create your first tool in `server/mcp/tools/echo.ts`:
-
-```typescript
+```ts
+// server/mcp/tools/greet.ts
 import { z } from 'zod'
 
 export default defineMcpTool({
-  description: 'Echo back a message',
-  inputSchema: {
-    message: z.string().describe('The message to echo back'),
-  },
-  handler: async ({ message }) => {
-    return {
-      content: [{
-        type: 'text',
-        text: `Echo: ${message}`,
-      }],
-    }
-  },
+  description: 'Greet someone by name',
+  inputSchema: z.object({ name: z.string() }),
+  handler: ({ name }) => `Hello ${name}!`,
 })
 ```
 
-The tool will be automatically discovered and registered. No imports needed - all helpers are auto-imported!
+Connect a client to `/mcp`. Tools, resources, and prompts take their names and titles from their filenames. Adding or removing definition files triggers a rebuild in development.
 
-## ☁️ Cloudflare Workers
+## Shared definitions
 
-For Cloudflare Workers/Pages deployment, install the [`agents`](https://developers.cloudflare.com/agents/model-context-protocol/mcp-handler-api/) package:
+The same definitions work in Nuxt and standalone Nitro. Schemas implement Standard Schema; Zod, Valibot, and ArkType are supported. Callbacks receive `(args, event)`, or just `event` without an input schema.
 
-```bash
-pnpm add agents
+```ts
+export default defineMcpTool({
+  inputSchema: z.object({ a: z.number(), b: z.number() }),
+  outputSchema: z.object({ total: z.number() }),
+  handler: ({ a, b }) => ({ total: a + b }),
+})
 ```
 
-The module automatically detects Cloudflare presets and uses the native MCP handler.
+An output schema narrows the return type and validates the result. Use `toolResult()` for a full protocol envelope alongside an output schema. Tools also accept ordinary values, `imageResult`, and `audioResult`. Thrown application errors become `isError` results.
 
-## 📚 Documentation
+Resources use `uri` or `uriTemplate`; prompts return a string or an explicit `messages` result. Read current identity, cancellation, logging, and notifications from the callback's event.
 
-📖 **[Full Documentation →](https://mcp-toolkit.nuxt.dev)**
+Set `autoImports: false` for explicit imports from `@nuxtjs/mcp-toolkit/server`.
 
-## 🤝 Contributing
+## Named endpoints and layers
 
-<!-- automd:file src="../../.github/snippets/contributing.md" -->
-
-Contributions are welcome! Feel free to open an issue or submit a pull request.
-
-```bash
-# Install dependencies
-pnpm install
-
-# Generate type stubs
-pnpm run dev:prepare
-
-# Start the playground
-pnpm run dev
-
-# Run tests
-pnpm run test
+```ts
+mcp: {
+  servers: {
+    default: { dir: 'mcp' },
+    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+  },
+}
 ```
 
-<!-- /automd -->
+This mounts `/mcp` and `/mcp/admin`. Each server scans its own directories. `dir` is relative to each Nuxt layer's server directory; the main app overrides the same relative file in an extended layer. A directory array gives earlier roots priority.
 
-## 📄 License
+Use `oauth` for JWT resource-server verification, and `scopes` on definitions for operation-level checks. Scopes gate invocation while static metadata remains listed. Put sensitive catalogs on separately authenticated endpoints. Clients can request a tool subset through `X-MCP-Tools`.
 
-<!-- automd:file src="../../.github/snippets/license.md" -->
+Import generated servers from `nitro-mcp-toolkit/servers` to read `handler.definitions` or send notifications. Manually compose routes with the Nuxt `createMcpHandler` helper when live callbacks are needed.
 
-Published under the [MIT](https://github.com/nuxt-modules/mcp-toolkit/blob/main/LICENSE) license.
+## Beta scope
 
-Made by [@HugoRCD](https://github.com/HugoRCD) and [community](https://github.com/nuxt-modules/mcp-toolkit/graphs/contributors) 💛
+Built-in MCP Apps are deferred. Vue files under `app/mcp` do not generate tools or UI resources; move their server-side logic into ordinary tool definitions.
 
-<a href="https://github.com/nuxt-modules/mcp-toolkit/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=nuxt-modules/mcp-toolkit" />
-</a>
+## Client compatibility and testing
 
-<!-- /automd -->
+`era: 'dual'` serves modern and legacy clients. Keep required values available as ordinary tool arguments when using modern input-required interactions, so older clients have a usable path. `session: true` enables legacy sessions; durable application state belongs in application storage keyed by verified identity.
 
-<!-- automd:fetch url="gh:hugorcd/markdown/main/src/sponsors.md" -->
+`nitro-mcp-toolkit/testing` connects a real MCP client in memory. Test both eras, authentication, and the production Nuxt build. The module also retains the DevTools Inspector launcher, installation buttons and badges, and optional `llms.txt` discovery.
 
-## Sponsors
+## Migrating to 1.0
 
-<p align="center">
-  <a href="https://github.com/sponsors/HugoRCD">
-    <img src='https://cdn.jsdelivr.net/gh/hugorcd/static/sponsors.svg' alt="HugoRCD sponsors" />
-  </a>
-</p>
+1.0 replaces the SDK-based Nuxt runtime. Code Mode, direct SDK-server access, global registry-query helpers, and ambient session/elicitation/logger wrappers are removed. Use complete schemas, explicit request events, configured servers, application storage, and the engine's continuation helpers.
 
-<!-- /automd -->
+Read the [migration guide](https://github.com/nuxt-modules/mcp-toolkit/blob/v1/apps/docs/content/1.getting-started/7.beta-migration.md) and [documentation](https://mcp-toolkit.nuxt.dev).
+
+## License
+
+[MIT](../../LICENSE)

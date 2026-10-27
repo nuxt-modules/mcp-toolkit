@@ -1,7 +1,8 @@
+import { readFile } from 'node:fs/promises'
+
 export default defineMcpResource({
-  name: 'package-json',
-  file: 'package.json',
-  metadata: {
-    description: 'Project package.json file',
-  },
+  name: 'project-package',
+  uri: 'file:///package.json',
+  mimeType: 'application/json',
+  handler: () => readFile('package.json', 'utf8'),
 })

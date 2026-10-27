@@ -25,7 +25,7 @@ describe('llms.txt integration', async () => {
     expect(txt).toContain('Fixture MCP server used in tests.')
   })
 
-  it('links the browser redirect as documentation entry point', async () => {
+  it('links the server website as documentation entry point', async () => {
     const txt = await $fetch<string>('/llms.txt')
 
     expect(txt).toContain('[MCP documentation](https://docs.fixture.test/mcp)')

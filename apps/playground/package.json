@@ -32,7 +32,6 @@
     "drizzle-orm": "^0.45.4",
     "evlog": "^2.33.1",
     "nuxt": "^4.6.2",
-    "secure-exec": "0.3.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {

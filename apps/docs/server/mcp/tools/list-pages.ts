@@ -19,7 +19,6 @@ OUTPUT: Returns a structured list with:
 - path: Exact path for use with get-page
 - description: Brief summary of page content
 - url: Full URL for reference`,
-  cache: '1h',
   handler: async () => {
     const event = useEvent()
     const siteUrl = getRequestURL(event).origin
