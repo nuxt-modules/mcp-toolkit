@@ -22,6 +22,31 @@ function inspector() {
 }
 
 describe('handler event', () => {
+  it.each(['modern', 'legacy'] as const)(
+    'forwards adapter context by reference for %s requests',
+    async (era) => {
+      const context: Record<string, unknown> = { user: 'demo' }
+      const endpoint = createMcpHandler({
+        tools: [
+          defineMcpTool({
+            name: 'who',
+            handler: (event) => {
+              expect(event.context).toBe(context)
+              event.context.visited = true
+              return String(event.context.user)
+            },
+          }),
+        ],
+      })
+      await using client = await createMcpTestClient(
+        { fetch: (request) => endpoint.fetch(request, context) },
+        { era },
+      )
+      expect(textOf(await client.callTool({ name: 'who' }))).toBe('demo')
+      expect(context.visited).toBe(true)
+    },
+  )
+
   it('keeps engine progress callable when a definition receives its notifier', async () => {
     const handler = createMcpHandler({
       tools: [

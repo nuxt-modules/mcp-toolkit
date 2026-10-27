@@ -3,6 +3,9 @@ import { build, createNitro } from 'nitro/builder'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createMcpTestClient, textOf } from '../src/testing/index.ts'
 import { fixtureDir, modules } from './helpers/discovery-fixture.ts'
+import { composedOptions, composedVirtual } from './helpers/composed-server.ts'
+import mcp from '../src/module/index.ts'
+import { MODERN_PROTOCOL_VERSION } from '../src/runtime/index.ts'
 import type { Nitro } from 'nitro/types'
 import type { Client } from '@modelcontextprotocol/client'
 
@@ -19,7 +22,13 @@ describe('a built Nitro app using the module', () => {
   let adminClient: Client
 
   beforeAll(async () => {
-    nitro = await createNitro({ rootDir: fixtureDir, dev: false, preset: 'standard', modules })
+    nitro = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [...modules, mcp(composedOptions)],
+      virtual: composedVirtual,
+    })
     await build(nitro)
 
     const entry = (await import(
@@ -51,6 +60,56 @@ describe('a built Nitro app using the module', () => {
       { name: 'explicitly-named', title: 'Explicitly Named' },
       { name: 'deep', title: 'Deep' },
     ])
+  })
+
+  it.each(['modern', 'legacy'] as const)(
+    'serves overlays and generated imports to %s clients',
+    async (era) => {
+      await using composed = await createMcpTestClient(
+        { fetch: (request) => Promise.resolve(server.fetch(request)) },
+        { era, url: 'http://localhost/composed/mcp' },
+      )
+      const { tools } = await composed.listTools()
+      expect(tools.map((tool) => tool.name)).toEqual(['inherited', 'message', 'generated'])
+      expect(tools.find((tool) => tool.name === 'message')?._meta).toEqual({
+        'fixture/custom': true,
+      })
+      expect(textOf(await composed.callTool({ name: 'message' }))).toBe('app')
+      expect(textOf(await composed.callTool({ name: 'inherited' }))).toBe('inherited')
+      expect(textOf(await composed.callTool({ name: 'generated' }))).toBe('generated')
+      expect(textOf(await composed.readResource({ uri: 'docs://included' }))).toBe(
+        'Included resource',
+      )
+      expect(textOf(await composed.getPrompt({ name: 'included-prompt' }))).toBe('Included prompt')
+      expect(composed.getServerCapabilities()?.logging).toEqual({})
+      expect(composed.getServerCapabilities()?.extensions).toEqual(
+        era === 'modern'
+          ? {
+              'fixture/app': { enabled: true },
+              'fixture/generated': { enabled: true },
+            }
+          : undefined,
+      )
+    },
+  )
+
+  it('enforces the configured request body limit', async () => {
+    const response = await server.fetch(
+      new Request('http://localhost/composed/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'mcp-protocol-version': MODERN_PROTOCOL_VERSION,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'message', arguments: { padding: 'x'.repeat(9000) } },
+        }),
+      }),
+    )
+    expect(response.status).toBe(413)
   })
 
   it('calls a discovered tool, with the Nitro event in scope', async () => {
