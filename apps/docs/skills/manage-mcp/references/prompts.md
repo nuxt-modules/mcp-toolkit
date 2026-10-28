@@ -1,52 +1,97 @@
 # Prompts — 1.0
 
-## Author prompts
+## Create a prompt without arguments
 
-```ts
-import { z } from 'zod'
+```ts [server/mcp/prompts/plan-change.ts]
+import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpPrompt({
-  inputSchema: z.object({ language: z.string() }),
-  handler: ({ language }, event) => `Review this ${language} change.`,
+  description: 'Plan a careful project change',
+  handler: () => 'Inspect the project, identify the affected behavior, then propose and verify the smallest useful change.',
 })
 ```
 
-A callback with a schema receives `(args, event)`. A callback without arguments receives the event. Names and titles are inferred from the filename.
+There is no empty schema or schema-library import. The handler may receive the current MCP event as its first argument when it needs verified request context.
 
-MCP messages use `user` and `assistant` roles. Express operational guidance in message text; a `system` role is not part of the prompt message schema.
+## Validate prompt arguments
 
-## Inputs and messages
+```ts [server/mcp/prompts/review-code.ts]
+import { z } from 'zod'
+import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
 
-```ts
 export default defineMcpPrompt({
-  handler: () => ({
-    messages: [{
-      role: 'assistant',
-      content: { type: 'text', text: 'I will review the change.' },
-    }],
+  description: 'Review code for correctness and maintainability',
+  inputSchema: z.object({
+    code: z.string().min(1).describe('Code to review'),
+    focus: z.enum(['correctness', 'performance', 'security']).default('correctness'),
+  }),
+  handler: ({ code, focus }) => `Review this code for ${focus}:\n\n${code}`,
+})
+```
+
+Use a complete schema rather than a raw Zod shape. Defaults are applied before the callback. Keep prompt arguments compatible with MCP's string-based argument transport.
+
+## Name the prompt
+
+Names and titles come from filenames unless explicitly set. A subdirectory supplies an inferred group. Duplicate advertised names within an endpoint fail validation.
+
+A string is a user message. Return explicit messages for an assistant response or a multi-message conversation; the old `role` property is removed. See [arguments and message results](https://mcp-toolkit.nuxt.dev/prompts/input-handler-messages).
+
+## Choose one argument contract
+
+| Contract | Use |
+| --- | --- |
+| `inputSchema: z.object(...)` | Parse and infer arguments |
+| `arguments: [...]` | Advertise arguments with completion callbacks |
+| Neither | A prompt with no arguments |
+
+With arguments, handlers receive `(args, event)`; without them, handlers receive `event`. The explicit argument-list form gives the handler a `Record<string, string>`. Validate values inside that callback.
+
+## Complete an argument
+
+```ts [server/mcp/prompts/language-guide.ts]
+import { z } from 'zod'
+import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
+
+const input = z.object({ language: z.enum(['typescript', 'javascript']) })
+
+export default defineMcpPrompt({
+  description: 'Explain conventions for a language',
+  arguments: [{
+    name: 'language',
+    required: true,
+    complete: ({ argument }) => ({
+      values: ['typescript', 'javascript'].filter(value => value.startsWith(argument.value)),
+    }),
+  }],
+  handler: (args) => {
+    const { language } = input.parse(args)
+    return `Explain the project conventions for ${language}.`
+  },
+})
+```
+
+Completion is a suggestion interface. A client can still send another value, so the handler validates the final arguments. The completion callback receives the current argument, previously resolved arguments, and the request event. Required scopes gate completion as well as prompt expansion.
+
+## Return multiple messages
+
+```ts [server/mcp/prompts/review-conversation.ts]
+import { z } from 'zod'
+import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
+
+export default defineMcpPrompt({
+  description: 'Prepare a focused code review conversation',
+  inputSchema: z.object({ code: z.string() }),
+  handler: ({ code }) => ({
+    description: 'A correctness review',
+    messages: [
+      { role: 'assistant', content: { type: 'text', text: 'I will review correctness and explain concrete issues.' } },
+      { role: 'user', content: { type: 'text', text: code } },
+    ],
   }),
 })
 ```
 
-The old `role` shorthand is removed. A string always becomes one user message. Explicit results can contain several messages and the content blocks supported by the protocol.
+MCP prompt messages use user and assistant roles. Put reusable instructions into the message text; a prompt definition does not add a system-role shortcut. Resources may be embedded through the protocol's supported content shapes.
 
-Exceptions become JSON-RPC errors. Prompt callbacks should fetch only the application data the current request is authorized to access.
-
-## Prompt completion
-
-```ts
-const languages = ['typescript', 'javascript', 'python']
-
-export default defineMcpPrompt({
-  arguments: [{
-    name: 'language',
-    required: true,
-    complete: context => ({ values: languages.filter(value => value.startsWith(context.argument.value)) }),
-  }],
-  handler: ({ language }) => `Review this ${language} change.`,
-})
-```
-
-Use `arguments` instead of `inputSchema` for callbacks with per-argument completion. The old SDK `completable()` helper is removed.
-
-A prompt's `scopes` protect completion callbacks as well as expansion. Its static metadata remains visible in `prompts/list`.
+Prompts have no tool-style `isError` result. Throw an appropriate public error when expansion fails, and keep private diagnostics in your server logger.

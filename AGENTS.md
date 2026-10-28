@@ -248,6 +248,8 @@ Schemas are complete Standard Schema objects. With input, handlers receive `(arg
 
 For definitions without arguments, omit `inputSchema` and any unused schema-library import. Do not add an empty `z.object({})` as boilerplate.
 
+The 1.0 docs include Nuxt OAuth setup at `/getting-started/oauth`, and retired Code Mode links redirect to migration guidance. Keep examples complete and validate them against generated Nuxt types; document provider-login checks separately from local JWT verification.
+
 Keep substantive documentation examples for typed output and caching. Explain the actual beta API: schema `examples` are JSON Schema annotations, MCP `_meta` is extension metadata, and `_meta.inputExamples` is a custom client convention. Do not present removed convenience options as implemented APIs or remove useful examples merely to shorten a guide.
 
 Resources use `uri` or `uriTemplate`, top-level MIME metadata, and text or contents results. Prompt strings are user messages; explicit messages support other roles. Completion uses explicit prompt `arguments` or resource-template callbacks.
@@ -468,3 +470,5 @@ Discovery catalog: [https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json](
 A correction is a few lines, not a rewrite — keep this file lean.
 
 The Nuxt integration builds the Nitro toolkit before generating types. Its public H3 types import `h3/generic` so Nuxt’s H3 v1 alias cannot change the MCP callback’s web request type. The composed-route adapter preserves the host context by reference and relays disconnects; do not replace it with a context copy.
+
+Engine input helpers retain their original function references and publish `h3/generic` event signatures, including signed-state codecs. The test client requires only a request-to-response fetch function, independently of host context types.
