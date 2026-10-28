@@ -20,6 +20,7 @@ export default defineNuxtConfig({
 ```ts
 // server/mcp/tools/greet.ts
 import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpTool({
   description: 'Greet someone by name',
@@ -35,10 +36,30 @@ Connect a client to `/mcp`. Tools, resources, and prompts take their names and t
 The same definitions work in Nuxt and standalone Nitro. Schemas implement Standard Schema; Zod, Valibot, and ArkType are supported. Callbacks receive `(args, event)`, or just `event` without an input schema.
 
 ```ts
+import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+const bmiOutput = z.object({
+  bmi: z.number(),
+  category: z.enum(['underweight', 'normal', 'overweight', 'obese']),
+})
+
 export default defineMcpTool({
-  inputSchema: z.object({ a: z.number(), b: z.number() }),
-  outputSchema: z.object({ total: z.number() }),
-  handler: ({ a, b }) => ({ total: a + b }),
+  description: 'Calculate Body Mass Index from height and weight',
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  inputSchema: z.object({
+    heightM: z.number().positive().describe('Height in meters'),
+    weightKg: z.number().positive().describe('Weight in kilograms'),
+  }),
+  outputSchema: bmiOutput,
+  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+    const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
+    const category = bmi < 18.5 ? 'underweight'
+      : bmi < 25 ? 'normal'
+        : bmi < 30 ? 'overweight' : 'obese'
+
+    return { bmi, category }
+  },
 })
 ```
 
@@ -46,17 +67,63 @@ An output schema narrows the return type and validates the result. Use `toolResu
 
 Resources use `uri` or `uriTemplate`; prompts return a string or an explicit `messages` result. Read current identity, cancellation, logging, and notifications from the callback's event.
 
-Set `autoImports: false` for explicit imports from `@nuxtjs/mcp-toolkit/server`.
+Tools without arguments omit `inputSchema`; no empty schema or unused Zod import is needed. A tool with an output schema still imports its schema library. Set `autoImports: false` for explicit imports from `@nuxtjs/mcp-toolkit/server`.
+
+## Cache application data
+
+For Nuxt 4 / Nitro 2 on Node, cache the application function outside the handler. Keep the output schema on the tool:
+
+```ts
+import { defineCachedFunction } from 'nitropack/runtime'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+import { z } from 'zod'
+
+const productSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+const getProduct = defineCachedFunction(async (id: string) => {
+  const response = await fetch(
+    `https://api.example.com/products/${encodeURIComponent(id)}`,
+  )
+  if (!response.ok) throw new Error('The product service is unavailable.')
+  return productSchema.parse(await response.json())
+}, {
+  name: 'mcp-public-product',
+  maxAge: 600,
+  swr: false,
+})
+
+export default defineMcpTool({
+  description: 'Get a public product',
+  annotations: { readOnlyHint: true, openWorldHint: true },
+  inputSchema: z.object({ id: z.string().min(1) }),
+  outputSchema: productSchema,
+  handler: ({ id }) => getProduct(id),
+})
+```
+
+Replace the example upstream URL. `maxAge` is seconds; the default cache key hashes the function arguments. Set `swr` explicitly. For private data, authorize each call and include the verified user/tenant identity in those arguments.
+
+Standalone Nitro 3 uses `nitro/cache` for the cached function and `nitro-mcp-toolkit` for tool helpers. Storage and worker lifecycle setup depend on the installed Nitro version; [the caching guide](https://github.com/nuxt-modules/mcp-toolkit/blob/v1/apps/docs/content/2.tools/3.errors-caching.md) covers those differences. The old tool-level `cache` option is not part of the current beta API.
+
+## Examples and metadata
+
+Use JSON Schema examples when documenting expected input; Zod 4 emits them from `.meta({ examples })`. MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a custom client convention, not a core MCP feature, and the old typed top-level `inputExamples` helper is not currently available in the beta. See [annotations and metadata](https://github.com/nuxt-modules/mcp-toolkit/blob/v1/apps/docs/content/2.tools/2.annotations.md).
 
 ## Named endpoints and layers
 
-```ts
-mcp: {
-  servers: {
-    default: { dir: 'mcp' },
-    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+```ts [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit'],
+  mcp: {
+    servers: {
+      default: { dir: 'mcp' },
+      admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+    },
   },
-}
+})
 ```
 
 This mounts `/mcp` and `/mcp/admin`. Each server scans its own directories. `dir` is relative to each Nuxt layer's server directory; the main app overrides the same relative file in an extended layer. A directory array gives earlier roots priority.

@@ -1,5 +1,3 @@
-import { z } from 'zod'
-
 export default defineMcpTool({
   name: 'admin_stats',
   title: 'Admin Stats',
@@ -11,7 +9,6 @@ export default defineMcpTool({
     destructiveHint: false,
     openWorldHint: false,
   },
-  inputSchema: z.object({}),
   handler: async () => {
     const [users, todos] = await Promise.all([
       db.query.user.findMany(),

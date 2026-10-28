@@ -66,7 +66,7 @@ The toolkit delegates continuation helpers to h3-mcp. Use `defineRequestState` f
 - `mcp:server:created`, `mcp:config:resolved`, and `mcp:definitions:paths`.
 - Per-definition `cache: '5m'`; cache application services with Nitro utilities.
 
-`mcp:tool:called` remains available for configured endpoints. A listener error reaches the caller. Protocol Logging is deprecated; keep server diagnostics in application logging. Put input examples in `_meta.inputExamples`.
+`mcp:tool:called` remains available for configured endpoints. A listener error reaches the caller. Protocol Logging is deprecated; keep server diagnostics in application logging. For general input documentation, use schema examples. `_meta.inputExamples` is a custom client convention, and the beta does not currently expose the old typed top-level helper. See [tool examples](tools.md).
 
 ## Beta scope
 
@@ -110,3 +110,7 @@ mcp: {
 The keys identify endpoints: `default` uses `/mcp`, and `admin` uses `/mcp/admin`. Each can override `route` and other server options. Supplying `servers` defines the complete configured set.
 
 Other Nuxt options are `enabled`, `autoImports`, `inspector.headers`, and `llms`. Built-in MCP Apps configuration is removed.
+
+## Caching checklist
+
+Keep `outputSchema` on cached tools. Wrap application work with Nitro `defineCachedFunction` outside the handler, use seconds for `maxAge`, and set `swr` explicitly. Check the default argument key covers every result-selection value, including verified identity for private results, and keep authorization outside the cached function. Choose the import and storage/lifecycle API for the installed Nitro version. MCP client cache hints do not cache server execution. See [complete examples](tools.md).

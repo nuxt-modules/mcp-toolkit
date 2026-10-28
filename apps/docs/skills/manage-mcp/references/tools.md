@@ -1,69 +1,120 @@
-# Tools — 1.0
+# Tool examples — 1.0 beta
 
-## Tools
+These examples use the current shared runtime. Keep full input/output schemas when data benefits from them, and omit `inputSchema` for tools with no arguments. Names and titles come from filenames unless explicitly set.
 
-Create one default-exported definition per file in `server/mcp/tools`:
+## Typed BMI calculator
 
-```ts
+```ts [server/mcp/tools/bmi-calculator.ts]
 import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
-export default defineMcpTool({
-  description: 'Find a project',
-  inputSchema: z.object({ id: z.string() }),
-  handler: ({ id }, event) => findProject(id, event.context.oauth?.sub),
+const bmiOutput = z.object({
+  bmi: z.number(),
+  category: z.enum(['underweight', 'normal', 'overweight', 'obese']),
 })
-```
-
-Names and titles come from filenames unless explicitly provided. Arguments are validated before application code runs. Read the current user from request context; shared definitions must not capture one user's identity.
-
-Return a string, number, boolean, object, array, or full tool result. `imageResult` and `audioResult` create media blocks. A thrown application error becomes an `isError` tool result.
-
-## Schemas and handlers
-
-Use a complete Standard Schema:
-
-```ts
-import { z } from 'zod'
 
 export default defineMcpTool({
-  inputSchema: z.object({ a: z.number(), b: z.number() }),
-  outputSchema: z.object({ total: z.number() }),
-  handler: ({ a, b }) => ({ total: a + b }),
-})
-```
+  description: 'Calculate Body Mass Index from height and weight',
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  inputSchema: z.object({
+    heightM: z.number().positive().describe('Height in meters'),
+    weightKg: z.number().positive().describe('Weight in kilograms'),
+  }),
+  outputSchema: bmiOutput,
+  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+    const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
+    const category = bmi < 18.5 ? 'underweight'
+      : bmi < 25 ? 'normal'
+        : bmi < 30 ? 'overweight' : 'obese'
 
-`outputSchema` narrows the callback return type and validates the result. A plain object becomes `structuredContent`. A result that violates the advertised output schema is a protocol error.
-
-For a full protocol envelope alongside an output schema, return `toolResult({ content: [...], structuredContent: ... })`. Plain objects containing fields named `content` or `isError` still mean schema data when an output schema is present.
-
-A tool without an input schema receives the event as its first argument: `handler: event => ...`. With a schema, it receives `(args, event)`.
-
-## Annotations and metadata
-
-```ts
-export default defineMcpTool({
-  description: 'Read the public project catalog',
-  annotations: {
-    readOnlyHint: true,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: false,
+    return { bmi, category }
   },
-  _meta: { inputExamples: [{ id: 'demo-project' }] },
-  handler: () => readCatalog(),
 })
 ```
 
-Annotations help clients explain an action and decide when to ask their user for confirmation. They do not enforce authorization.
+`outputSchema` infers the callback's return shape and validates the result. Return its data directly: the toolkit emits `structuredContent` and a JSON text fallback. A return value that violates the advertised output schema is a protocol error.
 
-Use `_meta` for extension metadata, `icons` for client-visible icons, and `group` or `tags` for catalog labels. The toolkit owns the metadata values it derives for groups, tags, and scopes.
+## Tool with no arguments
 
-## Errors and caching
+```ts [server/mcp/tools/ping.ts]
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
-Thrown tool errors become `isError` results so clients can explain a failure. HTTP errors preserve their numeric status and attached data. Return deliberate public messages; internal exception details are visible to the caller.
+export default defineMcpTool({
+  description: 'Check connectivity',
+  handler: () => 'pong',
+})
+```
 
-Resources and prompts have no `isError` result on the wire, so their failures are JSON-RPC errors.
+Do not add an empty schema or an unused Zod import. A no-input handler receives `event` as its first argument if it needs request context. With an input schema, the signature is `(args, event)`.
 
-Cache application services with Nitro's `defineCachedFunction` when appropriate, and call the cached service from your definition. Tool definitions no longer accept `cache: '5m'`.
+## Cached external data with typed output
 
-Include every user or tenant boundary in a private cache key. Cache shared public data separately from authenticated results. `outputSchema` validation failures are protocol errors, rather than successful cached responses.
+For Nuxt 4 / Nitro 2 on Node:
+
+```ts [server/mcp/tools/get-product.ts]
+import { defineCachedFunction } from 'nitropack/runtime'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+import { z } from 'zod'
+
+const productSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+const getProduct = defineCachedFunction(async (id: string) => {
+  const response = await fetch(
+    `https://api.example.com/products/${encodeURIComponent(id)}`,
+  )
+  if (!response.ok) throw new Error('The product service is unavailable.')
+  return productSchema.parse(await response.json())
+}, {
+  name: 'mcp-public-product',
+  maxAge: 600,
+  swr: false,
+})
+
+export default defineMcpTool({
+  description: 'Get a public product',
+  annotations: { readOnlyHint: true, openWorldHint: true },
+  inputSchema: z.object({ id: z.string().min(1) }),
+  outputSchema: productSchema,
+  handler: ({ id }) => getProduct(id),
+})
+```
+
+Replace the example upstream URL. The default key hashes function arguments, so each product ID gets its own entry. `maxAge` is seconds; `swr: false` waits for fresh data after expiry. Parse upstream data before caching it. For standalone Nitro 3, import `defineCachedFunction` from `nitro/cache` and tool helpers from `nitro-mcp-toolkit`.
+
+Cache application values rather than JSON-RPC responses. Authorize private operations on every invocation and include verified user/tenant identity in the cached function arguments. Do not capture identity in a shared closure or put the only access check inside a cached function.
+
+The beta does not accept the old tool-level `cache: '10m'` option. See [errors and caching](https://mcp-toolkit.nuxt.dev/tools/errors-caching) for storage, lifecycle, and client-cache distinctions. Worker lifecycle support must use the host's event/runtime; a toolkit MCP event inside Nitro 2 is not its native H3 v1 cache event.
+
+## Typed schema examples
+
+```ts [server/mcp/tools/preview-search.ts]
+import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+const input = z.object({
+  query: z.string(),
+  limit: z.number().int().positive().default(10),
+})
+const examples = [{ query: 'caching' }] satisfies z.input<typeof input>[]
+
+export default defineMcpTool({
+  description: 'Preview search parameters',
+  inputSchema: input.meta({ examples }),
+  handler: args => args,
+})
+```
+
+Zod's `.meta({ examples })` emits the JSON Schema `examples` annotation. The explicit `satisfies` check types the examples. Client use of examples varies.
+
+MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a custom convention, not a standard MCP input-example field. The 0.x top-level `inputExamples` helper is not in the current beta; do not generate it as though it exists. Use the custom metadata convention only for a client that expects it. See [annotations and metadata](https://mcp-toolkit.nuxt.dev/tools/annotations).
+
+## Results and errors
+
+Use `toolResult({ content, structuredContent })` for a full protocol envelope alongside an output schema. Without it, objects with fields named `content` or `isError` still mean schema data when an output schema exists. `imageResult` and `audioResult` create media blocks.
+
+Thrown application errors become `isError` results; numeric HTTP error status and data are included in the public error text. Invalid arguments and invalid advertised output are protocol errors. Keep private diagnostics in application logging.
+
+Annotations describe behavior but never grant authorization. Use typed `group`, `tags`, and `scopes` properties; do not hand-build their generated `_meta` entries. For private catalog metadata, use independently authenticated endpoints.

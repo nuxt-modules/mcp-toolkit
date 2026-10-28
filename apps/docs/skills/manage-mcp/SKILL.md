@@ -20,17 +20,35 @@ export default defineNuxtConfig({
 
 Create default exports under `server/mcp/{tools,resources,prompts}`. The endpoint is `/mcp`; names and titles come from filenames. Use explicit imports from `@nuxtjs/mcp-toolkit/server` when auto-imports are disabled.
 
-```ts
+```ts [server/mcp/tools/bmi-calculator.ts]
 import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+const bmiOutput = z.object({
+  bmi: z.number(),
+  category: z.enum(['underweight', 'normal', 'overweight', 'obese']),
+})
 
 export default defineMcpTool({
-  description: 'Read a project',
-  inputSchema: z.object({ id: z.string() }),
-  handler: ({ id }, event) => readProjectForUser(id, event.context.oauth?.sub),
+  description: 'Calculate Body Mass Index from height and weight',
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  inputSchema: z.object({
+    heightM: z.number().positive().describe('Height in meters'),
+    weightKg: z.number().positive().describe('Weight in kilograms'),
+  }),
+  outputSchema: bmiOutput,
+  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+    const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
+    const category = bmi < 18.5 ? 'underweight'
+      : bmi < 25 ? 'normal'
+        : bmi < 30 ? 'overweight' : 'obese'
+
+    return { bmi, category }
+  },
 })
 ```
 
-With input, callbacks receive `(args, event)`; without input, they receive `event`. Keep identity in request context, never in a definition shared across users. See [tools](references/tools.md).
+With input, callbacks receive `(args, event)`; without input, they receive `event`. Omit `inputSchema` for definitions without arguments and remove unused schema imports. Keep identity in request context, never in a definition shared across users. See [tools](references/tools.md).
 
 ## Results, resources, and prompts
 
@@ -40,15 +58,24 @@ Resources use `uri` or `uriTemplate`, top-level `mimeType`, and a handler return
 
 Prompts return a string for one user message, or an explicit `messages` result. Use `arguments` with completion callbacks when dynamic suggestions are needed. See [prompts](references/prompts.md).
 
+## Caching and input examples
+
+Cache reusable application functions with Nitro `defineCachedFunction`, leaving tool input/output schemas in place. Use `nitropack/runtime` in Nuxt 4/Nitro 2 or `nitro/cache` in Nitro 3. Define the cached function outside the handler, specify `name`, set `maxAge` in seconds, and choose `swr` explicitly. Hash all data-selection arguments, including verified identity for private results; authorization must run on every invocation before calling the cached function. Follow the host version’s storage and lifecycle requirements.
+
+The current beta has no tool-level `cache` option or typed top-level `inputExamples` helper. For schema examples, use JSON Schema annotations (Zod 4: `.meta({ examples })`) and check their types with `satisfies z.input<typeof schema>[]`. `_meta` is standard MCP extension metadata, but `_meta.inputExamples` is a custom convention that clients may ignore. Do not describe it as a required or universally supported API. See the complete [tool examples](references/tools.md).
+
 ## Endpoints and discovery
 
-```ts
-mcp: {
-  servers: {
-    default: { dir: 'mcp' },
-    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+```ts [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit'],
+  mcp: {
+    servers: {
+      default: { dir: 'mcp' },
+      admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+    },
   },
-}
+})
 ```
 
 This mounts `/mcp` and `/mcp/admin`. Each server scans only its own roots. Paths are relative to every Nuxt layer's server directory. The main app overrides the same relative file in extended layers; earlier configured directory roots take priority. Duplicate advertised names and URIs fail validation.
