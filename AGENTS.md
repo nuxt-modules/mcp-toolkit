@@ -246,6 +246,10 @@ export default defineMcpTool({
 
 Schemas are complete Standard Schema objects. With input, handlers receive `(args, event)`; without input, they receive `event`. Output schemas narrow and validate the returned data. Full envelopes alongside output schemas require `toolResult()`.
 
+For definitions without arguments, omit `inputSchema` and any unused schema-library import. Do not add an empty `z.object({})` as boilerplate.
+
+Keep substantive documentation examples for typed output and caching. Explain the actual beta API: schema `examples` are JSON Schema annotations, MCP `_meta` is extension metadata, and `_meta.inputExamples` is a custom client convention. Do not present removed convenience options as implemented APIs or remove useful examples merely to shorten a guide.
+
 Resources use `uri` or `uriTemplate`, top-level MIME metadata, and text or contents results. Prompt strings are user messages; explicit messages support other roles. Completion uses explicit prompt `arguments` or resource-template callbacks.
 
 Configure Nuxt endpoints with `mcp.servers`, keyed by logical name. `default` uses the base route; other keys use `<route>/<key>` unless overridden. Each `dir` is relative to every Nuxt layer’s server directory. Earlier roots take priority, with the main app before extended layers.

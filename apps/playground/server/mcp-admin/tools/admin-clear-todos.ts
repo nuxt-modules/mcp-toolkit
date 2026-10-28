@@ -1,5 +1,3 @@
-import { z } from 'zod'
-
 export default defineMcpTool({
   name: 'admin_clear_todos',
   title: 'Admin Clear Todos',
@@ -12,7 +10,6 @@ export default defineMcpTool({
     idempotentHint: true,
     openWorldHint: false,
   },
-  inputSchema: z.object({}),
   handler: async () => {
     const allTodos = await db.query.todos.findMany()
     if (allTodos.length === 0) {

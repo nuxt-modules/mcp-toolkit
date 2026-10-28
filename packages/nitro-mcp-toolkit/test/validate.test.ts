@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod'
 import {
   createMcpHandler,
   defineMcpPrompt,
@@ -51,7 +50,7 @@ describe('createMcpHandler validation', () => {
     const build = () =>
       createMcpHandler({
         tools: [
-          defineMcpTool({ name: 'greet', inputSchema: z.object({}), handler: () => 'a' }),
+          defineMcpTool({ name: 'greet', handler: () => 'a' }),
           defineMcpTool({ name: 'greet', handler: () => 'b' }),
           defineMcpTool({ name: '', handler: () => 'c' }),
         ],

@@ -33,22 +33,22 @@ Use the Model Context Protocol to standardize how LLMs interact with your Nuxt a
 
 :landing-feature-item{description="Define your tools with Zod schemas and full TypeScript inference. No more guessing argument types." icon="i-lucide-shield-check" title="Type-Safe Tools" to="/advanced/typescript"}
 
-:landing-feature-item{description="Built on the official MCP SDK, ensuring compatibility with all MCP clients like Claude, Cursor, ChatGPT and more." icon="i-lucide-check-circle-2" title="Standard Compatible" to="/getting-started/connection"}
+:landing-feature-item{description="Share the Nitro MCP runtime, with modern and legacy protocol paths for clients such as Claude, Cursor and ChatGPT." icon="i-lucide-check-circle-2" title="Standard Compatible" to="/getting-started/connection"}
 
 
-:landing-feature-item{description="Let LLMs write JavaScript that orchestrates tools in a secure V8 sandbox. Cut token overhead by up to 82%." icon="i-lucide-terminal" title="Code Mode" to="/advanced/code-mode"}
+:landing-feature-item{description="Advertise and validate output schemas, with structured data and a JSON text fallback for clients." icon="i-lucide-braces" title="Structured Output" to="/tools/schema-handler"}
 
 :landing-feature-item{description="Intercept requests to add authentication, logging and rate limiting. Access event context from your tools." icon="i-lucide-shield" title="Middleware" to="/advanced/middleware"}
 
-:landing-feature-item{description="Cache tool and resource responses with Nitro. Just add cache: '1h' to any definition." icon="i-lucide-zap" title="Built-in Cache" to="/tools/errors-caching"}
+:landing-feature-item{description="Reuse application work with Nitro cached functions. Keep typed outputs and choose cache keys and storage explicitly." icon="i-lucide-zap" title="Nitro Caching" to="/tools/errors-caching"}
 
-:landing-feature-item{description="Persist state across tool calls with useMcpSession(). Build multi-step workflows and track conversations." icon="i-lucide-save" title="Sessions" to="/advanced/sessions"}
+:landing-feature-item{description="Describe inputs with complete schemas, defaults and examples. Omit input declarations for tools without arguments." icon="i-lucide-list-checks" title="Schema Validation" to="/tools/schema-handler"}
 
-:landing-feature-item{description="Show different tools per user with enabled guards. Control visibility based on authentication, roles or context." icon="i-lucide-toggle-right" title="Dynamic Definitions" to="/advanced/dynamic-definitions"}
+:landing-feature-item{description="Authenticate endpoints and require verified scopes when tools run. Give private catalogs their own endpoint." icon="i-lucide-lock" title="Authorization" to="/tools/groups-organization"}
 
 :landing-feature-item{description="InstallButton component, SVG badges and deeplinks to let users add your MCP server to their IDE instantly." icon="i-lucide-download" title="1-Click Install" to="/getting-started/connection"}
 
-:landing-feature-item{description="Create separate MCP endpoints with their own tools, resources and configuration. Organize by domain or version." icon="i-lucide-server" title="Multiple Handlers" to="/handlers/overview"}
+:landing-feature-item{description="Create separate MCP endpoints with their own tools, resources and configuration. Organize by domain or version." icon="i-lucide-server" title="Multiple Endpoints" to="/tools/groups-organization#give-each-endpoint-its-own-directories"}
 
 :landing-feature-item{description="Verify LLMs call the right tools with the AI SDK and Evalite. Catch regressions before they reach production." icon="i-lucide-flask-conical" title="Evals" to="/advanced/evals"}
 
@@ -78,34 +78,29 @@ Define tools, resources and prompts using standard TypeScript files. No complex 
 
 #tools
 ```ts
-// server/mcp/tools/weather.ts
+// server/mcp/tools/calculate-total.ts
 import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpTool({
-  description: 'Get current weather for a location',
-  inputSchema: {
-    city: z.string().describe('City name'),
-    unit: z.enum(['celsius', 'fahrenheit']).default('celsius')
-  },
-  annotations: { readOnlyHint: true },
-  cache: '1h',
-  handler: async ({ city, unit }) => {
-    const data = await fetchWeather(city)
-    return { temperature: data.temp, unit, city }
-  }
+  description: 'Add a list of numbers',
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  inputSchema: z.object({ values: z.array(z.number()) }),
+  outputSchema: z.object({ total: z.number() }),
+  handler: ({ values }) => ({ total: values.reduce((sum, value) => sum + value, 0) }),
 })
 ```
 
 #resources
 ```ts
-// server/mcp/resources/readme.ts
+// server/mcp/resources/help.ts
+import { defineMcpResource } from '@nuxtjs/mcp-toolkit/server'
+
 export default defineMcpResource({
-  file: 'README.md',
-  description: 'The project documentation',
-  annotations: {
-    audience: ['user', 'assistant'],
-    lastModified: new Date().toISOString(),
-  }
+  uri: 'docs://help',
+  description: 'Application help',
+  mimeType: 'text/plain',
+  handler: () => 'Use the total tool to add numbers.',
 })
 ```
 
@@ -113,15 +108,12 @@ export default defineMcpResource({
 ```ts
 // server/mcp/prompts/summarize.ts
 import { z } from 'zod'
+import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpPrompt({
-  description: 'Summarize a text',
-  inputSchema: {
-    text: z.string().describe('Text to summarize'),
-    format: z.enum(['bullet-points', 'paragraph']).default('paragraph')
-  },
-  handler: async ({ text, format }) =>
-    `Summarize this text as ${format}:\n\n${text}`
+  description: 'Summarize text',
+  inputSchema: z.object({ text: z.string() }),
+  handler: ({ text }) => `Summarize this text:\n\n${text}`,
 })
 ```
 ::
