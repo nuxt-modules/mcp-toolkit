@@ -1,1 +1,1 @@
-export * from '../mcp/definitions'
+export * from '../index'

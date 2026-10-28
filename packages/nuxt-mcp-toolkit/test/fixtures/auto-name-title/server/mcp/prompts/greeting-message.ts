@@ -1,4 +1,4 @@
-import { defineMcpPrompt } from '../../../../../../src/runtime/server/types'
+import { defineMcpPrompt } from '../../../../../../src/runtime/server/index'
 
 // name and title are auto-generated from filename
 export default defineMcpPrompt({

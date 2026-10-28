@@ -4,7 +4,7 @@ import {
   authorizationServerMetadataUrl,
   protectedResourceMetadataUrl,
 } from './oauth-url.ts'
-import type { H3Event } from 'h3'
+import type { H3Event } from 'h3/generic'
 import type { JWTPayload } from 'jose'
 import type { AuthOptions } from 'h3-mcp'
 

@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery, setHeader } from 'h3'
+import { defineEventHandler, getQuery } from 'nuxt/server'
 
 export type SupportedIDE = 'cursor' | 'vscode'
 
@@ -102,9 +102,9 @@ export default defineEventHandler((event) => {
 
   const svg = generateBadgeSVG(options)
 
-  setHeader(event, 'Content-Type', 'image/svg+xml')
-  setHeader(event, 'Content-Security-Policy', 'default-src \'none\'; style-src \'unsafe-inline\'; sandbox')
-  setHeader(event, 'Cache-Control', 'public, max-age=86400')
+  event.res.headers.set('Content-Type', 'image/svg+xml')
+  event.res.headers.set('Content-Security-Policy', 'default-src \'none\'; style-src \'unsafe-inline\'; sandbox')
+  event.res.headers.set('Cache-Control', 'public, max-age=86400')
 
   return svg
 })

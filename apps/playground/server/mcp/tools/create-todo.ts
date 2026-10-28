@@ -11,14 +11,14 @@ export default defineMcpTool({
     idempotentHint: false,
     openWorldHint: false,
   },
-  inputExamples: [
+  _meta: { inputExamples: [
     { title: 'Buy groceries', content: 'Milk, eggs, bread' },
     { title: 'Fix login bug' },
-  ],
-  inputSchema: {
+  ] },
+  inputSchema: z.object({
     title: z.string().describe('The title of the todo'),
     content: z.string().optional().describe('Optional description or content for the todo'),
-  },
+  }),
   handler: async ({ title, content }) => {
     const event = useEvent()
     const userId = event.context.userId as string

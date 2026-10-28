@@ -1,192 +1,116 @@
-# Troubleshooting Guide
+# Troubleshooting — 1.0
 
-Detailed solutions for common MCP server issues.
+## Migrate to 1.0
 
-## Auto-Imports Issues
+Nuxt MCP Toolkit 1.0 uses `nitro-mcp-toolkit` and h3-mcp for protocol handling. Nuxt supplies discovery, layers, auto-imports, and development tooling. Requires Nuxt 4.6 or later.
 
-### TypeScript Config
+## Schemas and callbacks
 
-Ensure `.nuxt/types` is included:
+Wrap raw Zod shapes with `z.object(...)`. Any complete Standard Schema library is supported. With an input schema, callbacks receive `(args, event)`; without one, they receive `event`.
 
-```json
-{
-  "extends": "./.nuxt/tsconfig.json"
+```diff
+-inputSchema: { id: z.string() },
+-handler: (args, extra) => ...,
++inputSchema: z.object({ id: z.string() }),
++handler: (args, event) => ...,
+```
+
+`event.context.mcp` exposes protocol context, request cancellation, progress, and logging. Broadcast catalog changes with `event.context.mcp.notifier.toolsChanged()`; `notify` remains the engine's request notification function. Read identity from verified request context rather than capturing it in a shared definition.
+
+A tool with `outputSchema` returns its schema data directly. Use `toolResult(...)` for an explicit protocol envelope, including an `isError` result. Plain objects always mean schema data when an output schema is present.
+
+## Endpoints
+
+Replace `defineMcpHandler` configuration files with named servers:
+
+```ts
+mcp: {
+  servers: {
+    default: { dir: 'mcp' },
+    admin: { dir: 'mcp-admin', route: '/mcp/admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+  },
 }
 ```
 
-### IDE Not Recognizing Types
+Move `server/mcp/handlers/admin/{tools,resources,prompts}` into `server/mcp-admin/{tools,resources,prompts}`. Remove the old `index.ts` handler configuration files. Every endpoint discovers only its own roots; `defaultHandlerStrategy` and global handler-attribution filters are removed.
 
-1. Restart TypeScript server in IDE
-2. Close and reopen IDE
-3. Delete `.nuxt` directory and rebuild
+For live callbacks, export `createMcpHandler(...)` from a normal Nuxt route and import explicitly named shared definitions. Native Nuxt middleware runs before the engine and its context reaches definitions.
 
-### Multiple Nuxt Instances
+## Resources and prompts
 
-If running multiple Nuxt apps, ensure correct workspace:
+Use `uriTemplate` instead of an SDK `ResourceTemplate`. Template `list` returns descriptors directly. Resource `mimeType`, `icons`, and `_meta` are top-level fields. Replace the `file` shorthand with an explicit URI and handler or a Nitro server asset.
 
-```typescript
-// nuxt.config.ts
+Prompt strings become user messages. Return an explicit `messages` result for an assistant role. Replace `completable()` with an `arguments` entry carrying a completion callback.
+
+## Authorization and catalogs
+
+`enabled(event)` is removed. Put sensitive catalogs on separately authenticated endpoints. Use verified OAuth claims and definition `scopes` to authorize invocation, enumeration, and completion. Static metadata stays listed when only scopes are required.
+
+Import a generated server from `nitro-mcp-toolkit/servers` and read its `definitions` array. Filter summaries with ordinary array operations. The `listMcp*` and `getMcp*` query helpers are removed. `X-MCP-Tools` still narrows a client's tool selection and never grants access.
+
+## State and client compatibility
+
+Use `session: true` for legacy engine sessions. Modern clients use request context and continuations. Store durable application state by verified user or tenant identity, independently of a particular MCP connection. The old session-storage helpers are removed.
+
+The default `era: 'dual'` supports modern and 2025 Streamable HTTP clients. Ordinary tools, resources, and prompts work in both modes. Input-required continuations require modern capabilities; expose ordinary arguments or instructions for older clients. Do not assume every client supports interactive requests.
+
+The toolkit delegates continuation helpers to h3-mcp. Use `defineRequestState` for signed state, validate resumed input, and reauthorize the operation. Signed state is visible to its holder and is not automatically single-use.
+
+## Removed runtime helpers
+
+- Code Mode and `experimental_codeMode`; remove `secure-exec` when no other feature needs it.
+- `useMcpServer`, `getSdkServer`, direct SDK registration, and SDK callback-extra types.
+- `useMcpSession` and `invalidateMcpSession`; use explicit application storage.
+- `useMcpElicitation`; use the engine's input-request helpers with capability checks.
+- `useMcpLogger`; use `event.context.mcp.log` for client logging and an application logger for server diagnostics.
+- `mcp:server:created`, `mcp:config:resolved`, and `mcp:definitions:paths`.
+- Per-definition `cache: '5m'`; cache application services with Nitro utilities.
+
+`mcp:tool:called` remains available for configured endpoints. A listener error reaches the caller. Protocol Logging is deprecated; keep server diagnostics in application logging. For general input documentation, use schema examples. `_meta.inputExamples` is a custom client convention, and the beta does not currently expose the old typed top-level helper. See [tool examples](tools.md).
+
+## Beta scope
+
+Built-in MCP Apps are deferred. Move server-side App logic into regular tools.
+
+## Configuration
+
+```ts [nuxt.config.ts]
 export default defineNuxtConfig({
-  typescript: {
-    strict: true,
-    shim: false,
+  modules: ['@nuxtjs/mcp-toolkit'],
+  mcp: {
+    name: 'My server',
+    version: '1.0.0',
+    description: 'Read and update projects.',
+    instructions: 'Read a project before changing it.',
+    route: '/mcp',
+    dir: 'mcp',
+    autoImports: true,
+    era: 'dual',
+    origin: { allow: ['https://app.example.com'] },
   },
 })
 ```
 
-## Endpoint Issues
+`dir` is relative to each Nuxt layer's server directory. The main app overrides the same relative file in an extended layer. `dir` can also be an array; earlier directories take priority. Duplicate advertised names or resource URIs are errors.
 
-### CORS Errors
+`era: 'dual'` serves modern and legacy clients. `era: 'modern'` accepts only the modern revision. `session` enables legacy protocol sessions; modern requests use request-scoped context and continuations. `logging` advertises MCP logging, independently of your application's server logger.
 
-If accessing from different origin:
+Use `auth` for static tokens or `oauth` for JWT resource-server verification. [Authentication](/examples/authentication) describes both.
 
-```typescript
-// nuxt.config.ts
-export default defineNuxtConfig({
-  nitro: {
-    routeRules: {
-      '/mcp/**': {
-        cors: true,
-        headers: {
-          'access-control-allow-methods': 'GET,POST',
-          'access-control-allow-origin': '*',
-        },
-      },
-    },
+```ts
+mcp: {
+  name: 'Projects',
+  servers: {
+    default: {},
+    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
   },
-})
-```
-
-### Custom Port
-
-```typescript
-// nuxt.config.ts
-export default defineNuxtConfig({
-  devServer: {
-    port: 3001,
-  },
-})
-```
-
-Then connect to: `http://localhost:3001/mcp`
-
-### Behind Proxy
-
-```typescript
-// MCP client config
-{
-  "url": "https://your-domain.com/mcp"
 }
 ```
 
-## Validation Issues
+The keys identify endpoints: `default` uses `/mcp`, and `admin` uses `/mcp/admin`. Each can override `route` and other server options. Supplying `servers` defines the complete configured set.
 
-### Complex Object Validation
+Other Nuxt options are `enabled`, `autoImports`, `inspector.headers`, and `llms`. Built-in MCP Apps configuration is removed.
 
-```typescript
-inputSchema: {
-  user: z.object({
-    name: z.string().min(2).describe('Name (min 2 chars)'),
-    email: z.string().email().describe('Valid email'),
-    age: z.number().min(18).optional().describe('Age (18+)'),
-  }).describe('User information'),
-}
-```
+## Caching checklist
 
-### Array Validation
-
-```typescript
-inputSchema: {
-  tags: z.array(z.string())
-    .min(1, 'At least one tag required')
-    .max(10, 'Maximum 10 tags')
-    .describe('Tags list'),
-}
-```
-
-### Custom Validation
-
-```typescript
-inputSchema: {
-  password: z.string()
-    .min(8)
-    .regex(/[A-Z]/, 'Must contain uppercase')
-    .regex(/[0-9]/, 'Must contain number')
-    .describe('Strong password'),
-}
-```
-
-## Performance Issues
-
-### Slow Tool Responses
-
-Add caching:
-
-```typescript
-export default defineMcpTool({
-  cache: '5m',
-  handler: async () => {
-    // expensive operation
-  },
-})
-```
-
-### Large Resource Payloads
-
-Implement pagination:
-
-```typescript
-export default defineMcpResource({
-  uriTemplate: {
-    uriTemplate: 'items:///{page}',
-    arguments: {
-      page: z.number().default(1).describe('Page number'),
-    },
-  },
-  handler: async (uri, args) => {
-    const items = await fetchItems({
-      page: args.page,
-      limit: 50,
-    })
-    return { contents: [{ uri: uri.toString(), text: JSON.stringify(items) }] }
-  },
-})
-```
-
-## Discovery Issues
-
-### Files Not Being Discovered
-
-Check file structure:
-
-```bash
-# Correct
-server/mcp/tools/my-tool.ts
-
-# Incorrect
-server/tools/my-tool.ts  # Wrong directory
-server/mcp/my-tool.ts    # Missing tools subdirectory
-```
-
-### Named Exports Not Working
-
-```typescript
-// ❌ Wrong - named export
-export const myTool = defineMcpTool({ ... })
-
-// ✅ Correct - default export
-export default defineMcpTool({ ... })
-```
-
-### Module Not Loading
-
-Check module order in `nuxt.config.ts`:
-
-```typescript
-export default defineNuxtConfig({
-  modules: [
-    '@nuxtjs/mcp-toolkit',  // Should be early in the list
-    // other modules...
-  ],
-})
-```
+Keep `outputSchema` on cached tools. Wrap application work with Nitro `defineCachedFunction` outside the handler, use seconds for `maxAge`, and set `swr` explicitly. Check the default argument key covers every result-selection value, including verified identity for private results, and keep authorization outside the cached function. Choose the import and storage/lifecycle API for the installed Nitro version. MCP client cache hints do not cache server execution. See [complete examples](tools.md).

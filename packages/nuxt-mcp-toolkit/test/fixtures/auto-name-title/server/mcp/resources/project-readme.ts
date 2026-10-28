@@ -1,4 +1,4 @@
-import { defineMcpResource } from '../../../../../../src/runtime/server/types'
+import { defineMcpResource } from '../../../../../../src/runtime/server/index'
 
 // name and title are auto-generated from filename
 export default defineMcpResource({

@@ -1,13 +1,13 @@
-import { defineMcpTool } from '../../../../../../src/runtime/server/types'
+import { defineMcpTool } from '../../../../../../src/runtime/server/index'
 import { z } from 'zod'
 import { createError } from 'h3'
 
 export default defineMcpTool({
   name: 'error_tool',
   description: 'A tool that throws errors for testing',
-  inputSchema: {
+  inputSchema: z.object({
     mode: z.enum(['h3', 'h3-data', 'plain']).describe('Error mode'),
-  },
+  }),
   handler: async ({ mode }) => {
     if (mode === 'h3') {
       throw createError({ statusCode: 404, message: 'User not found' })
