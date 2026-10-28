@@ -557,6 +557,8 @@ Enabling `auth` requires at least one of `tokens` or `validate` — a config wit
 
 ### OAuth 2.1 resource server
 
+Nuxt 4.6 or later exposes this same configuration through `mcp.oauth` or each `mcp.servers` entry. See the [Nuxt OAuth guide](https://mcp-toolkit.nuxt.dev/getting-started/oauth) for discovery, scopes, and provider setup.
+
 This package is the **resource server**, not the authorization server. It does not mint tokens, serve a login page, or speak DCR. Pair it with an authorization server — Clerk, Okta, WorkOS, Auth0, or [Better Auth's MCP plugin](https://www.better-auth.com/docs/plugins/mcp).
 
 `mcp({ oauth })` is the usual path: JWT access tokens, file-based definitions, RFC 9728 metadata mounted for you. Verified claims land on `event.context.oauth`. `iss` defaults to `authorizationServers`, `aud` to `resource`. JWTs must carry a nonempty `sub` and an `exp`. `jwt.audience: false` requires a `verify` callback that checks resource binding itself; an `azp` allowlist identifies clients, not the resource a token may access. An empty `authorizedParties` list denies every token.
@@ -692,7 +694,7 @@ For a `validate` callback, or anything else that is a live function rather than 
 
 ## Testing
 
-`nitro-mcp-toolkit/testing` connects a real MCP client to your handler in memory. No port, no build, no HTTP server.
+`nitro-mcp-toolkit/testing` connects a real MCP client to your handler in memory. Install its optional peer `@modelcontextprotocol/client@^2` in your test project. No port, no build, no HTTP server.
 
 ```ts
 import { createMcpTestClient, textOf } from 'nitro-mcp-toolkit/testing'

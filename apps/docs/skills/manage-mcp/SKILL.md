@@ -9,7 +9,7 @@ Use this skill to install the module, author tools/resources/prompts, configure 
 
 ## Start
 
-Install `@nuxtjs/mcp-toolkit` and a Standard Schema library such as Zod. Requires Nuxt 4.6 or later and a Nitro server builder.
+Install `@nuxtjs/mcp-toolkit@beta` and a Standard Schema library such as Zod. Before the first beta publication, use the reviewed package-preview command. Inspect the installed version; unversioned installs select stable 0.x while `latest` remains there. Requires Nuxt 4.6 or later and a Nitro server builder.
 
 ```ts
 export default defineNuxtConfig({
@@ -86,7 +86,7 @@ Put endpoint extension plugins in `<dir>/plugins.ts` with `defineMcpPlugins([...
 
 ## Authorization and request context
 
-Use endpoint `oauth` for JWT access tokens and protected-resource metadata. Provider connectors under `nitro-mcp-toolkit/oauth/*` return the same options. Custom verifiers use `createMcpOAuth({ verify })`.
+Use endpoint `oauth` for JWT access tokens and protected-resource metadata. Provider connectors under `nitro-mcp-toolkit/oauth/*` return the same options. Custom verifiers use `createMcpOAuth({ verify })`. The toolkit serves protected-resource metadata and validates access tokens; the provider owns login, client registration and token issuance. Test wrong audience/issuer, expiry, missing scopes and the real client login flow. See [OAuth setup](references/oauth.md).
 
 Definition `scopes` check verified `event.context.oauth` claims before invocation or application enumeration/completion. Static metadata remains listed. Sensitive catalogs belong behind their own endpoint authentication. Do not trust client role headers or argument user IDs as identity.
 

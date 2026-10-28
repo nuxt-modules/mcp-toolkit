@@ -1,66 +1,105 @@
-# Middleware — 1.0
+# Middleware and hooks — 1.0
 
-## Middleware and authentication
+## Run ordinary server middleware
 
-Use ordinary Nuxt server middleware for application context. The Nitro 2 adapter carries that context into the shared MCP event.
+Nuxt middleware runs before the MCP endpoint. The adapter preserves its context on the shared request event.
 
-```ts [server/middleware/mcp-user.ts]
+```ts [server/middleware/request-timing.ts]
 import { defineEventHandler } from 'nuxt/server'
 
-export default defineEventHandler(async (event) => {
-  event.context.user = await authenticateRequest(event)
+export default defineEventHandler((event) => {
+  event.context.requestStartedAt = performance.now()
 })
 ```
 
-Use endpoint `oauth` for JWT verification and `scopes` on definitions for operation-level checks. A static `auth.tokens` list protects an entire endpoint. A custom resource verifier belongs in a manually composed route.
+An application authentication service can also populate verified context. Never derive authorization from an unverified role header, supplied user ID, or arbitrary metadata.
 
-`enabled(event)` is removed. Required scopes gate invocation while static metadata remains listed. If even a tool's existence is sensitive, put it on a separately authenticated endpoint. Client-provided headers and arguments are not user identity.
+## Authenticate the MCP endpoint
 
-## Authentication
-
-```ts
-mcp: {
-  servers: {
-    default: {},
-    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+```ts [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit'],
+  mcp: {
+    oauth: {
+      resource: 'https://example.com/mcp',
+      authorizationServers: ['https://auth.example.com'],
+      jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+      scopesSupported: ['profile:read'],
+    },
   },
-}
+})
 ```
 
-For OAuth, configure `oauth: { resource, authorizationServers, jwt: { jwks, issuer, audience } }`. Provider connectors are available at `nitro-mcp-toolkit/oauth/clerk`, `/okta`, and `/workos` and return this same configuration. The toolkit verifies access tokens and serves protected-resource metadata; it does not issue tokens.
+Endpoint OAuth validates access tokens before operations run. Define required `scopes` on tools, resources, and prompts, and constrain private application queries to the current verified identity. A static `auth.tokens` list is also available for endpoint credentials.
 
-Put `scopes: ['projects:write']` on a definition to require all listed scopes. Claims come from `event.context.oauth`; absent claims fail closed. Scope checks protect invocation and application completion/enumeration callbacks, while static catalog metadata stays listed.
+Native middleware that blocks discovery metadata or replaces a 401 challenge can prevent OAuth clients from discovering the authorization server. Keep protected-resource metadata publicly discoverable and let the endpoint's OAuth integration produce the challenge.
 
-A custom verifier belongs in `createMcpOAuth({ verify })` and a manually composed route. Enforce verified user and tenant boundaries in application queries. A client-provided role header or tool argument is not authorization.
+## Read the explicit MCP event
 
-## Tool call hooks
+```ts [server/mcp/tools/request-language.ts]
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+export default defineMcpTool({
+  description: 'Read this request language preference',
+  handler: event => ({ language: event.req.headers.get('accept-language') }),
+})
+```
+
+Input tools receive `(args, event)`; no-input tools receive `event`. The MCP event uses H3 v2 even on a Nitro 2 host. APIs requiring a native H3 v1 event need host integration; do not force the type with a cast.
+
+The old endpoint `middleware(event, next)` option and `extractToolNames` helper are removed. Use native middleware for host concerns, endpoint authentication for access, and [tool-call hooks](https://mcp-toolkit.nuxt.dev/advanced/hooks) for operation metrics. Read protocol context in the callback rather than consuming the request body in middleware.
+
+## Record settled calls
+
+Configured endpoints emit `mcp:tool:called` after a tool produces a result. In a Nuxt 4/Nitro 2 application:
 
 ```ts [server/plugins/mcp-metrics.ts]
+import { defineNitroPlugin } from 'nitropack/runtime'
+
 export default defineNitroPlugin((app) => {
-  app.hooks.hook('mcp:tool:called', ({ name, result, durationMs, event }) => {
-    console.log({ name, durationMs, user: event.context.oauth?.sub, result })
+  app.hooks.hook('mcp:tool:called', ({ name, result, durationMs }) => {
+    console.info({ tool: name, durationMs, failed: 'isError' in result && result.isError === true })
   })
 })
 ```
 
-Configured endpoints fire the hook after a tool settles into a result, including application failures converted to `isError`. A listener error reaches the caller; keep observers focused on recording.
+The payload contains `name`, `result`, `durationMs`, and `event`. Application errors converted to `isError` are results too. Avoid logging complete tool arguments, tokens, or private result content.
 
-Manually composed handlers accept `onToolCall` with the same payload. Use a Nitro 3 plugin's explicit `definePlugin` import in a Nitro 3 app.
+A hook listener is awaited. If it throws, the error reaches the caller; the toolkit does not silently continue. Handle operational failures in your logging destination deliberately.
 
-`mcp:server:created` and `mcp:config:resolved` are removed with the SDK-server runtime. Compose definitions, endpoint options, and extension plugins directly.
+For Nitro 3, register the same hook through its native plugin API (`definePlugin` from `nitro`, and the plugin's `hooks`). Keep imports appropriate to the host.
 
-## Logging and progress
+## Observe a composed route
 
-Keep server diagnostics in the application logger or tool-call hook. MCP Logging is deprecated; existing engine logging support follows the selected protocol revision, including a per-request log level for modern clients.
+```ts [server/routes/private-mcp.ts]
+import { z } from 'zod'
+import { createMcpHandler, defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
-```ts
-handler: async (args, event) => {
-  event.context.mcp.log?.('info', { message: 'Starting' }, 'projects')
-  event.context.mcp.progress?.(0, 10, 'Starting')
-  return runTask(args, event.context.mcp.signal)
-}
+const greet = defineMcpTool({
+  name: 'greet',
+  inputSchema: z.object({ name: z.string() }),
+  outputSchema: z.object({ greeting: z.string() }),
+  handler: ({ name }) => ({ greeting: `Hello ${name}!` }),
+})
+
+export default createMcpHandler({
+  name: 'private-tools',
+  auth: { tokens: [process.env.MCP_PRIVATE_TOKEN!] },
+  tools: [greet],
+  onToolCall: ({ name, durationMs }) => {
+    console.info({ tool: name, durationMs })
+  },
+})
 ```
 
-The engine handles the notification transport on both eras. A plain JSON response has no stream for notifications, so these functions may do nothing when the client did not request a channel. Progress uses the client's token; never invent one.
+The callback receives the same settled-call payload. Composed routes use their own callback rather than implicitly joining the configured-endpoint hook.
 
-Use your application logger for server-side logs and the `mcp:tool:called` hook for metrics. The old `useMcpLogger` wrapper is removed. Keep private server diagnostics out of client-visible notifications.
+## Replace retired hooks
+
+| Removed hook | Replacement |
+| --- | --- |
+| `mcp:definitions:paths` | Ordered roots and Nuxt layer overlays |
+| `mcp:config:resolved` | Explicit endpoint configuration and current-request authorization |
+| `mcp:server:created` | Definition composition and installed engine extension plugins |
+
+The new runtime has no SDK server to mutate. Keep protocol behavior in the shared engine and application business logic in services. See [observability](https://mcp-toolkit.nuxt.dev/advanced/logging), [custom roots](https://mcp-toolkit.nuxt.dev/advanced/custom-paths), and [endpoint composition](https://mcp-toolkit.nuxt.dev/handlers/examples-routing).
