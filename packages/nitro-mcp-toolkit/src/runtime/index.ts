@@ -20,10 +20,8 @@ export {
   getMissingInputs,
   getSupportedInputs,
   inputRequired,
-  mcpElicit,
-  mcpElicitUrl,
-  McpJsonRpcError,
-} from 'h3-mcp'
+} from './input.ts'
+export { mcpElicit, mcpElicitUrl, McpJsonRpcError } from 'h3-mcp'
 
 export type { McpEvent, McpNotifier } from './context.ts'
 export type { McpHandler, McpHandlerOptions } from './handler.ts'

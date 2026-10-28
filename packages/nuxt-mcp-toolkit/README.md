@@ -6,8 +6,10 @@ Requires Nuxt 4.6 or later. The default endpoint supports the modern `2026-07-28
 
 ## Install
 
+Install the beta explicitly. Before its first publication, use the exact PR preview package command; stable 0.x remains on `latest`.
+
 ```sh
-pnpm add @nuxtjs/mcp-toolkit zod
+pnpm add @nuxtjs/mcp-toolkit@beta zod
 ```
 
 ```ts
@@ -111,6 +113,28 @@ Standalone Nitro 3 uses `nitro/cache` for the cached function and `nitro-mcp-too
 ## Examples and metadata
 
 Use JSON Schema examples when documenting expected input; Zod 4 emits them from `.meta({ examples })`. MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a custom client convention, not a core MCP feature, and the old typed top-level `inputExamples` helper is not currently available in the beta. See [annotations and metadata](https://github.com/nuxt-modules/mcp-toolkit/blob/v1/apps/docs/content/2.tools/2.annotations.md).
+
+## OAuth
+
+The module exposes the shared resource-server setup globally or per named endpoint:
+
+```ts [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit'],
+  mcp: {
+    oauth: {
+      resource: 'https://example.com/mcp',
+      authorizationServers: ['https://auth.example.com'],
+      jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+      scopesSupported: ['profile:read'],
+    },
+  },
+})
+```
+
+The module mounts protected-resource metadata and verifies JWT signature, issuer, resource audience, expiry, and subject. Claims are available on `event.context.oauth`. Put required `scopes` on definitions; advertising `scopesSupported` alone does not enforce them.
+
+The authorization provider owns login, client registration, and token issuance. Provider connectors are available at `nitro-mcp-toolkit/oauth/clerk`, `/okta`, and `/workos`. See the [Nuxt OAuth guide](https://mcp-toolkit.nuxt.dev/getting-started/oauth) and [manual wiring](https://mcp-toolkit.nuxt.dev/examples/authentication#compose-oauth-manually). Test the actual client/provider flow as well as local token verification.
 
 ## Named endpoints and layers
 

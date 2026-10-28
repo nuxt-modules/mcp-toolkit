@@ -1,61 +1,40 @@
 # Nuxt MCP Starter
 
-Minimal Nuxt 4 app with [@nuxtjs/mcp-toolkit](https://mcp-toolkit.nuxt.dev) — one tool, one resource, one prompt — meant to be copied **alone** via **giget** or **tiged**. MCP definitions use **explicit** imports from `@nuxtjs/mcp-toolkit/server` (and Zod), matching the docs.
+A Nuxt 4.6 or later app with one tool, one resource, and one prompt, using explicit imports from `@nuxtjs/mcp-toolkit/server`.
 
-## Use this template (standalone)
+## Copy the beta template
 
-Downloads **only** `apps/mcp-starter` from GitHub:
+Copy `apps/mcp-starter` from the `v1` branch after the implementation stack has merged there. Install `@nuxtjs/mcp-toolkit@beta` explicitly in the copied application; the template manifest's current `^0.24.3` dependency selects the stable line until the release process updates it.
 
-```bash
-npx giget@latest gh:nuxt-modules/mcp-toolkit/apps/mcp-starter my-nuxt-mcp
+```sh
+npx giget@latest gh:nuxt-modules/mcp-toolkit/apps/mcp-starter#v1 my-nuxt-mcp
 cd my-nuxt-mcp
-pnpm install
+pnpm add @nuxtjs/mcp-toolkit@beta
+pnpm exec nuxt prepare
 pnpm dev
 ```
 
-With [tiged](https://github.com/tiged/tiged):
+Before the first beta publication, use the exact package-preview installation command on the reviewed PR. Preview packages let you test the implementation before merging the beta version PR.
 
-```bash
-npx tiged@latest nuxt-modules/mcp-toolkit/apps/mcp-starter my-nuxt-mcp
-cd my-nuxt-mcp
+The site serves at `http://localhost:3000`; connect an MCP client to `http://localhost:3000/mcp`. See [connection](https://mcp-toolkit.nuxt.dev/getting-started/connection) and [OAuth](https://mcp-toolkit.nuxt.dev/getting-started/oauth). Configure authentication before exposing private data.
+
+## Develop inside this monorepo
+
+The root workspace override selects the local package. Prepare and build the module before starting the consumer so its public server exports exist:
+
+```sh
 pnpm install
-pnpm dev
+pnpm dev:prepare
+pnpm build:module
+pnpm dev:starter
 ```
 
-- Site: [http://localhost:3000](http://localhost:3000)
-- MCP (HTTP): `http://localhost:3000/mcp`
+## Explore the definitions
 
-`@nuxtjs/mcp-toolkit` comes from **npm** (`^0.13.3`), so the published package already includes the `server` build — no extra step.
+| Kind | Name | Purpose |
+| --- | --- | --- |
+| Tool | `ping` | Echo and health check |
+| Resource | `starter-info` | Explain where definitions belong |
+| Prompt | `iterate` | Bootstrap an assistant conversation |
 
-Hook up Cursor, VS Code, or other clients using [Connection](https://mcp-toolkit.nuxt.dev/getting-started/connection) in the docs.
-
-## Develop inside this monorepo (contributors)
-
-`pnpm dev:prepare` **stubs** the module and removes `dist/runtime/...`, so **`@nuxtjs/mcp-toolkit/server` does not resolve** until you build the module.
-
-From the repository root:
-
-```bash
-pnpm install
-pnpm run dev:prepare
-pnpm run build:module
-pnpm run dev:starter
-```
-
-The root `pnpm.overrides` keeps `@nuxtjs/mcp-toolkit` on the **workspace** package while this app’s `package.json` still declares `^0.13.3` for giget/tiged users.
-
-## What’s inside
-
-| Kind      | Name           | Purpose |
-|-----------|----------------|--------|
-| Tool      | `ping`         | Simple echo / health check |
-| Resource  | `starter-info` | `starter://info` — where to add definitions |
-| Prompt    | `iterate`      | Short bootstrap prompt for an assistant |
-
-## Blog prompt
-
-[PROMPT.md](./PROMPT.md) is a **short paste** for an assistant (giget/tiged + doc link + explicit imports + “ask what I want next”).
-
-## Deploy
-
-Deploy like any Nuxt app on [Vercel](https://vercel.com) or your host of choice. The MCP route is served by Nitro; check timeouts for long-running tools.
+Add files under `server/mcp/{tools,resources,prompts}`. Use complete schemas for inputs and outputs; omit empty input schemas. Deploy with a Nitro server, and test production authentication and streaming timeouts on the intended host.

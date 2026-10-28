@@ -1,12 +1,10 @@
-# Troubleshooting — 1.0
-
-## Migrate to 1.0
+# Migration and troubleshooting — 1.0
 
 Nuxt MCP Toolkit 1.0 uses `nitro-mcp-toolkit` and h3-mcp for protocol handling. Nuxt supplies discovery, layers, auto-imports, and development tooling. Requires Nuxt 4.6 or later.
 
 ## Schemas and callbacks
 
-Wrap raw Zod shapes with `z.object(...)`. Any complete Standard Schema library is supported. With an input schema, callbacks receive `(args, event)`; without one, they receive `event`.
+Wrap raw Zod shapes with `z.object(...)`. Use a supported complete Standard Schema implementation. With an input schema, callbacks receive `(args, event)`; without one, they receive `event`.
 
 ```diff
 -inputSchema: { id: z.string() },
@@ -21,15 +19,21 @@ A tool with `outputSchema` returns its schema data directly. Use `toolResult(...
 
 ## Endpoints
 
-Replace `defineMcpHandler` configuration files with named servers:
+Replace `defineMcpHandler` configuration files with named servers in `mcp.servers`:
 
-```ts
-mcp: {
-  servers: {
-    default: { dir: 'mcp' },
-    admin: { dir: 'mcp-admin', route: '/mcp/admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+```ts [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit'],
+  mcp: {
+    servers: {
+      default: { dir: 'mcp' },
+      admin: {
+        dir: 'mcp-admin',
+        auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] },
+      },
+    },
   },
-}
+})
 ```
 
 Move `server/mcp/handlers/admin/{tools,resources,prompts}` into `server/mcp-admin/{tools,resources,prompts}`. Remove the old `index.ts` handler configuration files. Every endpoint discovers only its own roots; `defaultHandlerStrategy` and global handler-attribution filters are removed.
@@ -48,6 +52,8 @@ Prompt strings become user messages. Return an explicit `messages` result for an
 
 Import a generated server from `nitro-mcp-toolkit/servers` and read its `definitions` array. Filter summaries with ordinary array operations. The `listMcp*` and `getMcp*` query helpers are removed. `X-MCP-Tools` still narrows a client's tool selection and never grants access.
 
+Configure JWT resource-server support through `mcp.oauth` or each named endpoint. The module mounts protected-resource metadata and verifies resource-bound access tokens. Provider login and token issuance remain with the authorization server. See [OAuth setup](https://mcp-toolkit.nuxt.dev/getting-started/oauth).
+
 ## State and client compatibility
 
 Use `session: true` for legacy engine sessions. Modern clients use request context and continuations. Store durable application state by verified user or tenant identity, independently of a particular MCP connection. The old session-storage helpers are removed.
@@ -55,6 +61,14 @@ Use `session: true` for legacy engine sessions. Modern clients use request conte
 The default `era: 'dual'` supports modern and 2025 Streamable HTTP clients. Ordinary tools, resources, and prompts work in both modes. Input-required continuations require modern capabilities; expose ordinary arguments or instructions for older clients. Do not assume every client supports interactive requests.
 
 The toolkit delegates continuation helpers to h3-mcp. Use `defineRequestState` for signed state, validate resumed input, and reauthorize the operation. Signed state is visible to its holder and is not automatically single-use.
+
+## Keep output schemas and move caching to services
+
+`outputSchema` remains supported, with return-type inference and runtime validation. Use a complete schema such as `z.object({ total: z.number() })` and return its data directly. No-argument tools omit `inputSchema` rather than adding `z.object({})`.
+
+Replace per-tool `cache: '10m'` with a Nitro cached application function using `maxAge: 600` seconds and an explicit `swr` setting. Keep that function outside the handler; check current authorization before calling it, and include verified identity in the key for private data. See the [complete cached product example](https://mcp-toolkit.nuxt.dev/tools/errors-caching#cache-the-data-used-by-a-tool).
+
+JSON Schema’s `examples` annotation can describe expected inputs. Zod 4 emits it from `.meta({ examples })`; add a `satisfies z.input<typeof schema>[]` check for the example values. See [annotations and metadata](https://mcp-toolkit.nuxt.dev/tools/annotations) for the distinction between schema examples, custom `_meta.inputExamples`, and MCP metadata.
 
 ## Removed runtime helpers
 
@@ -66,51 +80,38 @@ The toolkit delegates continuation helpers to h3-mcp. Use `defineRequestState` f
 - `mcp:server:created`, `mcp:config:resolved`, and `mcp:definitions:paths`.
 - Per-definition `cache: '5m'`; cache application services with Nitro utilities.
 
-`mcp:tool:called` remains available for configured endpoints. A listener error reaches the caller. Protocol Logging is deprecated; keep server diagnostics in application logging. For general input documentation, use schema examples. `_meta.inputExamples` is a custom client convention, and the beta does not currently expose the old typed top-level helper. See [tool examples](tools.md).
+`mcp:tool:called` remains available for configured endpoints. A listener error reaches the caller. Keep server diagnostics in application logging; protocol Logging is deprecated. The old typed `inputExamples` helper is not currently available. Use schema examples for general documentation, or `_meta.inputExamples` only for a client integration that expects that custom convention; it is not a standard MCP input-example field.
 
-## Beta scope
+## MCP Apps are deferred
 
-Built-in MCP Apps are deferred. Move server-side App logic into regular tools.
+The 1.0 beta focuses on tools, resources, prompts, authentication, streaming, and MCP client compatibility. Built-in MCP Apps support is deferred.
 
-## Configuration
+The beta removes:
 
-```ts [nuxt.config.ts]
-export default defineNuxtConfig({
-  modules: ['@nuxtjs/mcp-toolkit'],
-  mcp: {
-    name: 'My server',
-    version: '1.0.0',
-    description: 'Read and update projects.',
-    instructions: 'Read a project before changing it.',
-    route: '/mcp',
-    dir: 'mcp',
-    autoImports: true,
-    era: 'dual',
-    origin: { allow: ['https://app.example.com'] },
-  },
+- `defineMcpApp` and the `McpApp*` types.
+- `useMcpApp` and the `@nuxtjs/mcp-toolkit/app` entrypoint.
+- `mcp.apps` and `mcp.appsDir` configuration.
+- Automatic discovery of `app/mcp/*.vue`, Vue widget bundling, and host-bridge composables.
+
+Files under `app/mcp` no longer generate tools or `ui://mcp-app/*` resources. Remove configuration and imports for the built-in integration.
+
+## Move handlers into tools
+
+Move the server-side logic from each `defineMcpApp` handler into a file under `server/mcp/tools`. The tool returns ordinary MCP data:
+
+```ts [server/mcp/tools/status.ts]
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+export default defineMcpTool({
+  description: 'Read the current status',
+  handler: async () => ({ status: 'ready' }),
 })
 ```
 
-`dir` is relative to each Nuxt layer's server directory. The main app overrides the same relative file in an extended layer. `dir` can also be an array; earlier directories take priority. Duplicate advertised names or resource URIs are errors.
+The client can call `status` as a regular tool. The beta does not generate or render a Vue widget for its result.
 
-`era: 'dual'` serves modern and legacy clients. `era: 'modern'` accepts only the modern revision. `session` enables legacy protocol sessions; modern requests use request-scoped context and continuations. `logging` advertises MCP logging, independently of your application's server logger.
+General resources and custom metadata remain available. Apps may return as a separately reviewed integration. Applications that require the existing built-in widget integration can remain on the 0.x release while testing the beta separately.
 
-Use `auth` for static tokens or `oauth` for JWT resource-server verification. [Authentication](/examples/authentication) describes both.
+## Verify your migrated application
 
-```ts
-mcp: {
-  name: 'Projects',
-  servers: {
-    default: {},
-    admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
-  },
-}
-```
-
-The keys identify endpoints: `default` uses `/mcp`, and `admin` uses `/mcp/admin`. Each can override `route` and other server options. Supplying `servers` defines the complete configured set.
-
-Other Nuxt options are `enabled`, `autoImports`, `inspector.headers`, and `llms`. Built-in MCP Apps configuration is removed.
-
-## Caching checklist
-
-Keep `outputSchema` on cached tools. Wrap application work with Nitro `defineCachedFunction` outside the handler, use seconds for `maxAge`, and set `swr` explicitly. Check the default argument key covers every result-selection value, including verified identity for private results, and keep authorization outside the cached function. Choose the import and storage/lifecycle API for the installed Nitro version. MCP client cache hints do not cache server execution. See [complete examples](tools.md).
+Run Nuxt preparation and your type checker, then test the built application with modern and legacy clients. Include scopes, private ownership, wrong/expired tokens, resource enumeration, prompt completion, streaming disconnects, and interaction capability fallbacks. See [testing](https://mcp-toolkit.nuxt.dev/advanced/evals).
