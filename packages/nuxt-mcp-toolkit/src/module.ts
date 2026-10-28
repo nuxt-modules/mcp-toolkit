@@ -3,14 +3,12 @@ import { defaultMcpConfig, getMcpConfig } from './runtime/server/mcp/config'
 import { ROUTES } from './runtime/server/mcp/constants'
 import { setupAutoImports } from './setup/auto-imports'
 import { buildDefaultPaths, setupDefinitionsLoader } from './setup/definitions'
-import { probeAppsDir } from './setup/mcp-apps/discover'
 import { setupEvlog } from './setup/evlog'
 import { setupNitroAliases } from './setup/nitro-aliases'
 import { addOAuthMetadataHandlers } from './setup/oauth-metadata'
 import { name, version } from '../package.json'
 import type { McpIcon } from './runtime/server/mcp/definitions/handlers'
 import type { McpConfig, McpDefaultHandlerStrategy, McpSecurityConfig } from './runtime/server/mcp/config'
-import type { McpAppsOptions } from './setup/mcp-apps/options'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
 
@@ -82,17 +80,6 @@ export interface ModuleOptions {
    * @default 'mcp'
    */
   dir?: string
-  /**
-   * Base directory for MCP App SFCs relative to Nuxt's app directory.
-   * The module will look for `.vue` files in this directory across layers.
-   * @default 'mcp' (app/mcp)
-   */
-  appsDir?: string
-  /**
-   * Customize the isolated Vue bundle used for MCP Apps.
-   * This is a Vue-only build and does not share the Nuxt runtime or module graph.
-   */
-  apps?: McpAppsOptions
   /**
    * Configuration for the DevTools inspector launcher.
    * Useful when the server requires HTTP headers such as `Authorization`.
@@ -210,11 +197,8 @@ export default defineNuxtModule<ModuleOptions>({
 
     setupEvlog(nuxt, options)
 
-    const appsDir = options.appsDir ?? 'mcp'
-    const hasApps = probeAppsDir(appsDir)
-
     if (options.autoImports !== false) {
-      setupAutoImports(resolver, { hasApps })
+      setupAutoImports(resolver)
     }
 
     addServerTemplate({
@@ -222,7 +206,7 @@ export default defineNuxtModule<ModuleOptions>({
       getContents: () => `export default ${JSON.stringify(mcpConfig)}`,
     })
 
-    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log, { appsDir, apps: options.apps })
+    setupDefinitionsLoader(nuxt, buildDefaultPaths(mcpConfig.dir), options, resolver, log)
 
     registerTypeReferences(nuxt, resolver)
 

@@ -1,11 +1,11 @@
 ---
 name: manage-mcp
-description: Manage MCP servers in Nuxt with @nuxtjs/mcp-toolkit — setup, create tools/resources/prompts, organize with handlers, build interactive MCP Apps, add elicitation/logging/sessions, review, and troubleshoot.
+description: Manage MCP servers in Nuxt with @nuxtjs/mcp-toolkit — setup, create tools/resources/prompts, organize with handlers, add elicitation/logging/sessions, review, and troubleshoot.
 ---
 
 # Manage MCP
 
-Complete skill for managing Model Context Protocol (MCP) servers in Nuxt with [`@nuxtjs/mcp-toolkit`](https://mcp-toolkit.nuxt.dev). Setup, create tools/resources/prompts, organize with multi-handler folder convention, build interactive UI widgets (MCP Apps), wire up sessions and observability, review, and troubleshoot.
+Complete skill for managing Model Context Protocol (MCP) servers in Nuxt with [`@nuxtjs/mcp-toolkit`](https://mcp-toolkit.nuxt.dev). Setup, create tools/resources/prompts, organize with multi-handler folder convention, wire up sessions and observability, review, and troubleshoot.
 
 ## When to Use
 
@@ -13,7 +13,6 @@ Complete skill for managing Model Context Protocol (MCP) servers in Nuxt with [`
 - **Create**: "Add a tool that calculates BMI", "Expose a README as a resource", "Create a code-review prompt"
 - **Organize**: "Split my MCP into admin + public endpoints", "Filter tools per user"
 - **Customize**: "Add authentication to my MCP", "Log every tool call to Axiom", "Stream progress to the client"
-- **Build apps**: "Add an interactive Vue widget callable from ChatGPT/Cursor"
 - **Persist state**: "Remember the user across tool calls in one session"
 - **Review**: "Review my MCP implementation", "Check for best practices"
 - **Troubleshoot**: "My tool isn't discovered", "Auto-imports don't work", "OAuth flow keeps triggering"
@@ -74,9 +73,6 @@ server/mcp/
         ├── index.ts       # defineMcpHandler({ middleware: requireAdmin })
         ├── tools/         # auto-attached to /mcp/admin
         └── resources/
-
-app/mcp/                   # Optional: MCP Apps (interactive Vue widgets)
-└── palette.vue            # → app `palette`, callable from ChatGPT / Cursor
 ```
 
 ### Verification
@@ -668,57 +664,11 @@ See [logging docs →](https://mcp-toolkit.nuxt.dev/advanced/logging) and [evlog
 
 ---
 
-## MCP Apps (interactive UI widgets)
+## 1.0 beta scope
 
-Author Vue Single-File Components in `app/mcp/` — they ship to MCP-Apps-compatible hosts (ChatGPT, Cursor) as interactive widgets backed by your MCP tool handler.
+Built-in MCP Apps support is deferred. Do not generate `defineMcpApp`, `useMcpApp`, `@nuxtjs/mcp-toolkit/app` imports, `mcp.apps`/`mcp.appsDir` configuration, or Vue files intended for automatic MCP discovery. Move server-side App handlers into regular `server/mcp/tools` definitions. Tools, resources, prompts, and custom metadata remain available.
 
-```vue [app/mcp/palette.vue]
-<script setup lang="ts">
-import { z } from 'zod'
-
-defineMcpApp({
-  description: 'Pick a colour and preview a palette.',
-  inputSchema: { base: z.string().describe('Hex colour, e.g. #2563eb') },
-  handler: async ({ base }) => ({
-    structuredContent: await $fetch('/api/palette', { query: { base } }),
-  }),
-})
-
-const { data, sendPrompt } = useMcpApp<{ swatches: { name: string, hex: string }[] }>()
-</script>
-
-<template>
-  <div class="grid grid-cols-3 gap-2">
-    <button
-      v-for="s in data?.swatches"
-      :key="s.hex"
-      class="rounded-md p-3 text-white"
-      :style="{ background: s.hex }"
-      @click="sendPrompt(`Use ${s.name}`)"
-    >
-      {{ s.name }}
-    </button>
-  </div>
-</template>
-```
-
-Each SFC becomes a tool, a UI resource at `ui://mcp-app/<name>`, and a single-file HTML bundle. The handler runs server-side; the host renders the HTML from the `ui://` resource and pushes `structuredContent` into the iframe.
-
-`useMcpApp<T>()` exposes `data`, `meta`, `loading`, `error`, `hostContext`, `hostCapabilities`, `callTool(name, params)`, `sendPrompt(prompt)`, `openLink(url)`, `requestDisplayMode(mode)`, `updateModelContext(params)`, and `downloadFile(contents)`.
-
-CSP is strict by default — opt extra origins in:
-
-```typescript
-defineMcpApp({
-  csp: {
-    resourceDomains: ['https://images.example.com'], // <img>, <style>, fonts
-    connectDomains: ['https://api.example.com'], // fetch / XHR / WebSocket
-  },
-  // ...
-})
-```
-
-See [MCP Apps reference →](./references/apps.md).
+See the [beta migration guide](https://mcp-toolkit.nuxt.dev/getting-started/beta-migration).
 
 ---
 
@@ -997,7 +947,6 @@ export default defineNuxtConfig({
 | --- | --- |
 | `defineMcpTool` / `defineMcpResource` / `defineMcpPrompt` | Declare a definition (auto-discovered). |
 | `defineMcpHandler` | Custom handler with middleware / dynamic tools. |
-| `defineMcpApp` (in `app/mcp/*.vue`) | Interactive Vue widget. |
 | `imageResult` / `audioResult` | Wrap binary content in a tool response. |
 | `completable` | Argument autocomplete on prompts. |
 | `extractToolNames` | Parse tool names from the JSON-RPC body in middleware. |
@@ -1005,7 +954,6 @@ export default defineNuxtConfig({
 | `useMcpSession<T>()` | Per-session storage (sessions must be enabled). |
 | `useMcpLogger(name?)` | Client notifications + server-side wide events. |
 | `useMcpElicitation()` | Form / URL / confirm prompts to the client. |
-| `useMcpApp<T>()` (in MCP App SFCs) | Reactive `data` + `callTool` / `sendPrompt` bridge. |
 | `listMcpTools` / `listMcpResources` / `listMcpPrompts` / `listMcpDefinitions` | JSON-friendly summaries (catalog endpoints). |
 | `getMcpTools` / `getMcpResources` / `getMcpPrompts` | Raw definitions (feed back into a handler). |
 | `getSdkServer` | Reach the low-level SDK `Server` from an `McpServer` (advanced). |
@@ -1042,6 +990,6 @@ export default defineNuxtConfig({
 
 - [Documentation](https://mcp-toolkit.nuxt.dev)
 - [Tools](https://mcp-toolkit.nuxt.dev/tools/overview) · [Resources](https://mcp-toolkit.nuxt.dev/resources/overview) · [Prompts](https://mcp-toolkit.nuxt.dev/prompts/overview)
-- [Handlers](https://mcp-toolkit.nuxt.dev/handlers/overview) · [Apps](https://mcp-toolkit.nuxt.dev/apps/overview)
+- [Handlers](https://mcp-toolkit.nuxt.dev/handlers/overview) · [Beta migration](https://mcp-toolkit.nuxt.dev/getting-started/beta-migration)
 - [Sessions](https://mcp-toolkit.nuxt.dev/advanced/sessions) · [Logging](https://mcp-toolkit.nuxt.dev/advanced/logging) · [Elicitation](https://mcp-toolkit.nuxt.dev/advanced/elicitation) · [Hooks](https://mcp-toolkit.nuxt.dev/advanced/hooks)
 - [MCP Specification](https://modelcontextprotocol.io)

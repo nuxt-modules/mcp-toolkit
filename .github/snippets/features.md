@@ -1,7 +1,6 @@
-- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, prompts, and apps
+- 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
 - 📦 **File-based** - Organize definitions in intuitive directory structures
 - 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single app
-- 🖼️ **MCP Apps** - Ship interactive Vue UI widgets to MCP Apps-compatible hosts
 - 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
 - 📝 **TypeScript First** - Full type safety with auto-imports
 - 🔒 **Zod Validation** - Built-in input/output validation

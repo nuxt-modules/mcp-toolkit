@@ -93,21 +93,18 @@ async function loadMcpDefinitions(
   templateFilename: string,
   basePaths: string[],
   handlerDirs: DiscoveredHandlerDir[],
-  extraFiles: LoadedFile[] = [],
 ): Promise<LoadResult> {
   try {
     const roots = buildScanRoots(basePaths, handlerDirs, type)
     const result = await loadDefinitionFiles(roots, { recursive: true })
     warnOnNameCollisions(type, result.files)
 
-    const allFiles = [...result.files, ...extraFiles]
-
     addServerTemplate({
       filename: templateFilename,
-      getContents: () => createTemplateContent(type, allFiles.map(fileToTemplateEntry)),
+      getContents: () => createTemplateContent(type, result.files.map(fileToTemplateEntry)),
     })
 
-    return { ...result, count: allFiles.length, files: allFiles }
+    return result
   }
   catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -194,12 +191,12 @@ async function loadHandlers(paths: string[] = [], handlerDirs: DiscoveredHandler
   }
 }
 
-export async function loadTools(basePaths: string[], handlerDirs: DiscoveredHandlerDir[] = [], extraFiles: LoadedFile[] = []) {
-  return loadMcpDefinitions('tools', '#nuxt-mcp-toolkit/tools.mjs', basePaths, handlerDirs, extraFiles)
+export async function loadTools(basePaths: string[], handlerDirs: DiscoveredHandlerDir[] = []) {
+  return loadMcpDefinitions('tools', '#nuxt-mcp-toolkit/tools.mjs', basePaths, handlerDirs)
 }
 
-export async function loadResources(basePaths: string[], handlerDirs: DiscoveredHandlerDir[] = [], extraFiles: LoadedFile[] = []) {
-  return loadMcpDefinitions('resources', '#nuxt-mcp-toolkit/resources.mjs', basePaths, handlerDirs, extraFiles)
+export async function loadResources(basePaths: string[], handlerDirs: DiscoveredHandlerDir[] = []) {
+  return loadMcpDefinitions('resources', '#nuxt-mcp-toolkit/resources.mjs', basePaths, handlerDirs)
 }
 
 export async function loadPrompts(basePaths: string[], handlerDirs: DiscoveredHandlerDir[] = []) {
@@ -234,18 +231,13 @@ async function loadDefaultHandler(paths: string[] = []): Promise<boolean> {
   }
 }
 
-export interface LoaderExtras {
-  toolFiles?: LoadedFile[]
-  resourceFiles?: LoadedFile[]
-}
-
-export async function loadAllDefinitions(paths: LoaderPaths, extras: LoaderExtras = {}) {
+export async function loadAllDefinitions(paths: LoaderPaths) {
   try {
     const handlerDirs = await discoverHandlerDirs(paths.handlers ?? [])
 
     const [tools, resources, prompts, handlers, hasDefaultHandler] = await Promise.all([
-      loadTools(paths.tools, handlerDirs, extras.toolFiles),
-      loadResources(paths.resources, handlerDirs, extras.resourceFiles),
+      loadTools(paths.tools, handlerDirs),
+      loadResources(paths.resources, handlerDirs),
       loadPrompts(paths.prompts, handlerDirs),
       loadHandlers(paths.handlers ?? [], handlerDirs),
       loadDefaultHandler(paths.handlers ?? []),
