@@ -1,4 +1,5 @@
 import { addServerTemplate, logger } from '@nuxt/kit'
+import type { NuxtServerTemplate } from '@nuxt/schema'
 import {
   createExcludePatterns,
   createTemplateContent,
@@ -14,6 +15,8 @@ import {
 } from './utils'
 
 const log = logger.withTag('@nuxtjs/mcp-toolkit')
+
+type WithTemplate<T> = T & { template: NuxtServerTemplate }
 
 export interface LoaderPaths {
   tools: string[]
@@ -94,7 +97,7 @@ async function loadMcpDefinitions(
   basePaths: string[],
   handlerDirs: DiscoveredHandlerDir[],
   extraFiles: LoadedFile[] = [],
-): Promise<LoadResult> {
+): Promise<WithTemplate<LoadResult>> {
   try {
     const roots = buildScanRoots(basePaths, handlerDirs, type)
     const result = await loadDefinitionFiles(roots, { recursive: true })
@@ -102,12 +105,15 @@ async function loadMcpDefinitions(
 
     const allFiles = [...result.files, ...extraFiles]
 
-    addServerTemplate({
-      filename: templateFilename,
-      getContents: () => createTemplateContent(type, allFiles.map(fileToTemplateEntry)),
-    })
-
-    return { ...result, count: allFiles.length, files: allFiles }
+    return {
+      ...result,
+      count: allFiles.length,
+      files: allFiles,
+      template: {
+        filename: templateFilename,
+        getContents: () => createTemplateContent(type, allFiles.map(fileToTemplateEntry)),
+      },
+    }
   }
   catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -124,13 +130,17 @@ async function loadMcpDefinitions(
  * top-level ones (folder handlers default to attribution-filtered tools, while
  * top-level handlers default to the full tool pool).
  */
-async function loadHandlers(paths: string[] = [], handlerDirs: DiscoveredHandlerDir[] = []): Promise<LoadResult> {
+async function loadHandlers(paths: string[] = [], handlerDirs: DiscoveredHandlerDir[] = []): Promise<WithTemplate<LoadResult>> {
   if (paths.length === 0 && handlerDirs.length === 0) {
-    addServerTemplate({
-      filename: '#nuxt-mcp-toolkit/handlers.mjs',
-      getContents: () => `export const handlers = []\n`,
-    })
-    return { count: 0, files: [], overriddenCount: 0 }
+    return {
+      count: 0,
+      files: [],
+      overriddenCount: 0,
+      template: {
+        filename: '#nuxt-mcp-toolkit/handlers.mjs',
+        getContents: () => `export const handlers = []\n`,
+      },
+    }
   }
 
   try {
@@ -171,19 +181,18 @@ async function loadHandlers(paths: string[] = [], handlerDirs: DiscoveredHandler
 
     const allEntries = [...topLevel.files.map(fileToTemplateEntry), ...folderEntries]
 
-    addServerTemplate({
-      filename: '#nuxt-mcp-toolkit/handlers.mjs',
-      getContents: () => createTemplateContent('handlers', allEntries, {
-        // Folder handlers always derive their `name` from the directory,
-        // overriding whatever the user wrote in the file.
-        nameOverride: e => e.handler,
-      }),
-    })
-
     return {
       count: topLevel.files.length + folderCount,
       files: topLevel.files,
       overriddenCount: topLevel.overriddenCount,
+      template: {
+        filename: '#nuxt-mcp-toolkit/handlers.mjs',
+        getContents: () => createTemplateContent('handlers', allEntries, {
+          // Folder handlers always derive their `name` from the directory,
+          // overriding whatever the user wrote in the file.
+          nameOverride: e => e.handler,
+        }),
+      },
     }
   }
   catch (error) {
@@ -212,25 +221,29 @@ export { loadHandlers }
  * Load the default handler from `mcp/index.ts` if it exists. Lets users
  * override the default `/mcp` route configuration.
  */
-async function loadDefaultHandler(paths: string[] = []): Promise<boolean> {
+async function loadDefaultHandler(paths: string[] = []): Promise<WithTemplate<{ found: boolean }>> {
   try {
     const indexFile = await findIndexFile(paths)
-    addServerTemplate({
-      filename: '#nuxt-mcp-toolkit/default-handler.mjs',
-      getContents: () => indexFile
-        ? `import handler from '${indexFile}'\nexport const defaultHandler = handler\n`
-        : `export const defaultHandler = null\n`,
-    })
-    return indexFile !== null
+    return {
+      found: indexFile !== null,
+      template: {
+        filename: '#nuxt-mcp-toolkit/default-handler.mjs',
+        getContents: () => indexFile
+          ? `import handler from '${indexFile}'\nexport const defaultHandler = handler\n`
+          : `export const defaultHandler = null\n`,
+      },
+    }
   }
   catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     log.error(`Failed to load default handler: ${message}`)
-    addServerTemplate({
-      filename: '#nuxt-mcp-toolkit/default-handler.mjs',
-      getContents: () => `export const defaultHandler = null\n`,
-    })
-    return false
+    return {
+      found: false,
+      template: {
+        filename: '#nuxt-mcp-toolkit/default-handler.mjs',
+        getContents: () => `export const defaultHandler = null\n`,
+      },
+    }
   }
 }
 
@@ -243,7 +256,7 @@ export async function loadAllDefinitions(paths: LoaderPaths, extras: LoaderExtra
   try {
     const handlerDirs = await discoverHandlerDirs(paths.handlers ?? [])
 
-    const [tools, resources, prompts, handlers, hasDefaultHandler] = await Promise.all([
+    const [tools, resources, prompts, handlers, defaultHandler] = await Promise.all([
       loadTools(paths.tools, handlerDirs, extras.toolFiles),
       loadResources(paths.resources, handlerDirs, extras.resourceFiles),
       loadPrompts(paths.prompts, handlerDirs),
@@ -251,8 +264,15 @@ export async function loadAllDefinitions(paths: LoaderPaths, extras: LoaderExtra
       loadDefaultHandler(paths.handlers ?? []),
     ])
 
+    // Register after all scans settle so the key order of `nitro.virtual`
+    // does not depend on which glob finishes first.
+    for (const loaded of [tools, resources, prompts, handlers, defaultHandler]) {
+      addServerTemplate(loaded.template)
+    }
+
     const results: LoadResults = {
-      tools, resources, prompts, handlers, hasDefaultHandler,
+      tools, resources, prompts, handlers,
+      hasDefaultHandler: defaultHandler.found,
       namedHandlerDirs: handlerDirs.length,
     }
 
