@@ -103,17 +103,17 @@
     "@types/node": "latest",
     "@vitejs/plugin-vue": "^6.0.10",
     "@vue/compiler-sfc": "^3.5.44",
-    "eslint": "^10.13.0",
-    "evlog": "^2.33.1",
+    "eslint": "^10.14.0",
+    "evlog": "^2.34.0",
     "nuxt": "^4.6.3",
-    "nuxt-llms": "^0.3.0",
+    "nuxt-llms": "^0.3.1",
     "secure-exec": "0.3.3",
     "typescript": "~6.0.3",
     "vite": "^8.3.5",
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^4.1.12",
     "vue": "^3.5.44",
-    "vue-tsc": "^3.3.13"
+    "vue-tsc": "^3.3.14"
   },
   "publishConfig": {
     "access": "public"
