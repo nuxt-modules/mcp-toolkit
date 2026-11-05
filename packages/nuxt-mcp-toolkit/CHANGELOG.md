@@ -1,5 +1,11 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.4
+
+### Patch Changes
+
+- [#408](https://github.com/nuxt-modules/mcp-toolkit/pull/408) [`c4f0414`](https://github.com/nuxt-modules/mcp-toolkit/commit/c4f04142349fd9a82ea9b110cf5c0b8f4974fd38) Thanks [@onmax](https://github.com/onmax)! - The module registers its server templates in a fixed order, so the key order of `nuxt.options.nitro.virtual` stays the same between identical builds.
+
 ## 0.24.3
 
 ### Patch Changes
