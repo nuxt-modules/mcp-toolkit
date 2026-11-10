@@ -63,12 +63,13 @@ export default defineMcpPlugins([{ id: 'fixture/nitro2', settings: () => ({ enab
 import { defineMcpTool } from ${JSON.stringify(toolkit)}
 export default defineMcpTool({ handler: () => 'purged' })
 `,
-      'server/mcp-admin/auth.ts': `
-import { defineMcpAuth } from ${JSON.stringify(toolkit)}
+      'server/mcp-admin/index.ts': `
+import { defineMcpServer } from ${JSON.stringify(toolkit)}
 import { useRuntimeConfig } from 'nitropack/runtime'
-export default defineMcpAuth({
-  schemes: ['bearer'],
-  validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken,
+export default defineMcpServer({
+  name: 'indexed-nitro2',
+  instructions: 'Nitro 2 index instructions',
+  auth: { schemes: ['bearer'], validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken },
 })
 `,
       'middleware.ts': `
@@ -150,7 +151,7 @@ export default defineNitroPlugin(app => {
       modules: [
         mcp(),
         mcp(composedOptions),
-        mcp({ route: '/admin/mcp', dir: 'server/mcp-admin', auth: './server/mcp-admin/auth.ts' }),
+        mcp({ route: '/admin/mcp', dir: 'server/mcp-admin' }),
         mcp({
           route: '/oauth/mcp',
           oauth: {

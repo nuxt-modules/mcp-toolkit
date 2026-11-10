@@ -84,7 +84,19 @@ export default defineMcpTool({
               jwt: { jwks: `http://127.0.0.1:${address.port}/jwks` },
             },
           }
-        : { auth: { tokens: ['fixture-token'] } }
+        : {}
+      if (!oauth) {
+        await writeFile(
+          join(directory, 'server/mcp/index.ts'),
+          `
+import { defineMcpServer } from 'nitro-mcp-toolkit'
+export default defineMcpServer({
+  name: 'packed-index',
+  auth: { schemes: ['bearer'], validate: ({ token }) => token === 'fixture-token' },
+})
+`,
+        )
+      }
       let app: { output: string; build: () => Promise<unknown>; close: () => Promise<void> }
       if (framework === 2) {
         await writeFile(

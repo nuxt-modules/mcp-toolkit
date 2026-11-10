@@ -138,3 +138,7 @@ See [catalog notifications](https://mcp-toolkit.nuxt.dev/advanced/dynamic-defini
 ## Runtime authentication with discovery
 
 An endpoint's `auth` accepts a server-only file path, resolved from the project root (Nuxt aliases and absolute paths also work). The file default-exports `defineMcpAuth({ schemes: ['bearer'], validate })` from `@nuxtjs/mcp-toolkit/server`; `validate` receives the engine credentials and MCP event on each request. Use `useRuntimeConfig()` from `nuxt/server` inside that callback for Nuxt secrets. Keep definitions under the configured `dir`; no manual tool imports or route middleware are needed. Static token options are build-time data. Auth module errors refuse requests, and `auth` cannot be combined with `oauth`.
+
+## Colocated server configuration
+
+Prefer `server/mcp/index.ts` or `server/mcp-admin/index.ts`, default-exporting `defineMcpServer()` from `@nuxtjs/mcp-toolkit/server`, for metadata, instructions and runtime auth callbacks. Keep only routing and directory selection in `mcp.servers`. The index overrides module defaults, with the first configured root containing an index winning across layers. Do not combine index auth with module auth or OAuth. Tools, resources and prompts stay discovered from that endpoint's own directories; do not reintroduce manual definition imports.

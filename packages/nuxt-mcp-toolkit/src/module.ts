@@ -44,7 +44,13 @@ export default defineNuxtModule<ModuleOptions>({
 
     addServerTemplate({
       filename: '#nuxt-mcp-toolkit/config.mjs',
-      getContents: () => `export default ${JSON.stringify({ name: options.name, route: baseRoute, description: options.description, websiteUrl: options.websiteUrl })}`,
+      getContents: () => {
+        const server = configured.get('default')
+        if (!server) return `export default ${JSON.stringify({ route: baseRoute })}`
+        const trimmed = (server.route ?? baseRoute).trim().replace(/\/+$/, '')
+        const route = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+        return `import metadata from ${JSON.stringify(`#mcp-config:${route}`)}\nexport default { ...metadata, route: ${JSON.stringify(route)} }`
+      },
     })
 
     nuxt.hook('modules:done', () => {

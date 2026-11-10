@@ -31,6 +31,11 @@ describe('llms.txt integration', async () => {
     expect(txt).toContain('[MCP documentation](https://docs.fixture.test/mcp)')
   })
 
+  it('uses the discovered server name in installation links', async () => {
+    const html = await $fetch<string>('/mcp/deeplink')
+    expect(html).toContain('name=Fixture%20MCP')
+  })
+
   it('preserves user-defined sections', async () => {
     const txt = await $fetch<string>('/llms.txt')
 
