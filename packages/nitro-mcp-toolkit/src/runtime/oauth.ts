@@ -2,6 +2,7 @@ import { createRemoteJWKSet, errors, jwtVerify } from 'jose'
 import {
   assertAbsoluteHttpUrl,
   authorizationServerMetadataUrl,
+  normalizeResource,
   protectedResourceMetadataUrl,
 } from './oauth-url.ts'
 import type { H3Event } from 'h3/generic'
@@ -70,6 +71,9 @@ export interface McpOAuthJwtOptions {
   audience?: string | string[] | false
   /** When set, the token's `azp` must be one of these. */
   authorizedParties?: string[]
+  /** Required protected-header type, for providers using an access-token JWT profile. */
+  typ?: string
+  requiredClaims?: string[]
 }
 
 export interface McpOAuthOptions {
@@ -154,10 +158,12 @@ function createJwtVerifier(jwt: McpOAuthJwtOptions, resource: string, issuers: s
         issuer,
         ...(audience === undefined ? {} : { audience }),
         clockTolerance: 5,
-        requiredClaims: ['exp', 'sub'],
+        requiredClaims: ['exp', 'sub', ...(jwt.requiredClaims ?? [])],
+        ...(jwt.typ ? { typ: jwt.typ } : {}),
       })
 
-      if (typeof payload.sub !== 'string' || payload.sub === '') return false
+      if (typeof payload.sub !== 'string' || payload.sub === '' || payload.cnf !== undefined)
+        return false
 
       if (parties) {
         if (typeof payload.azp !== 'string' || !parties.includes(payload.azp)) return false
@@ -209,8 +215,7 @@ function authorizationServerHandlerFor(issuer: string) {
  * conventions in for you.
  */
 export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
-  const resourceUrl = assertAbsoluteHttpUrl(options.resource, '`resource`')
-  const resource = resourceUrl.href.replace(/\/+$/, '') || resourceUrl.origin
+  const resource = normalizeResource(options.resource)
 
   const authorizationServers = options.authorizationServers.map((issuer) =>
     normalizeIssuer(issuer, '`authorizationServers` entry'),
@@ -250,6 +255,7 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
     schemes: ['bearer'],
     resourceMetadataUrl: metadataUrl.href,
     validate: async (credential, event) => {
+      delete event.context.oauth
       if (credential.scheme !== 'bearer') return false
       if (verifyJwt && !(await verifyJwt(credential.token, event))) return false
       if (options.verify && !(await options.verify(credential.token, event))) return false

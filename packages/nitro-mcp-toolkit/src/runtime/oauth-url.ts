@@ -32,6 +32,11 @@ export function assertAbsoluteHttpUrl(value: string, label: string, allowQuery =
   return url
 }
 
+export function normalizeResource(resource: string): string {
+  const url = assertAbsoluteHttpUrl(resource, '`resource`')
+  return url.href.replace(/\/+$/, '') || url.origin
+}
+
 function wellKnown(kind: string, value: string, label: string): URL {
   const url = assertAbsoluteHttpUrl(value, label)
   const path = url.pathname === '/' ? '' : url.pathname.replace(/\/+$/, '')
