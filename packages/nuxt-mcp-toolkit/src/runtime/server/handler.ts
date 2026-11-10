@@ -58,7 +58,7 @@ export function createMcpHandler(options: McpHandlerOptions = {}, plugins?: Plug
         },
       }), response)
     }),
-    { fetch: handler.fetch, definitions: handler.definitions, notify: handler.notify },
+    { fetch: handler.fetch, oauth: handler.oauth, definitions: handler.definitions, notify: handler.notify },
   )
 }
 

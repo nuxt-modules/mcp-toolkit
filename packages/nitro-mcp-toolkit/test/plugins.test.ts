@@ -144,7 +144,7 @@ describe('the generated handler', () => {
     )
 
     expect(code).toContain(`import { oauth } from "#mcp/mcp/oauth"`)
-    expect(code).toContain('auth: oauth.auth,')
+    expect(code).toContain('  oauth,')
     expect(code).toContain('}, { extensionPlugins: plugins })')
   })
 })

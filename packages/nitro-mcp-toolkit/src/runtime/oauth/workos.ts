@@ -1,6 +1,7 @@
 import { envValue } from './env.ts'
 import { assertAbsoluteHttpUrl } from '../oauth-url.ts'
-import type { McpOAuthSetup } from '../oauth.ts'
+import { createMcpOAuth } from '../oauth.ts'
+import type { McpOAuth, McpOAuthSetup } from '../oauth.ts'
 
 export interface WorkOSOAuthOptions {
   /** The MCP URL configured as a Resource Indicator in WorkOS. */
@@ -11,13 +12,13 @@ export interface WorkOSOAuthOptions {
 }
 
 /** WorkOS Connect access tokens bound to this MCP resource. */
-export function workos(options: WorkOSOAuthOptions): McpOAuthSetup {
+export function workos(options: WorkOSOAuthOptions): McpOAuthSetup & McpOAuth {
   const value = options.issuer ?? envValue(['WORKOS_AUTHKIT_ISSUER'])
   if (!value) {
     throw new Error('[nitro-mcp-toolkit] `workos` needs `issuer`, or `WORKOS_AUTHKIT_ISSUER`.')
   }
   const issuer = assertAbsoluteHttpUrl(value, '`workos.issuer`').href.replace(/\/+$/, '')
-  return {
+  const setup: McpOAuthSetup = {
     resource: options.resource,
     authorizationServers: [issuer],
     jwt: {
@@ -27,4 +28,5 @@ export function workos(options: WorkOSOAuthOptions): McpOAuthSetup {
     authorizationServer: issuer,
     ...(options.scopesSupported ? { scopesSupported: options.scopesSupported } : {}),
   }
+  return Object.assign(setup, createMcpOAuth(setup))
 }

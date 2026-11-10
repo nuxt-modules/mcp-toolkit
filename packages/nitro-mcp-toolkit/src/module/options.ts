@@ -64,7 +64,7 @@ export interface McpServerOptions {
 
 /**
  * JWT resource-server config for `mcp()`. JSON-serializable, so it can cross
- * into generated code. Opaque tokens or extra checks still mean a route file.
+ * into generated code. Configure runtime verifiers in the MCP directory index.
  *
  * Connectors (`nitro-mcp-toolkit/oauth/clerk`, `/okta`, `/workos`) return this
  * shape — pass their result as `oauth`.
@@ -80,6 +80,8 @@ export interface ResolvedMcpOAuthOptions {
     issuer?: string | string[]
     audience?: string | string[] | false
     authorizedParties?: string[]
+    typ?: string
+    requiredClaims?: string[]
   }
   scopesSupported?: string[]
   authorizationServer?: string
@@ -150,7 +152,7 @@ export function resolveOAuthOptions(oauth: McpModuleOAuthOptions): ResolvedMcpOA
 
   if (!oauth.jwt?.jwks) {
     throw new Error(
-      '[nitro-mcp-toolkit] `oauth` on `mcp()` needs `jwt`. Opaque tokens mean `createMcpOAuth({ verify })` in a route file.',
+      '[nitro-mcp-toolkit] `oauth` on `mcp()` needs `jwt`. Configure opaque tokens with `createMcpOAuth({ verify })` in the MCP directory index file.',
     )
   }
 
