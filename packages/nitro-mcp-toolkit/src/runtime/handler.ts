@@ -1,9 +1,11 @@
-import { H3Event, toResponse } from 'h3'
+import { H3Event, HTTPError, toResponse } from 'h3'
 import type { H3Event as McpRequestEvent, H3EventContext } from 'h3/generic'
 import { defineMcpHandler } from 'h3-mcp'
+import { assertMcpOAuth } from './auth.ts'
 import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
 import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
+import type { McpOAuth, McpOAuthClaims } from './oauth.ts'
 import type { McpNotifier } from './context.ts'
 import type { McpToolCallListener } from './tool.ts'
 import type {
@@ -25,6 +27,14 @@ type EngineWiring = Omit<
 >
 
 export interface McpHandlerOptions extends EngineWiring {
+  /** Prepared OAuth resource server, also used to serve discovery metadata. */
+  oauth?: McpOAuth
+  /** Runs after authentication for each request. A denied user receives HTTP 403. */
+  authorize?: (
+    identity: McpOAuthClaims & { sub: string },
+    event: McpRequestEvent,
+  ) => boolean | Promise<boolean>
+
   /** Advertised to clients during initialization. */
   name?: string
   version?: string
@@ -59,6 +69,12 @@ export interface McpHandlerOptions extends EngineWiring {
    * ```
    */
   onToolCall?: McpToolCallListener
+}
+
+class AccessDenied extends HTTPError {
+  constructor() {
+    super({ status: 403, statusText: 'Forbidden' })
+  }
 }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
@@ -118,6 +134,8 @@ export interface McpHandler {
    * speaks `fetch`.
    */
   fetch: (request: Request, context?: H3EventContext) => Promise<Response>
+  /** Prepared OAuth resource server, when authentication uses OAuth. */
+  oauth?: McpOAuth
   /**
    * Everything this endpoint serves, as plain JSON — the full catalog, not the
    * per-request `X-MCP-Tools` subset.
@@ -157,12 +175,37 @@ export function createMcpHandler(
     resources = [],
     prompts = [],
     origin,
-    auth,
+    auth: configuredAuth,
+    oauth,
+    authorize,
     onListen: userOnListen,
     onToolCall,
     ...wiring
   } = options
 
+  if (oauth !== undefined) assertMcpOAuth(oauth)
+  if (oauth !== undefined && configuredAuth !== undefined)
+    throw new TypeError('MCP auth and oauth cannot both be configured.')
+  if (authorize && !oauth) throw new TypeError('MCP authorize requires OAuth.')
+  const authentication = oauth?.auth ?? configuredAuth
+  const auth =
+    authorize && authentication
+      ? {
+          ...authentication,
+          async validate(
+            credentials: Parameters<NonNullable<typeof authentication.validate>>[0],
+            event: McpRequestEvent,
+          ) {
+            if (!authentication.validate || !(await authentication.validate(credentials, event)))
+              return false
+            const identity = event.context.oauth
+            if (!identity || typeof identity.sub !== 'string' || !identity.sub) return false
+            if (!(await authorize({ ...identity, sub: identity.sub }, event)))
+              throw new AccessDenied()
+            return true
+          },
+        }
+      : authentication
   const resolvedOrigin = resolveOrigin(origin)
 
   // Static resolve throws on a bad `auth` / `origin` when the handler is
@@ -241,7 +284,7 @@ export function createMcpHandler(
     }
   }, setup)
 
-  const run = async (event: H3Event): Promise<Response> => {
+  const execute = async (event: H3Event): Promise<Response> => {
     const { unknownNames } = selectTools(event.req.headers.get('x-mcp-tools'))
     if (unknownNames.length) {
       // Origin and auth must run first: a 400 on the name would otherwise
@@ -255,7 +298,17 @@ export function createMcpHandler(
     return toResponse(await engine(event), event)
   }
 
+  const run = async (event: H3Event): Promise<Response> => {
+    try {
+      return await execute(event)
+    } catch (error) {
+      if (error instanceof AccessDenied) return toResponse(error, event)
+      throw error
+    }
+  }
+
   return Object.assign(run, {
+    ...(oauth ? { oauth } : {}),
     fetch: (request: Request, context?: H3EventContext) => run(new H3Event(request, context)),
     definitions: Object.freeze(summarize(registrations)),
     notify,

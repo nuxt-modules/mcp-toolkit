@@ -4,6 +4,7 @@ import {
   createMcpOAuth,
   defineMcpPrompt,
   defineMcpResource,
+  defineMcpServer,
   defineMcpTool,
   MODERN_PROTOCOL_VERSION,
 } from 'nitro-mcp-toolkit'
@@ -19,13 +20,13 @@ export async function checkRuntime(): Promise<void> {
     resource: 'https://app.example/mcp',
     authorizationServers: ['https://auth.example'],
     verify: async (token, event) => {
-      if (token !== 'reader') return false
+      if (!['reader', 'outsider'].includes(token)) return false
       event.context.oauth = { sub: token, scope: 'account:read' }
       return true
     },
   })
   const endpoint = createMcpHandler({
-    auth: oauth.auth,
+    ...defineMcpServer({ oauth, authorize: (identity) => identity.sub === 'reader' }),
     tools: [
       defineMcpTool({
         name: 'account',
@@ -118,6 +119,7 @@ export async function checkRuntime(): Promise<void> {
     equal(unknown.status, 400)
     const unauthorized = await call('tools/list', {}, { authorization: 'Bearer invalid' })
     equal(unauthorized.status, 401)
+    equal((await call('tools/list', {}, { authorization: 'Bearer outsider' })).status, 403)
     if (!unauthorized.headers.get('www-authenticate')?.includes('resource_metadata=')) {
       throw new Error('Missing resource metadata challenge')
     }

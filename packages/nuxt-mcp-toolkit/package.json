@@ -21,6 +21,22 @@
     "./server": {
       "types": "./dist/runtime/server/index.d.ts",
       "import": "./dist/runtime/server/index.js"
+    },
+    "./oauth/clerk": {
+      "types": "./dist/runtime/oauth/clerk.d.ts",
+      "import": "./dist/runtime/oauth/clerk.js"
+    },
+    "./oauth/okta": {
+      "types": "./dist/runtime/oauth/okta.d.ts",
+      "import": "./dist/runtime/oauth/okta.js"
+    },
+    "./oauth/workos": {
+      "types": "./dist/runtime/oauth/workos.d.ts",
+      "import": "./dist/runtime/oauth/workos.js"
+    },
+    "./oauth/better-auth": {
+      "types": "./dist/runtime/oauth/better-auth.d.ts",
+      "import": "./dist/runtime/oauth/better-auth.js"
     }
   },
   "main": "./dist/module.mjs",

@@ -61,6 +61,10 @@
       "types": "./dist/module/nitro2.d.mts",
       "import": "./dist/module/nitro2.mjs",
       "default": "./dist/module/nitro2.mjs"
+    },
+    "./oauth/better-auth": {
+      "types": "./dist/runtime/oauth/better-auth.d.mts",
+      "import": "./dist/runtime/oauth/better-auth.mjs"
     }
   },
   "publishConfig": {
@@ -92,6 +96,7 @@
     "@modelcontextprotocol/client": "2.4.0",
     "@valibot/to-json-schema": "^1.8.0",
     "@vitest/coverage-v8": "^4.1.12",
+    "better-auth": "1.7.16",
     "nitro": "3.0.260610-beta",
     "nitropack": "^2.13.4",
     "obuild": "^0.4.45",
@@ -105,6 +110,7 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
+    "better-auth": "^1.7.16",
     "nitro": "3.0.260610-beta || ^3.0.0",
     "nitropack": "^2.13.4"
   },
@@ -116,6 +122,9 @@
       "optional": true
     },
     "nitropack": {
+      "optional": true
+    },
+    "better-auth": {
       "optional": true
     }
   },

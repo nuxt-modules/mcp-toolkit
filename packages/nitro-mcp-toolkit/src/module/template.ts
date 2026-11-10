@@ -105,6 +105,7 @@ export default oauth.authorizationServerHandler
 /** What the handler wires in beyond the registry, when the app asked for it. */
 export interface HandlerWiring {
   configPath?: string
+  oauthMetadataPath?: string
   extraPlugins?: readonly string[]
   nitro2?: boolean
   /** The `createMcpOAuth` instance to take `auth` from. */
@@ -121,13 +122,21 @@ export function renderHandler(
   server: McpServerOptions,
   wiring: HandlerWiring = {},
 ): string {
-  const { oauthId, pluginsPath, authPath, configPath, nitro2, extraPlugins = [] } = wiring
+  const {
+    oauthId,
+    pluginsPath,
+    authPath,
+    configPath,
+    oauthMetadataPath,
+    nitro2,
+    extraPlugins = [],
+  } = wiring
   const options = Object.entries(server)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => line(key, value))
 
   if (configPath) options.push('  ...server,')
-  if (oauthId) options.push('  auth: oauth.auth,')
+  if (oauthId) options.push('  oauth,')
   if (authPath) options.push('  auth: defineMcpAuth(auth),')
   options.push(
     `  onToolCall: (call) => ${nitro2 ? 'useNitroApp().hooks' : 'useNitroHooks()'}.callHook('mcp:tool:called', call),`,
@@ -161,9 +170,9 @@ export function renderHandler(
   const runtimeConfig = configPath
     ? `const server = defineMcpServer(config)\n${
         oauthId || authPath || server.auth !== undefined
-          ? `if (server.auth !== undefined) throw new Error('MCP authentication must be configured either in index or in module options, not both.')\n`
+          ? `if (server.auth !== undefined || server.oauth !== undefined) throw new Error('MCP authentication must be configured either in index or in module options, not both.')\n`
           : ''
-      }\n`
+      }${oauthMetadataPath ? `if (server.oauth && server.oauth.metadataPath !== ${JSON.stringify(oauthMetadataPath)}) throw new Error('MCP OAuth resource path must match its endpoint route.')\n` : ''}\n`
     : ''
 
   return `${BANNER}
@@ -238,5 +247,16 @@ export default defineEventHandler(async event => {
     },
   }), response)
 })
+`
+}
+
+export function renderRuntimeOAuthMetadata(handlerId: string): string {
+  return `${BANNER}
+import handler from ${JSON.stringify(handlerId)}
+
+export default (event) => {
+  if (!handler.oauth) return new Response(null, { status: 404 })
+  return handler.oauth.metadataHandler(event)
+}
 `
 }

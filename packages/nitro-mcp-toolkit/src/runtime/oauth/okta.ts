@@ -1,5 +1,6 @@
 import { envValue } from './env.ts'
-import type { McpOAuthSetup } from '../oauth.ts'
+import { createMcpOAuth } from '../oauth.ts'
+import type { McpOAuth, McpOAuthSetup } from '../oauth.ts'
 
 const DEFAULT_AUTH_SERVER = 'default'
 
@@ -51,7 +52,7 @@ function issuerFromDomain(domain: string, authorizationServerId: string): string
  * the path-style well-known URL. Org authorization servers issue opaque
  * tokens — those still need `createMcpOAuth({ verify })`.
  */
-export function okta(options: OktaOAuthOptions): McpOAuthSetup {
+export function okta(options: OktaOAuthOptions): McpOAuthSetup & McpOAuth {
   if (options.issuer && options.domain) {
     throw new Error('[nitro-mcp-toolkit] `okta` takes `issuer` or `domain`, not both.')
   }
@@ -78,7 +79,7 @@ export function okta(options: OktaOAuthOptions): McpOAuthSetup {
     )
   }
 
-  return {
+  const setup: McpOAuthSetup = {
     resource: options.resource,
     authorizationServers: [normalized],
     jwt: {
@@ -89,4 +90,5 @@ export function okta(options: OktaOAuthOptions): McpOAuthSetup {
     ...(options.scopesSupported ? { scopesSupported: options.scopesSupported } : {}),
     authorizationServer: normalized,
   }
+  return Object.assign(setup, createMcpOAuth(setup))
 }

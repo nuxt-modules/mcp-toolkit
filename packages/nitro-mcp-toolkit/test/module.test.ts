@@ -51,7 +51,9 @@ describe('the mcp() module', () => {
   it('mounts each instance on its own route', () => {
     expect(nitro.options.handlers).toMatchObject([
       { route: '/mcp', handler: '#mcp/mcp/handler', lazy: true, middleware: false },
+      { route: '/.well-known/oauth-protected-resource/mcp' },
       { route: '/admin/mcp', handler: '#mcp/admin-mcp/handler', lazy: true, middleware: false },
+      { route: '/.well-known/oauth-protected-resource/admin/mcp' },
     ])
   })
 
@@ -336,7 +338,7 @@ describe('the mcp() module', () => {
 
       export default createMcpHandler({
         name: "oauth-fixture",
-        auth: oauth.auth,
+        oauth,
         onToolCall: (call) => useNitroHooks().callHook('mcp:tool:called', call),
         tools,
         resources,
@@ -410,7 +412,10 @@ describe('the mcp() module', () => {
       modules: [mcp({ route: 'side/mcp/' })],
     })
 
-    expect(relaxed.options.handlers).toMatchObject([{ route: '/side/mcp' }])
+    expect(relaxed.options.handlers).toMatchObject([
+      { route: '/side/mcp' },
+      { route: '/.well-known/oauth-protected-resource/side/mcp' },
+    ])
 
     await relaxed.close()
   })

@@ -36,6 +36,24 @@ try {
   const runtimeOnly = JSON.parse(await readFile(join(temporary, 'package-lock.json'), 'utf8'))
   assert(!runtimeOnly.packages['node_modules/nitro'], 'runtime-only installs must not pull Nitro')
   assert(!runtimeOnly.packages['node_modules/nitropack'], 'runtime-only installs must not pull Nitro 2')
+  assert(!runtimeOnly.packages['node_modules/better-auth'], 'runtime-only installs must not pull Better Auth')
+  await writeFile(join(temporary, 'optional-peers.ts'), `
+import assert from 'node:assert/strict'
+import { createMcpHandler, defineMcpServer } from 'nitro-mcp-toolkit'
+assert.throws(() => import.meta.resolve('better-auth'), { code: 'ERR_MODULE_NOT_FOUND' })
+assert.match(import.meta.resolve('nitro-mcp-toolkit/oauth/better-auth'), /better-auth\\.mjs$/)
+await assert.rejects(import('nitro-mcp-toolkit/oauth/better-auth'), { code: 'ERR_MODULE_NOT_FOUND' })
+const handler = createMcpHandler(defineMcpServer({ auth: { schemes: ['bearer'], validate: ({ token }) => token === 'consumer-token' } }))
+const response = await handler.fetch(new Request('http://localhost/mcp', {
+  method: 'POST',
+  headers: { authorization: 'Bearer consumer-token', 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+}))
+assert.equal(response.status, 200)
+await response.body?.cancel()
+console.log('Base package loaded and served a bearer-only endpoint without Better Auth.')
+`)
+  run(process.execPath, ['optional-peers.ts'])
   run('npm', [
     'install',
     '--ignore-scripts',
@@ -173,7 +191,28 @@ try {
     join(temporary, 'tree-shaking.ts'),
   )
   run(process.execPath, ['tree-shaking.ts'])
-  console.log('Packed runtime, types, ordinary peer resolution and Nitro 2/3 endpoints passed.')
+  run('npm', [
+    'install',
+    '--ignore-scripts',
+    '--no-audit',
+    '--no-fund',
+    `better-auth@${metadata.devDependencies['better-auth']}`,
+  ])
+  await cp(
+    join(root, 'packages/nitro-mcp-toolkit/test/fixtures/consumer/oauth-better-auth.ts'),
+    join(temporary, 'oauth-better-auth.ts'),
+  )
+  await writeFile(
+    join(temporary, 'tsconfig.better-auth.json'),
+    JSON.stringify({
+      extends: './tsconfig.json',
+      compilerOptions: { types: ['node'] },
+      files: ['oauth-better-auth.ts'],
+    }),
+  )
+  run(process.execPath, ['node_modules/typescript/bin/tsc', '--project', 'tsconfig.better-auth.json'])
+  run(process.execPath, ['oauth-better-auth.ts'])
+  console.log('Packed runtime, types, optional Better Auth adapter and Nitro 2/3 endpoints passed.')
 }
 finally {
   await rm(temporary, { recursive: true, force: true })

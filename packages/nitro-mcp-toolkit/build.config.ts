@@ -12,6 +12,7 @@ export default defineBuildConfig({
       input: [
         './src/runtime/index.ts',
         './src/runtime/oauth/clerk.ts',
+        './src/runtime/oauth/better-auth.ts',
         './src/runtime/oauth/okta.ts',
         './src/runtime/oauth/workos.ts',
         './src/runtime/servers.ts',
@@ -29,6 +30,8 @@ export default defineBuildConfig({
           'h3',
           'h3-mcp',
           'jose',
+          'better-auth/api',
+          'better-auth/oauth2',
           'pathe',
           'tinyglobby',
           '@modelcontextprotocol/client',

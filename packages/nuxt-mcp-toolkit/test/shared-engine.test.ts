@@ -11,6 +11,78 @@ describe('Nuxt with the shared Nitro engine', async () => {
 
   const handler = { fetch: (request: Request) => fetch(request) }
 
+  function runtimeRequest(protocolVersion: string, token?: string, user?: string) {
+    return fetch(url('/runtime/mcp'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json', 'accept': 'application/json, text/event-stream',
+        'mcp-protocol-version': protocolVersion,
+        ...(protocolVersion === MODERN_PROTOCOL_VERSION ? { 'mcp-method': 'tools/call', 'mcp-name': 'who' } : {}),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(user ? { 'x-test-user': user } : {}),
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'tools/call', params: {
+          name: 'who', arguments: {},
+          ...(protocolVersion === MODERN_PROTOCOL_VERSION
+            ? { _meta: {
+                'io.modelcontextprotocol/protocolVersion': protocolVersion,
+                'io.modelcontextprotocol/clientCapabilities': {},
+              } }
+            : {}),
+        },
+      }),
+    })
+  }
+
+  it('automatically mounts public resource metadata for OAuth declared in a runtime index', async () => {
+    const response = await fetch(url('/.well-known/oauth-protected-resource/runtime/mcp'))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('access-control-allow-origin')).toBe('*')
+    expect(await response.json()).toEqual({
+      resource: 'https://nuxt.example.com/runtime/mcp',
+      authorization_servers: ['https://auth.example.com'],
+      bearer_methods_supported: ['header'],
+      scopes_supported: ['read'],
+    })
+    const preflight = await fetch(url('/.well-known/oauth-protected-resource/runtime/mcp'), { method: 'OPTIONS' })
+    expect(preflight.status).toBe(204)
+    expect(preflight.headers.get('access-control-allow-methods')).toContain('GET')
+  })
+
+  it.each(['2025-11-25', MODERN_PROTOCOL_VERSION])('enforces runtime index OAuth and authorize on %s', async (protocolVersion) => {
+    for (const token of [undefined, 'invalid-token']) {
+      const response = await runtimeRequest(protocolVersion, token)
+      expect(response.status).toBe(401)
+      expect(response.headers.get('www-authenticate')).toContain('resource_metadata="https://nuxt.example.com/.well-known/oauth-protected-resource/runtime/mcp"')
+      expect(response.headers.get('x-middleware')).toBe('preserved')
+      await response.body?.cancel()
+    }
+    const denied = await runtimeRequest(protocolVersion, 'outsider-token')
+    expect(denied.status).toBe(403)
+    expect(denied.headers.has('www-authenticate')).toBe(false)
+    await denied.body?.cancel()
+
+    const accepted = await runtimeRequest(protocolVersion, 'member-token')
+    const body = await accepted.text()
+    expect(accepted.status, body).toBe(200)
+    expect(body).toContain('member')
+
+    const changedContext = await runtimeRequest(protocolVersion, 'member-token', 'another-user')
+    expect(changedContext.status).toBe(403)
+    await changedContext.body?.cancel()
+  })
+
+  it.each(['modern', 'legacy'] as const)('passes verified claims and Nuxt middleware context to %s tool calls', async (era) => {
+    await using client = await createMcpTestClient(handler, {
+      era, url: url('/runtime/mcp'), headers: { authorization: 'Bearer member-token' },
+    })
+    expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['who'])
+    expect(JSON.parse(textOf(await client.callTool({ name: 'who' })))).toEqual({
+      subject: 'member', scope: 'read', user: 'demo-user', era,
+    })
+  })
+
   it.each(['modern', 'legacy'] as const)('serves %s clients with request context and typed output', async (era) => {
     await using client = await createMcpTestClient(handler, { era, url: url('/mcp') })
     expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['greet', 'inherited', 'slow'])
