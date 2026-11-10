@@ -1,4 +1,4 @@
-import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, getLayerDirectories, getNitroVersion, hasNuxtModule, logger, resolveServerVariant } from '@nuxt/kit'
+import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, getLayerDirectories, getNitroVersion, hasNuxtModule, logger, resolveAlias, resolveServerVariant } from '@nuxt/kit'
 import mcp from 'nitro-mcp-toolkit/module/nitro2'
 import mcp3 from 'nitro-mcp-toolkit/module'
 import { resolve as resolvePath } from 'pathe'
@@ -53,6 +53,7 @@ export default defineNuxtModule<ModuleOptions>({
         const dirs = typeof dir === 'string' ? [dir] : dir
         instances.push(createModule({
           ...config,
+          ...(typeof config.auth === 'string' ? { auth: resolvePath(nuxt.options.rootDir, resolveAlias(config.auth, nuxt.options.alias)) } : {}),
           route: server.route ?? (key === 'default' ? baseRoute : `${baseRoute}/${key}`),
           dir: [...new Set(dirs.flatMap(root => layers.map(layer => resolvePath(layer.server, root))))],
         }))

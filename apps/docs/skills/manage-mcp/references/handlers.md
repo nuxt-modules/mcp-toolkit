@@ -21,7 +21,7 @@ export default defineNuxtConfig({
       default: { dir: 'mcp' },
       admin: {
         dir: 'mcp-admin',
-        auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] },
+        auth: './server/mcp-admin/auth.ts',
       },
     },
   },
@@ -134,3 +134,7 @@ Do not treat a shared catalog or a tool allowlist as authorization. Keep endpoin
 Inside a definition, use `event.context.mcp.notifier` for catalog or resource changes. Outside a callback, use the generated endpoint's `notify`. The engine's `event.context.mcp.notify` remains its request-scoped callable function.
 
 See [catalog notifications](https://mcp-toolkit.nuxt.dev/advanced/dynamic-definitions) and [directory ownership](https://mcp-toolkit.nuxt.dev/handlers/organization).
+
+## Runtime authentication with discovery
+
+An endpoint's `auth` accepts a server-only file path, resolved from the project root (Nuxt aliases and absolute paths also work). The file default-exports `defineMcpAuth({ schemes: ['bearer'], validate })` from `@nuxtjs/mcp-toolkit/server`; `validate` receives the engine credentials and MCP event on each request. Use `useRuntimeConfig()` from `nuxt/server` inside that callback for Nuxt secrets. Keep definitions under the configured `dir`; no manual tool imports or route middleware are needed. Static token options are build-time data. Auth module errors refuse requests, and `auth` cannot be combined with `oauth`.

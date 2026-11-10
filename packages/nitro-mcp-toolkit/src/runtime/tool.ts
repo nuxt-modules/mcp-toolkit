@@ -18,6 +18,9 @@ import type { McpToolResult, McpToolValue } from './results.ts'
 
 type Schema = StandardTypedV1
 type Awaitable<T> = T | Promise<T>
+type ReadonlyResult<T> = T extends (...args: never[]) => unknown
+  ? T
+  : { readonly [K in keyof T]: ReadonlyResult<T[K]> }
 
 /**
  * What a tool handler may return: the shape described by `outputSchema` when
@@ -128,6 +131,25 @@ async function report(
  * })
  * ```
  */
+export function defineMcpTool<
+  Output extends Schema,
+  const Result extends ReadonlyResult<McpToolReturn<Output>>,
+>(
+  definition: Omit<McpToolDefinitionWithoutInput<Output>, 'handler'> & {
+    outputSchema: Output
+    handler: (event: McpEvent) => Awaitable<Result>
+  },
+): McpTool
+export function defineMcpTool<
+  Input extends Schema,
+  Output extends Schema,
+  const Result extends ReadonlyResult<McpToolReturn<Output>>,
+>(
+  definition: Omit<McpToolDefinition<Input, Output>, 'handler'> & {
+    outputSchema: Output
+    handler: (args: StandardTypedV1.InferOutput<Input>, event: McpEvent) => Awaitable<Result>
+  },
+): McpTool
 export function defineMcpTool<Output extends Schema | undefined = undefined>(
   definition: McpToolDefinitionWithoutInput<Output>,
 ): McpTool

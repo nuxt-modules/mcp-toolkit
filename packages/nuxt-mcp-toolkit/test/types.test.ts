@@ -1,8 +1,22 @@
 import { expectTypeOf, it } from 'vitest'
+import { z } from 'zod'
 import { canRequestInput, createMcpHandler, defineMcpTool, defineRequestState, getElicitedContent, getInputResponses, getMissingInputs, getSupportedInputs, inputRequired, mcpElicit } from '@nuxtjs/mcp-toolkit/server'
 import type { McpEvent } from '@nuxtjs/mcp-toolkit/server'
 import type { McpFetchHandler } from 'nitro-mcp-toolkit/testing'
 import type { H3Event } from 'h3/generic'
+
+it('infers enum output through the Nuxt server export', () => {
+  const tool = defineMcpTool({
+    inputSchema: z.object({ available: z.boolean() }),
+    outputSchema: z.object({ status: z.enum(['ok', 'degraded']), checks: z.array(z.enum(['ok', 'degraded'])) }),
+    handler: async ({ available }, event) => {
+      expectTypeOf(available).toEqualTypeOf<boolean>()
+      expectTypeOf(event).toEqualTypeOf<McpEvent>()
+      return { status: available ? 'ok' : 'degraded', checks: ['ok'] }
+    },
+  })
+  expectTypeOf(tool.kind).toEqualTypeOf<'tool'>()
+})
 
 it('gives tool handlers a web-standard request inside a Nitro 2 host', () => {
   expectTypeOf<McpEvent['req']>().toEqualTypeOf<H3Event['req']>()

@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { basename, resolve } from 'pathe'
 import { discoverDefinitions, discoverPlugins } from './discover.ts'
 import { resolveModuleOptions } from './options.ts'
@@ -31,7 +32,7 @@ function onePluginsFile(route: string, paths: string[]): string | undefined {
 }
 
 export function createModule(options: McpModuleOptions, nitro2?: { h3: string }) {
-  const { route, dir, server, oauth, include } = resolveModuleOptions(options)
+  const { route, dir, server, auth, oauth, include } = resolveModuleOptions(options)
   const slug = slugify(route)
 
   return {
@@ -50,6 +51,11 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
         )
       }
 
+      const authPath = auth ? resolve(nitro.options.rootDir, auth) : undefined
+      if (authPath && !statSync(authPath, { throwIfNoEntry: false })?.isFile()) {
+        throw new Error(`[nitro-mcp-toolkit] ${route} auth module not found: ${authPath}`)
+      }
+
       const definitionsDir = (typeof dir === 'string' ? [dir] : dir).map((root) =>
         resolve(nitro.options.rootDir, root),
       )
@@ -62,6 +68,7 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
         const pluginsPath = onePluginsFile(route, await discoverPlugins(definitionsDir))
 
         return renderHandler(registryId, server, {
+          ...(authPath ? { authPath } : {}),
           ...(include?.plugins?.length ? { extraPlugins: include.plugins } : {}),
           ...(nitro2 ? { nitro2: true } : {}),
           ...(oauth ? { oauthId } : {}),

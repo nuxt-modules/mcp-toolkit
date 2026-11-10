@@ -180,7 +180,7 @@ mcp({
 })
 ```
 
-These cross into generated code, so they are data only. A server that needs `validate` or `onListen` mounts the handler by hand instead — see [Wiring it by hand](#wiring-it-by-hand).
+These cross into generated code, so they are data only. For runtime authentication, set `auth` to a file path as shown below. Other callbacks such as `onListen` still require [wiring it by hand](#wiring-it-by-hand).
 
 ### Browser clients
 
@@ -523,6 +523,29 @@ Extension authors can import the engine's `StandardTypedV1`, `ResourceLink`, and
 
 ## Authentication
 
+When neither the endpoint nor the application uses OAuth/JWT helpers, Nitro production builds omit the toolkit's unused `jose` files. Applications that use JWT verification retain the required code. This reduces deployment output; `jose` remains an installed package dependency.
+
+File-discovered servers can import their authentication options from a server-only module. Relative paths resolve from the project root:
+
+```ts
+// nitro.config.ts
+export default defineConfig({
+  modules: [mcp({ auth: './server/mcp/auth.ts' })],
+})
+```
+
+```ts
+// server/mcp/auth.ts
+import { defineMcpAuth } from 'nitro-mcp-toolkit'
+
+export default defineMcpAuth({
+  schemes: ['bearer'],
+  validate: (credential, event) => verifyAccessToken(credential.token, event),
+})
+```
+
+`verifyAccessToken` is your application service and must return a boolean. The options use the engine's `AuthOptions` contract; each request still authenticates, including legacy clients. Credentials read by the runtime module stay out of generated module configuration. A missing file fails setup; an invalid default export refuses requests. Nuxt uses the same reference in `mcp.servers.admin.auth`, with Nuxt aliases supported.
+
 Off by default — many MCP endpoints sit behind a gateway that already authenticates. Turn it on and every request to the route, `POST`, `GET` and `DELETE` alike, must present a credential:
 
 ```ts
@@ -674,7 +697,7 @@ It fails closed: a definition that declares `scopes` on an endpoint with no OAut
 
 ### Zero-config: `mcp()`
 
-`mcp()`'s options cross into generated code as JSON, so its `auth` is the JSON-serializable subset of what `createMcpHandler` accepts above — a static `tokens` list, no `validate` callback. `oauth` is the other exception: JWT verification is generated for you. Omit both and that server stays open:
+`mcp()` accepts static authentication options or an `auth` file reference. Direct options cross into generated code as JSON; runtime files carry live callbacks. `oauth` generates JWT verification and protected-resource metadata. Omit both and that server stays open:
 
 ```ts
 // nitro.config.ts
@@ -684,13 +707,13 @@ export default defineConfig({
     mcp({
       route: '/admin/mcp',
       dir: 'server/mcp-admin',
-      auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] },
+      auth: './server/mcp-admin/auth.ts',
     }),
   ],
 })
 ```
 
-For a `validate` callback, or anything else that is a live function rather than data, mount `createMcpHandler` yourself in a route file instead — the [Authentication](#authentication) examples above are exactly that. `oauth` on `mcp()` is the exception: JWT verification is generated for you.
+For a `validate` callback or private runtime credentials, use an [authentication file](#authentication) while keeping discovery. Direct static token options embed their values at build time. Other live callbacks can still use `createMcpHandler` in a route file.
 
 ## Testing
 

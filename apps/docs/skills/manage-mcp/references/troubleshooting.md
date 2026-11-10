@@ -29,7 +29,7 @@ export default defineNuxtConfig({
       default: { dir: 'mcp' },
       admin: {
         dir: 'mcp-admin',
-        auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] },
+        auth: './server/mcp-admin/auth.ts',
       },
     },
   },
@@ -38,7 +38,7 @@ export default defineNuxtConfig({
 
 Move `server/mcp/handlers/admin/{tools,resources,prompts}` into `server/mcp-admin/{tools,resources,prompts}`. Remove the old `index.ts` handler configuration files. Every endpoint discovers only its own roots; `defaultHandlerStrategy` and global handler-attribution filters are removed.
 
-For live callbacks, export `createMcpHandler(...)` from a normal Nuxt route and import explicitly named shared definitions. Native Nuxt middleware runs before the engine and its context reaches definitions.
+For live authentication, reference a file default-exporting `defineMcpAuth({ validate })` options; see [runtime authentication](https://mcp-toolkit.nuxt.dev/getting-started/configuration#read-authentication-at-runtime). Other callbacks or explicit definition collections can use `createMcpHandler(...)` in a normal Nuxt route. Native Nuxt middleware runs before the engine and its context reaches definitions.
 
 ## Resources and prompts
 
@@ -68,7 +68,7 @@ The toolkit delegates continuation helpers to h3-mcp. Use `defineRequestState` f
 
 Replace per-tool `cache: '10m'` with a Nitro cached application function using `maxAge: 600` seconds and an explicit `swr` setting. Keep that function outside the handler; check current authorization before calling it, and include verified identity in the key for private data. See the [complete cached product example](https://mcp-toolkit.nuxt.dev/tools/errors-caching#cache-the-data-used-by-a-tool).
 
-JSON Schema’s `examples` annotation can describe expected inputs. Zod 4 emits it from `.meta({ examples })`; add a `satisfies z.input<typeof schema>[]` check for the example values. See [annotations and metadata](https://mcp-toolkit.nuxt.dev/tools/annotations) for the distinction between schema examples, custom `_meta.inputExamples`, and MCP metadata.
+JSON Schema’s `examples` annotation can describe expected inputs. Zod 4 emits it from `.meta({ examples })`. See [annotations and metadata](https://mcp-toolkit.nuxt.dev/tools/annotations) for the distinction between schema examples, custom `_meta.inputExamples`, and MCP metadata.
 
 ## Removed runtime helpers
 

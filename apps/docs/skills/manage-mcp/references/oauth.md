@@ -30,6 +30,8 @@ Verification checks the signature, issuer, resource audience, expiry, and a none
 
 These URLs are configuration, not credentials. Keep provider secrets in the authorization service. The toolkit does not issue access tokens.
 
+When neither the endpoint nor the application uses OAuth/JWT helpers, Nitro production builds omit the toolkit's unused `jose` files. `jose` remains an installed package dependency; distinguish deployment bundle size from installation size.
+
 ## Require scopes on definitions
 
 ```ts [server/mcp/tools/whoami.ts]

@@ -27,6 +27,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/index.css'],
 
   runtimeConfig: {
+    mcpAdminToken: '',
     public: {
       auth: {
         redirectUserTo: '/app',
@@ -70,11 +71,7 @@ export default defineNuxtConfig({
     instructions: 'Authenticate with an API key before calling protected tools. Use list-todos before create-todo to avoid duplicates.',
     servers: {
       default: {},
-      ...(process.env.MCP_ADMIN_TOKEN
-        ? {
-            admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN] } },
-          }
-        : {}),
+      admin: { auth: './server/mcp-admin/auth.ts' },
     },
   },
 })

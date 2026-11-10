@@ -97,6 +97,8 @@ export interface HandlerWiring {
   oauthId?: string
   /** Absolute path of the plugins file, whose default export is installed. */
   pluginsPath?: string
+  /** Runtime authentication options, imported rather than serialized. */
+  authPath?: string
 }
 
 /** The route handler: the discovered registry, served on the module's route. */
@@ -105,12 +107,13 @@ export function renderHandler(
   server: McpServerOptions,
   wiring: HandlerWiring = {},
 ): string {
-  const { oauthId, pluginsPath, nitro2, extraPlugins = [] } = wiring
+  const { oauthId, pluginsPath, authPath, nitro2, extraPlugins = [] } = wiring
   const options = Object.entries(server)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => line(key, value))
 
   if (oauthId) options.push('  auth: oauth.auth,')
+  if (authPath) options.push('  auth: defineMcpAuth(auth),')
   options.push(
     `  onToolCall: (call) => ${nitro2 ? 'useNitroApp().hooks' : 'useNitroHooks()'}.callHook('mcp:tool:called', call),`,
   )
@@ -119,7 +122,8 @@ export function renderHandler(
     nitro2
       ? `import { useNitroApp } from 'nitropack/runtime'`
       : `import { useNitroHooks } from 'nitro/app'`,
-    `import { createMcpHandler } from 'nitro-mcp-toolkit'`,
+    `import { createMcpHandler${authPath ? ', defineMcpAuth' : ''} } from 'nitro-mcp-toolkit'`,
+    ...(authPath ? [`import auth from ${JSON.stringify(authPath)}`] : []),
     ...(oauthId ? [`import { oauth } from ${JSON.stringify(oauthId)}`] : []),
     ...(pluginsPath ? [`import plugins from ${JSON.stringify(pluginsPath)}`] : []),
     ...extraPlugins.map(
