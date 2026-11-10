@@ -65,3 +65,6 @@ apps/playground/.data
 
 # Local benchmark runs
 /packages/nitro-mcp-toolkit/benchmarks/results/
+
+# Amp orb portals
+.amp/portals/*
