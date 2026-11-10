@@ -1,4 +1,5 @@
-import { addServerHandler } from '@nuxt/kit'
+import { resolve } from 'node:path'
+import { addServerHandler, getLayerDirectories } from '@nuxt/kit'
 import type { Resolver, NuxtLogger } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
 import { loadAllDefinitions } from '../runtime/server/mcp/loaders'
@@ -30,6 +31,25 @@ export function buildDefaultPaths(mcpDir: string): DefinitionsPaths {
     prompts: [`${mcpDir}/prompts`],
     handlers: [mcpDir],
   }
+}
+
+const RESTART_EVENTS = new Set(['add', 'unlink', 'addDir', 'unlinkDir'])
+
+// Nuxt emits watch paths with forward slashes on every platform.
+const toPosix = (p: string) => p.replace(/\\/g, '/')
+
+/**
+ * Definitions are collected once into server templates, so in dev a file added
+ * or removed later needs a restart to reach (or leave) the generated module.
+ */
+export function needsRestart(event: string, path: string, layerServerDirs: string[], paths: DefinitionsPaths): boolean {
+  if (!RESTART_EVENTS.has(event)) return false
+  const file = toPosix(path)
+  const roots = [...paths.tools, ...paths.resources, ...paths.prompts, ...paths.handlers]
+  return layerServerDirs.some(server => roots.some((root) => {
+    const dir = toPosix(resolve(server, root))
+    return file === dir || file.startsWith(`${dir}/`)
+  }))
 }
 
 /** Run definition discovery on `modules:done` and report a summary on dev `listen`. */
@@ -87,6 +107,15 @@ export function setupDefinitionsLoader(
       throw error
     }
   })
+
+  if (nuxt.options.dev) {
+    nuxt.hook('builder:watch', async (event, relativePath) => {
+      const servers = getLayerDirectories(nuxt).map(layer => layer.server)
+      if (!needsRestart(event, resolve(nuxt.options.srcDir, relativePath), servers, paths)) return
+      log.info(`MCP definition \`${relativePath}\` ${event.startsWith('unlink') ? 'removed' : 'added'}, restarting Nuxt`)
+      await nuxt.callHook('restart')
+    })
+  }
 
   nuxt.hook('listen', (_, listener) => {
     if (!mcpSummary) return
