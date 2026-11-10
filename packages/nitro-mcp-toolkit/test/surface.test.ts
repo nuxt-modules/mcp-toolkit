@@ -20,6 +20,7 @@ describe('public exports', () => {
         "defineMcpPlugins",
         "defineMcpPrompt",
         "defineMcpResource",
+        "defineMcpServer",
         "defineMcpTool",
         "defineRequestState",
         "getElicitedContent",

@@ -681,6 +681,16 @@ describe('watching for definitions in development', () => {
     await vi.waitFor(() => expect(reloads).toBeGreaterThan(afterAdd), { timeout: 10_000 })
   })
 
+  it('rebuilds when a server index appears and when it is removed', async () => {
+    const file = join(root, 'server/mcp/index.ts')
+    const before = reloads
+    await writeFile(file, 'export default {}\n')
+    await vi.waitFor(() => expect(reloads).toBeGreaterThan(before), { timeout: 10_000 })
+    const afterAdd = reloads
+    await rm(file)
+    await vi.waitFor(() => expect(reloads).toBeGreaterThan(afterAdd), { timeout: 10_000 })
+  })
+
   it('ignores files that cannot hold a definition', async () => {
     const before = reloads
 

@@ -47,6 +47,24 @@ export default defineMcpTool({
 
 Your server answers MCP at `/mcp`, with one tool named `greet` — after the file it lives in.
 
+## Configure a server beside its definitions
+
+An optional `index.ts` at each discovered root default-exports `defineMcpServer()`:
+
+```ts
+// server/mcp/index.ts
+import { defineMcpServer } from 'nitro-mcp-toolkit'
+
+export default defineMcpServer({
+  name: 'my-server',
+  instructions: 'Use the tools to explore this application.',
+})
+```
+
+The file can set server metadata, instructions, protocol settings, origins, and runtime `auth` callbacks. It is imported into the server; it is never evaluated or serialized by the build. Module options still select routes and directories, and supply defaults that the index overrides. Tools, resources and prompts remain file-discovered.
+
+The first root containing an index wins across layers. Multiple `index.ts`/`index.js`/`index.mts`/`index.mjs` files in that root are an error. An index with `auth` cannot also use module `auth` or `oauth`; conflicting or invalid exports refuse requests. Keep OAuth metadata configuration in the module options. Adding or removing an index triggers a dev rebuild; edits follow the normal module graph.
+
 ## Nitro 2
 
 Nitro 2 applications use the adapter entrypoint:

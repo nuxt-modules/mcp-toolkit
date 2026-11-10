@@ -145,7 +145,7 @@ export default defineNuxtConfig({
   mcp: {
     servers: {
       default: { dir: 'mcp' },
-      admin: { dir: 'mcp-admin', auth: './server/mcp-admin/auth.ts' },
+      admin: { dir: 'mcp-admin' },
     },
   },
 })
@@ -157,20 +157,24 @@ Use `oauth` for JWT resource-server verification, and `scopes` on definitions fo
 
 Import generated servers from `nitro-mcp-toolkit/servers` to read `handler.definitions` or send notifications. Manually compose routes with the Nuxt `createMcpHandler` helper when custom route wiring is needed.
 
-The referenced auth file reads private credentials at request time:
+Put endpoint metadata, instructions and runtime authentication beside its definitions:
 
 ```ts
-// server/mcp-admin/auth.ts
-import { defineMcpAuth } from '@nuxtjs/mcp-toolkit/server'
+// server/mcp-admin/index.ts
+import { defineMcpServer } from '@nuxtjs/mcp-toolkit/server'
 import { useRuntimeConfig } from 'nuxt/server'
 
-export default defineMcpAuth({
-  schemes: ['bearer'],
-  validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken,
+export default defineMcpServer({
+  name: 'admin',
+  instructions: 'Use these tools for team operations.',
+  auth: {
+    schemes: ['bearer'],
+    validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken,
+  },
 })
 ```
 
-Set `NUXT_MCP_ADMIN_TOKEN` in the deployment environment. The engine authenticates every request before invoking tools. The module imports the auth file at runtime, so the credential stays out of generated configuration. Missing files fail setup; invalid exports refuse access. See [configuration](https://mcp-toolkit.nuxt.dev/getting-started/configuration) for static auth and path resolution.
+Set `NUXT_MCP_ADMIN_TOKEN` in the deployment environment. The engine authenticates every request before invoking tools. The module discovers `index.ts` in the first configured root containing one and imports it into the server. Its fields override module defaults; the credential stays out of generated configuration. Invalid exports and conflicting index/module authentication refuse access. Routing and directory selection stay in Nuxt config. See [configuration](https://mcp-toolkit.nuxt.dev/getting-started/configuration) for static auth and path resolution.
 
 ## Beta scope
 
