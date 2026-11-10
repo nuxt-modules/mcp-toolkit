@@ -1,6 +1,7 @@
 /// <reference path="./virtual.d.ts" />
 
 export { createMcpHandler } from './handler.ts'
+export { defineMcpAuth } from './auth.ts'
 export {
   createMcpOAuth,
   authorizationServerMetadataUrl,

@@ -3,7 +3,7 @@ import type { Resolver } from '@nuxt/kit'
 
 const DEFINITION_HELPERS = [
   'defineMcpTool', 'defineMcpResource', 'defineMcpPrompt', 'defineMcpPlugins',
-  'createMcpHandler', 'createMcpOAuth', 'imageResult', 'audioResult', 'toolResult',
+  'createMcpHandler', 'createMcpOAuth', 'defineMcpAuth', 'imageResult', 'audioResult', 'toolResult',
   'inputRequired', 'mcpElicit', 'mcpElicitUrl', 'getElicitedContent', 'getInputResponses',
   'getMissingInputs', 'canRequestInput', 'getSupportedInputs', 'defineRequestState', 'McpJsonRpcError',
 ] as const

@@ -54,7 +54,7 @@ export default defineMcpTool({
     weightKg: z.number().positive().describe('Weight in kilograms'),
   }),
   outputSchema: bmiOutput,
-  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+  handler: ({ heightM, weightKg }) => {
     const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
     const category = bmi < 18.5 ? 'underweight'
       : bmi < 25 ? 'normal'
@@ -141,10 +141,11 @@ The authorization provider owns login, client registration, and token issuance. 
 ```ts [nuxt.config.ts]
 export default defineNuxtConfig({
   modules: ['@nuxtjs/mcp-toolkit'],
+  runtimeConfig: { mcpAdminToken: '' },
   mcp: {
     servers: {
       default: { dir: 'mcp' },
-      admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+      admin: { dir: 'mcp-admin', auth: './server/mcp-admin/auth.ts' },
     },
   },
 })
@@ -154,7 +155,22 @@ This mounts `/mcp` and `/mcp/admin`. Each server scans its own directories. `dir
 
 Use `oauth` for JWT resource-server verification, and `scopes` on definitions for operation-level checks. Scopes gate invocation while static metadata remains listed. Put sensitive catalogs on separately authenticated endpoints. Clients can request a tool subset through `X-MCP-Tools`.
 
-Import generated servers from `nitro-mcp-toolkit/servers` to read `handler.definitions` or send notifications. Manually compose routes with the Nuxt `createMcpHandler` helper when live callbacks are needed.
+Import generated servers from `nitro-mcp-toolkit/servers` to read `handler.definitions` or send notifications. Manually compose routes with the Nuxt `createMcpHandler` helper when custom route wiring is needed.
+
+The referenced auth file reads private credentials at request time:
+
+```ts
+// server/mcp-admin/auth.ts
+import { defineMcpAuth } from '@nuxtjs/mcp-toolkit/server'
+import { useRuntimeConfig } from 'nuxt/server'
+
+export default defineMcpAuth({
+  schemes: ['bearer'],
+  validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken,
+})
+```
+
+Set `NUXT_MCP_ADMIN_TOKEN` in the deployment environment. The engine authenticates every request before invoking tools. The module imports the auth file at runtime, so the credential stays out of generated configuration. Missing files fail setup; invalid exports refuse access. See [configuration](https://mcp-toolkit.nuxt.dev/getting-started/configuration) for static auth and path resolution.
 
 ## Beta scope
 

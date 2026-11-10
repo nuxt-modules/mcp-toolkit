@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createMcpHandler, defineMcpTool } from '../src/runtime/index.ts'
-import { createMcpTestClient } from '../src/testing/index.ts'
+import { createMcpHandler, defineMcpAuth, defineMcpTool } from '../src/runtime/index.ts'
+import { createMcpTestClient, textOf } from '../src/testing/index.ts'
 import type { AuthOptions } from '../src/runtime/index.ts'
 
 /** A request the handler sees directly, bypassing the SDK client. */
@@ -201,5 +201,48 @@ describe('a custom validate callback', () => {
 
     await using client = await withHeader(auth, 'authorization', 'Bearer dynamic')
     await expect(client.callTool({ name: 'ping' })).resolves.toBeDefined()
+  })
+})
+
+it.each([undefined, null, false, () => true])('refuses an invalid auth export %s', (value) => {
+  expect(() => Reflect.apply(defineMcpAuth, undefined, [value])).toThrow(
+    'default-export authentication options',
+  )
+})
+
+describe.each(['modern', 'legacy'] as const)('runtime auth (%s)', (era) => {
+  it('reads the current credentials on every request', async () => {
+    let expected = 'first-token'
+    const auth = defineMcpAuth({
+      schemes: ['bearer'],
+      validate: ({ token }) => token === expected,
+    })
+    const handler = createMcpHandler({
+      auth,
+      tools: [defineMcpTool({ name: 'private', handler: () => 'private result' })],
+    })
+
+    await using client = await createMcpTestClient(handler, {
+      era,
+      headers: { authorization: 'Bearer first-token' },
+    })
+    expect(textOf(await client.callTool({ name: 'private' }))).toBe('private result')
+    expected = 'replacement-token'
+    await expect(client.callTool({ name: 'private' })).rejects.toThrow(/401|Unauthorized/)
+  })
+
+  it('passes the request context to authentication', async () => {
+    const auth = defineMcpAuth({
+      validate: ({ token }, event) => token === event.context.secret,
+    })
+    const handler = createMcpHandler({ auth })
+    const hosted = {
+      fetch: (request: Request) => handler.fetch(request, { secret: 'runtime-token' }),
+    }
+    await using client = await createMcpTestClient(hosted, {
+      era,
+      headers: { authorization: 'Bearer runtime-token' },
+    })
+    expect((await client.listTools()).tools).toEqual([])
   })
 })

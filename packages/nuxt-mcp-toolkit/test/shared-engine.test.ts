@@ -21,10 +21,11 @@ describe('Nuxt with the shared Nitro engine', async () => {
     expect(textOf(await client.getPrompt({ name: 'review' }))).toBe('Review this change.')
   })
 
-  it('keeps the protected server on its own definitions', async () => {
-    await expect(createMcpTestClient(handler, { url: url('/admin/mcp') })).rejects.toThrow(/401/)
+  it.each(['modern', 'legacy'] as const)('keeps the protected server on its own definitions for %s clients', async (era) => {
+    expect((await fetch(url('/admin/mcp'))).status).toBe(401)
+    await expect(createMcpTestClient(handler, { era, url: url('/admin/mcp') })).rejects.toThrow(era === 'modern' ? /HTTP 401/ : /Unauthorized/)
     await using client = await createMcpTestClient(handler, {
-      url: url('/admin/mcp'),
+      era, url: url('/admin/mcp'),
       headers: { authorization: 'Bearer demo-token' },
     })
     expect((await client.listTools()).tools.map(tool => tool.name)).toEqual(['purge'])

@@ -16,6 +16,7 @@ describe('public exports', () => {
         "canRequestInput",
         "createMcpHandler",
         "createMcpOAuth",
+        "defineMcpAuth",
         "defineMcpPlugins",
         "defineMcpPrompt",
         "defineMcpResource",

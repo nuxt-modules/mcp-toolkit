@@ -26,7 +26,11 @@ describe('a built Nitro app using the module', () => {
       rootDir: fixtureDir,
       dev: false,
       preset: 'standard',
-      modules: [...modules, mcp(composedOptions)],
+      modules: [
+        ...modules,
+        mcp(composedOptions),
+        mcp({ route: '/runtime-auth/mcp', dir: 'server/mcp-admin', auth: './server/auth.ts' }),
+      ],
       virtual: composedVirtual,
     })
     await build(nitro)
@@ -61,6 +65,24 @@ describe('a built Nitro app using the module', () => {
       { name: 'deep', title: 'Deep' },
     ])
   })
+
+  it.each(['modern', 'legacy'] as const)(
+    'loads runtime authentication for %s clients',
+    async (era) => {
+      const handler = { fetch: (request: Request) => Promise.resolve(server.fetch(request)) }
+      const options = { era, url: 'http://localhost/runtime-auth/mcp' }
+      expect((await handler.fetch(new Request(options.url))).status).toBe(401)
+      await expect(createMcpTestClient(handler, options)).rejects.toThrow(
+        era === 'modern' ? /HTTP 401/ : /Unauthorized/,
+      )
+      await using authenticated = await createMcpTestClient(handler, {
+        ...options,
+        headers: { authorization: 'Bearer runtime-token' },
+      })
+      expect((await authenticated.listTools()).tools.map((tool) => tool.name)).toEqual(['purge'])
+      expect(textOf(await authenticated.callTool({ name: 'purge' }))).toBe('purged')
+    },
+  )
 
   it.each(['modern', 'legacy'] as const)(
     'serves overlays and generated imports to %s clients',

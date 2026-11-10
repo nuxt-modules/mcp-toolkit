@@ -1,4 +1,7 @@
-import { describe, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import { fileURLToPath } from 'node:url'
+import { normalize } from 'pathe'
+import ts from 'typescript'
 import { z } from 'zod'
 import {
   defineMcpPlugins,
@@ -22,6 +25,44 @@ import type {
 } from '../src/runtime/index.ts'
 
 const output = z.object({ bmi: z.number() })
+
+it('rejects invalid output callbacks through the inferred overloads', () => {
+  const file = normalize(fileURLToPath(new URL('./invalid-output.ts', import.meta.url)))
+  const source = [
+    "import { defineMcpTool } from '../src/runtime/index.ts'",
+    "import { z } from 'zod'",
+    "const outputSchema = z.object({ status: z.enum(['ok', 'degraded']) })",
+    "defineMcpTool({ outputSchema, handler: () => ({ status: 'unknown' }) })",
+    'defineMcpTool({ outputSchema, handler: () => ({}) })',
+    'defineMcpTool({ outputSchema, handler: async () => ({ status: 123 }) })',
+    'defineMcpTool({ inputSchema: z.object({ id: z.string() }), outputSchema, handler: ({ id }) => ({ status: id }) })',
+    "defineMcpTool({ outputSchema: z.object({ checks: z.array(outputSchema) }), handler: () => ({ checks: [{ status: 'unknown' }] }) })",
+    'defineMcpTool({ outputSchema: z.object({ format: z.function({ output: z.string() }) }), handler: () => ({ format: 123 }) })',
+  ].join('\n')
+  const options: ts.CompilerOptions = {
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.NodeNext,
+    strict: true,
+    skipLibCheck: true,
+    noEmit: true,
+    allowImportingTsExtensions: true,
+  }
+  const host = ts.createCompilerHost(options)
+  const readFile = host.readFile
+  host.readFile = (path) => (normalize(path) === file ? source : readFile(path))
+  const program = ts.createProgram([file], options, host)
+  const diagnostics = ts.getPreEmitDiagnostics(program)
+  expect(
+    diagnostics.map((diagnostic) => ({
+      file: diagnostic.file && normalize(diagnostic.file.fileName),
+      line:
+        diagnostic.file && diagnostic.start !== undefined
+          ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1
+          : undefined,
+      code: diagnostic.code,
+    })),
+  ).toEqual([4, 5, 6, 7, 8, 9].map((line) => ({ file, line, code: 2769 })))
+})
 
 // Checked by `tsc` over `test/**`, not at runtime.
 describe('tool typing', () => {
@@ -57,6 +98,28 @@ describe('tool typing', () => {
     // loose values allowed without a schema, stop being valid returns.
     expectTypeOf<{ weight: number }>().not.toExtend<McpToolReturn<typeof output>>()
     expectTypeOf<string>().not.toExtend<McpToolReturn<typeof output>>()
+  })
+
+  it('infers literal output fields without callback annotations', () => {
+    const health = z.object({ status: z.enum(['ok', 'degraded']) })
+    const tool = defineMcpTool({
+      outputSchema: health,
+      handler: () => ({ status: 'ok' }),
+    })
+    expectTypeOf(tool).toEqualTypeOf<McpTool>()
+    defineMcpTool({
+      inputSchema: z.object({ available: z.boolean() }),
+      outputSchema: health,
+      handler: async ({ available }) => ({ status: available ? 'ok' : 'degraded' }),
+    })
+    defineMcpTool({
+      outputSchema: z.object({ checks: z.array(health) }),
+      handler: () => ({ checks: [{ status: 'ok' }, { status: 'degraded' }] }),
+    })
+    defineMcpTool({
+      outputSchema: z.object({ statuses: z.array(z.enum(['ok', 'degraded'])) }),
+      handler: async () => ({ statuses: ['ok', 'degraded'] }),
+    })
   })
 
   it('accepts any plain value when no output schema is declared', () => {
