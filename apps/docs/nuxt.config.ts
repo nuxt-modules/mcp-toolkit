@@ -40,6 +40,7 @@ export default defineNuxtConfig({
     '/handlers': { redirect: { to: '/handlers/overview', statusCode: 301 } },
     '/apps': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
     '/apps/**': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
+    '/advanced/code-mode': { redirect: { to: '/getting-started/beta-migration#removed-runtime-helpers', statusCode: 301 } },
     '/advanced/mcp-apps-internals': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
     // Legacy "core-concepts" raw markdown (e.g. LLM / IDE deep links)
     '/raw/core-concepts/configuration.md': { redirect: { to: '/raw/getting-started/configuration.md', statusCode: 301 } },
@@ -49,6 +50,7 @@ export default defineNuxtConfig({
     '/raw/core-concepts/handlers.md': { redirect: { to: '/raw/handlers/overview.md', statusCode: 301 } },
     '/raw/core-concepts/apps.md': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
     '/raw/apps/**': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
+    '/raw/advanced/code-mode.md': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
     '/raw/advanced/mcp-apps-internals.md': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
   },
 

@@ -1,14 +1,15 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { MODERN_PROTOCOL_VERSION } from '../runtime/protocol.ts'
 import type { ClientCapabilities } from '@modelcontextprotocol/client'
-import type { McpHandler } from '../runtime/handler.ts'
 import type { CallToolResult, GetPromptResult, ReadResourceResult } from '../runtime/index.ts'
 
 /**
  * Anything fetch-shaped: the handler from `createMcpHandler`, or a built
  * Nitro app's entry.
  */
-export type McpFetchHandler = Pick<McpHandler, 'fetch'>
+export interface McpFetchHandler {
+  fetch: (request: Request) => Promise<Response>
+}
 
 /**
  * An SDK client that closes itself when it leaves scope.

@@ -1,5 +1,7 @@
 import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
+import * as engine from 'h3-mcp'
+import * as input from '../src/runtime/input.ts'
 import {
   getElicitedContent,
   getInputResponses,
@@ -26,6 +28,16 @@ const confirm = mcpElicit({
 })
 
 const modern = (): H3Event => event({ era: 'modern', clientCapabilities: { elicitation: {} } })
+
+it('preserves engine helper identity through the portable public declarations', () => {
+  expect(input.canRequestInput).toBe(engine.canRequestInput)
+  expect(input.inputRequired).toBe(engine.inputRequired)
+  expect(input.getInputResponses).toBe(engine.getInputResponses)
+  expect(input.getMissingInputs).toBe(engine.getMissingInputs)
+  expect(input.getSupportedInputs).toBe(engine.getSupportedInputs)
+  expect(input.getElicitedContent).toBe(engine.getElicitedContent)
+  expect(input.defineRequestState).toBe(engine.defineRequestState)
+})
 
 describe('mcpElicit', () => {
   it('builds a form elicitation request', () => {

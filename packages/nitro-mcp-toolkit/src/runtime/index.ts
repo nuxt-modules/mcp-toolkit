@@ -1,6 +1,9 @@
 /// <reference path="./virtual.d.ts" />
 
 export { createMcpHandler } from './handler.ts'
+export { defineMcpServer } from './server.ts'
+export type { McpServerConfig } from './server.ts'
+export { defineMcpAuth } from './auth.ts'
 export {
   createMcpOAuth,
   authorizationServerMetadataUrl,
@@ -20,10 +23,8 @@ export {
   getMissingInputs,
   getSupportedInputs,
   inputRequired,
-  mcpElicit,
-  mcpElicitUrl,
-  McpJsonRpcError,
-} from 'h3-mcp'
+} from './input.ts'
+export { mcpElicit, mcpElicitUrl, McpJsonRpcError } from 'h3-mcp'
 
 export type { McpEvent, McpNotifier } from './context.ts'
 export type { McpHandler, McpHandlerOptions } from './handler.ts'

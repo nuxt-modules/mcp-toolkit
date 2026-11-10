@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { createNitro } from 'nitro/builder'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import mcp from '../src/module/index.ts'
-import { resolveOAuthOptions } from '../src/module/options.ts'
+import { resolveModuleOptions, resolveOAuthOptions } from '../src/module/options.ts'
 import { clerk } from '../src/runtime/oauth/clerk.ts'
 import { fixtureDir, modules } from './helpers/discovery-fixture.ts'
 import type { Nitro } from 'nitro/types'
@@ -184,6 +184,46 @@ describe('the mcp() module', () => {
     expect(code).toContain('auth: {"tokens":["secret"]}')
 
     await guarded.close()
+  })
+
+  it('imports runtime authentication without serializing credentials', async () => {
+    const guarded = await createNitro({
+      rootDir: fixtureDir,
+      dev: false,
+      preset: 'standard',
+      modules: [mcp({ route: '/guarded', auth: './server/auth.ts' })],
+    })
+    const code = await render(guarded, '#mcp/guarded/handler')
+    expect(code).toContain('import auth from "<fixture>/server/auth.ts"')
+    expect(code).toContain('auth: defineMcpAuth(auth)')
+    expect(code).not.toContain('auth: "')
+    expect(code).not.toContain('runtime-token')
+    await guarded.close()
+  })
+
+  it('refuses a missing authentication file instead of mounting a public endpoint', async () => {
+    await expect(
+      createNitro({
+        rootDir: fixtureDir,
+        dev: false,
+        preset: 'standard',
+        modules: [mcp({ route: '/guarded', auth: './server/missing-auth.ts' })],
+      }),
+    ).rejects.toThrow('/guarded auth module not found')
+  })
+
+  it('rejects ambiguous or missing authentication configuration', () => {
+    expect(() => resolveModuleOptions({ auth: '' })).toThrow('authentication module')
+    expect(() =>
+      resolveModuleOptions({
+        auth: './server/auth.ts',
+        oauth: {
+          resource: 'https://example.com/mcp',
+          authorizationServers: ['https://issuer.example.com'],
+          jwt: { jwks: 'https://issuer.example.com/jwks' },
+        },
+      }),
+    ).toThrow('cannot both be set')
   })
 
   it('keeps framework imports out of serialized server options', async () => {
@@ -637,6 +677,16 @@ describe('watching for definitions in development', () => {
 
     const afterAdd = reloads
 
+    await rm(file)
+    await vi.waitFor(() => expect(reloads).toBeGreaterThan(afterAdd), { timeout: 10_000 })
+  })
+
+  it('rebuilds when a server index appears and when it is removed', async () => {
+    const file = join(root, 'server/mcp/index.ts')
+    const before = reloads
+    await writeFile(file, 'export default {}\n')
+    await vi.waitFor(() => expect(reloads).toBeGreaterThan(before), { timeout: 10_000 })
+    const afterAdd = reloads
     await rm(file)
     await vi.waitFor(() => expect(reloads).toBeGreaterThan(afterAdd), { timeout: 10_000 })
   })

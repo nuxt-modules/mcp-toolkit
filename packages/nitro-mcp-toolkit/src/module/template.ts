@@ -56,6 +56,19 @@ function line(key: string, value: unknown): string {
   return `  ${key}: ${JSON.stringify(value)},`
 }
 
+export function renderServerMetadata(server: McpServerOptions, configPath?: string): string {
+  const defaults = {
+    name: server.name,
+    description: server.description,
+    websiteUrl: server.websiteUrl,
+  }
+  return `${BANNER}
+${configPath ? `import { defineMcpServer } from 'nitro-mcp-toolkit'\nimport config from ${JSON.stringify(configPath)}\n` : ''}
+const server = { ...${JSON.stringify(defaults)}${configPath ? ', ...defineMcpServer(config)' : ''} }
+export default { name: server.name, description: server.description, websiteUrl: server.websiteUrl }
+`
+}
+
 /** The `createMcpOAuth` instance the handler and metadata routes share. */
 export function renderOAuth(oauth: ResolvedMcpOAuthOptions): string {
   return `${BANNER}
@@ -91,12 +104,15 @@ export default oauth.authorizationServerHandler
 
 /** What the handler wires in beyond the registry, when the app asked for it. */
 export interface HandlerWiring {
+  configPath?: string
   extraPlugins?: readonly string[]
   nitro2?: boolean
   /** The `createMcpOAuth` instance to take `auth` from. */
   oauthId?: string
   /** Absolute path of the plugins file, whose default export is installed. */
   pluginsPath?: string
+  /** Runtime authentication options, imported rather than serialized. */
+  authPath?: string
 }
 
 /** The route handler: the discovered registry, served on the module's route. */
@@ -105,12 +121,14 @@ export function renderHandler(
   server: McpServerOptions,
   wiring: HandlerWiring = {},
 ): string {
-  const { oauthId, pluginsPath, nitro2, extraPlugins = [] } = wiring
+  const { oauthId, pluginsPath, authPath, configPath, nitro2, extraPlugins = [] } = wiring
   const options = Object.entries(server)
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => line(key, value))
 
+  if (configPath) options.push('  ...server,')
   if (oauthId) options.push('  auth: oauth.auth,')
+  if (authPath) options.push('  auth: defineMcpAuth(auth),')
   options.push(
     `  onToolCall: (call) => ${nitro2 ? 'useNitroApp().hooks' : 'useNitroHooks()'}.callHook('mcp:tool:called', call),`,
   )
@@ -119,7 +137,9 @@ export function renderHandler(
     nitro2
       ? `import { useNitroApp } from 'nitropack/runtime'`
       : `import { useNitroHooks } from 'nitro/app'`,
-    `import { createMcpHandler } from 'nitro-mcp-toolkit'`,
+    `import { createMcpHandler${authPath ? ', defineMcpAuth' : ''}${configPath ? ', defineMcpServer' : ''} } from 'nitro-mcp-toolkit'`,
+    ...(configPath ? [`import config from ${JSON.stringify(configPath)}`] : []),
+    ...(authPath ? [`import auth from ${JSON.stringify(authPath)}`] : []),
     ...(oauthId ? [`import { oauth } from ${JSON.stringify(oauthId)}`] : []),
     ...(pluginsPath ? [`import plugins from ${JSON.stringify(pluginsPath)}`] : []),
     ...extraPlugins.map(
@@ -138,10 +158,18 @@ export function renderHandler(
       ? ', { extensionPlugins: plugins }'
       : ''
 
+  const runtimeConfig = configPath
+    ? `const server = defineMcpServer(config)\n${
+        oauthId || authPath || server.auth !== undefined
+          ? `if (server.auth !== undefined) throw new Error('MCP authentication must be configured either in index or in module options, not both.')\n`
+          : ''
+      }\n`
+    : ''
+
   return `${BANNER}
 ${imports.join('\n')}
 
-export default createMcpHandler({
+${runtimeConfig}export default createMcpHandler({
 ${[...options, '  tools,', '  resources,', '  prompts,'].join('\n')}
 }${setup})
 `

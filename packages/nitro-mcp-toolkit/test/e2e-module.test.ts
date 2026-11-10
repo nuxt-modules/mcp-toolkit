@@ -26,7 +26,13 @@ describe('a built Nitro app using the module', () => {
       rootDir: fixtureDir,
       dev: false,
       preset: 'standard',
-      modules: [...modules, mcp(composedOptions)],
+      modules: [
+        ...modules,
+        mcp(composedOptions),
+        mcp({ route: '/indexed/mcp', dir: 'server/mcp-runtime' }),
+        mcp({ route: '/conflicting/mcp', dir: 'server/mcp-runtime', auth: { tokens: ['other'] } }),
+        mcp({ route: '/runtime-auth/mcp', dir: 'server/mcp-admin', auth: './server/auth.ts' }),
+      ],
       virtual: composedVirtual,
     })
     await build(nitro)
@@ -51,6 +57,36 @@ describe('a built Nitro app using the module', () => {
     })
   })
 
+  it.each(['modern', 'legacy'] as const)(
+    'loads server metadata and authentication from index for %s clients',
+    async (era) => {
+      const handler = { fetch: (request: Request) => Promise.resolve(server.fetch(request)) }
+      const options = { era, url: 'http://localhost/indexed/mcp' }
+      await expect(createMcpTestClient(handler, options)).rejects.toThrow(/401|Unauthorized/)
+      await expect(
+        createMcpTestClient(handler, {
+          ...options,
+          headers: { authorization: 'Bearer wrong-token' },
+        }),
+      ).rejects.toThrow(/401|Unauthorized/)
+      await using indexed = await createMcpTestClient(handler, {
+        ...options,
+        headers: { authorization: 'Bearer index-token' },
+      })
+      expect(indexed.getServerVersion()?.name).toBe('indexed-server')
+      expect(indexed.getInstructions()).toBe('Index instructions')
+      expect((await indexed.listTools()).tools.map((tool) => tool.name)).toEqual(['identity'])
+      expect(textOf(await indexed.callTool({ name: 'identity' }))).toBe('indexed')
+      await expect(
+        createMcpTestClient(handler, {
+          era,
+          url: 'http://localhost/conflicting/mcp',
+          headers: { authorization: 'Bearer other' },
+        }),
+      ).rejects.toThrow(/500|Internal Server Error/)
+    },
+  )
+
   it('registers every discovered definition, named after its file', async () => {
     const { tools } = await client.listTools()
 
@@ -61,6 +97,24 @@ describe('a built Nitro app using the module', () => {
       { name: 'deep', title: 'Deep' },
     ])
   })
+
+  it.each(['modern', 'legacy'] as const)(
+    'loads runtime authentication for %s clients',
+    async (era) => {
+      const handler = { fetch: (request: Request) => Promise.resolve(server.fetch(request)) }
+      const options = { era, url: 'http://localhost/runtime-auth/mcp' }
+      expect((await handler.fetch(new Request(options.url))).status).toBe(401)
+      await expect(createMcpTestClient(handler, options)).rejects.toThrow(
+        era === 'modern' ? /HTTP 401/ : /Unauthorized/,
+      )
+      await using authenticated = await createMcpTestClient(handler, {
+        ...options,
+        headers: { authorization: 'Bearer runtime-token' },
+      })
+      expect((await authenticated.listTools()).tools.map((tool) => tool.name)).toEqual(['purge'])
+      expect(textOf(await authenticated.callTool({ name: 'purge' }))).toBe('purged')
+    },
+  )
 
   it.each(['modern', 'legacy'] as const)(
     'serves overlays and generated imports to %s clients',

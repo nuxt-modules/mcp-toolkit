@@ -5,7 +5,7 @@ import type { McpOAuthSetup } from '../runtime/oauth.ts'
 /**
  * What the server advertises and how it answers — everything a definition file
  * cannot express. These cross into generated code, so they are data only:
- * a server needing `validate` or `onListen` mounts `createMcpHandler` by hand.
+ * live authentication callbacks belong in the module's `auth` file.
  */
 export interface McpServerOptions {
   /** Advertised to clients during initialization. */
@@ -47,8 +47,7 @@ export interface McpServerOptions {
   /**
    * Require a bearer token or API key on every request — the
    * JSON-serializable subset of `AuthOptions`: a static `tokens` list, no
-   * `validate` callback. A live function cannot cross into generated code,
-   * so dynamic verification means mounting `createMcpHandler` by hand.
+   * `validate` callback. Use an auth module for dynamic verification.
    *
    * @example
    * ```ts
@@ -86,7 +85,13 @@ export interface ResolvedMcpOAuthOptions {
   authorizationServer?: string
 }
 
-export interface McpModuleOptions extends McpServerOptions {
+export interface McpModuleOptions extends Omit<McpServerOptions, 'auth'> {
+  /**
+   * Static credentials, or a file default-exporting `defineMcpAuth()` options.
+   * Relative files resolve from the project root. Runtime callbacks can read
+   * private configuration without embedding its values in generated code.
+   */
+  auth?: McpServerOptions['auth'] | string
   /** Additional modules imported alongside discovered definitions and plugins. */
   include?: Partial<Record<DefinitionDir | 'plugins', readonly string[]>>
   /**
@@ -122,6 +127,7 @@ export interface ResolvedMcpModuleOptions {
   route: string
   dir: string | readonly string[]
   server: McpServerOptions
+  auth?: string
   oauth?: ResolvedMcpOAuthOptions
   include?: McpModuleOptions['include']
 }
@@ -158,18 +164,23 @@ export function resolveOAuthOptions(oauth: McpModuleOAuthOptions): ResolvedMcpOA
 }
 
 export function resolveModuleOptions(options: McpModuleOptions = {}): ResolvedMcpModuleOptions {
-  const { route = '/mcp', dir = 'server/mcp', oauth, include, ...server } = options
+  const { route = '/mcp', dir = 'server/mcp', auth, oauth, include, ...server } = options
 
-  if (oauth && server.auth) {
+  if (oauth && auth !== undefined) {
     throw new Error(
       '[nitro-mcp-toolkit] `oauth` and `auth` cannot both be set. `oauth` already requires a bearer token.',
     )
   }
 
+  if (typeof auth === 'string' && auth.trim() === '') {
+    throw new Error('[nitro-mcp-toolkit] `auth` must name an authentication module.')
+  }
+
   return {
     route: normalizeRoute(route),
     dir,
-    server,
+    server: { ...server, ...(auth && typeof auth !== 'string' ? { auth } : {}) },
+    ...(typeof auth === 'string' ? { auth } : {}),
     ...(include ? { include } : {}),
     ...(oauth ? { oauth: resolveOAuthOptions(oauth) } : {}),
   }

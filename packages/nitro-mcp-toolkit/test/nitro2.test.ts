@@ -18,6 +18,7 @@ describe('a built Nitro 2 app', () => {
   let nitro: Nitro
   let http: Server | undefined
   let origin: string
+  let bundledModules: string[]
   const handler = { fetch: (request: Request) => fetch(request) }
   const readSignals = async () =>
     z
@@ -61,6 +62,15 @@ export default defineMcpPlugins([{ id: 'fixture/nitro2', settings: () => ({ enab
       'server/mcp-admin/tools/purge.ts': `
 import { defineMcpTool } from ${JSON.stringify(toolkit)}
 export default defineMcpTool({ handler: () => 'purged' })
+`,
+      'server/mcp-admin/index.ts': `
+import { defineMcpServer } from ${JSON.stringify(toolkit)}
+import { useRuntimeConfig } from 'nitropack/runtime'
+export default defineMcpServer({
+  name: 'indexed-nitro2',
+  instructions: 'Nitro 2 index instructions',
+  auth: { schemes: ['bearer'], validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken },
+})
 `,
       'middleware.ts': `
 import { defineEventHandler, readBody, setResponseHeader } from 'h3'
@@ -113,6 +123,23 @@ export default defineNitroPlugin(app => {
       ],
       alias: { 'nitro-mcp-toolkit': toolkit },
       virtual: composedVirtual,
+      runtimeConfig: { mcpAdminToken: 'demo-token' },
+      rollupConfig: {
+        plugins: [
+          {
+            name: 'fixture:bundled-modules',
+            generateBundle(_options, bundle) {
+              bundledModules = Object.values(bundle).flatMap((entry) =>
+                entry.type === 'chunk'
+                  ? Object.entries(entry.modules)
+                      .filter(([, module]) => module.renderedLength > 0)
+                      .map(([id]) => normalize(id))
+                  : [],
+              )
+            },
+          },
+        ],
+      },
       handlers: [
         { handler: join(root, 'middleware.ts'), middleware: true },
         ...['signals', 'catalog', 'notify', 'calls'].map((name) => ({
@@ -124,7 +151,7 @@ export default defineNitroPlugin(app => {
       modules: [
         mcp(),
         mcp(composedOptions),
-        mcp({ route: '/admin/mcp', dir: 'server/mcp-admin', auth: { tokens: ['demo-token'] } }),
+        mcp({ route: '/admin/mcp', dir: 'server/mcp-admin' }),
         mcp({
           route: '/oauth/mcp',
           oauth: {
@@ -171,6 +198,10 @@ export default defineNitroPlugin(app => {
       )
     },
   )
+
+  it('bundles the MCP engine so unused exports can be removed', () => {
+    expect(bundledModules.some((id) => id.includes('/h3-mcp/'))).toBe(true)
+  })
 
   it.each(['modern', 'legacy'] as const)(
     'serves overlays and generated imports to %s clients',

@@ -7,7 +7,14 @@ import { watch } from 'node:fs/promises'
 // we compare against come from a glob.
 import { normalize as nativePath } from 'node:path'
 import { basename, dirname, extname, join, resolve, sep } from 'pathe'
-import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins, isPluginsFile } from './discover.ts'
+import {
+  DEFINITION_DIRS,
+  discoverDefinitions,
+  discoverPlugins,
+  discoverServerConfig,
+  isPluginsFile,
+  isServerConfigFile,
+} from './discover.ts'
 import type { McpNitro } from './nitro.ts'
 
 const DEFINITION_FILE_RE = /\.(?:ts|js|mts|mjs)$/
@@ -40,7 +47,7 @@ function watchableRoot(dir: string): string {
 function couldChangeServed(dir: string, path: string): boolean {
   if (extname(path) && !DEFINITION_FILE_RE.test(path)) return false
 
-  if (isPluginsFile(dir, path)) return true
+  if (isPluginsFile(dir, path) || isServerConfigFile(dir, path)) return true
 
   return DEFINITION_DIRS.some((definitionDir) => {
     const scanned = join(dir, definitionDir)
@@ -53,11 +60,16 @@ function couldChangeServed(dir: string, path: string): boolean {
 
 /** What the generated modules would import, as one string to compare against. */
 async function served(dir: string): Promise<string> {
-  const [definitions, plugins] = await Promise.all([discoverDefinitions(dir), discoverPlugins(dir)])
+  const [definitions, plugins, config] = await Promise.all([
+    discoverDefinitions(dir),
+    discoverPlugins(dir),
+    discoverServerConfig(dir),
+  ])
 
   return [
     ...definitions.map((definition) => definition.file),
     ...plugins.map((path) => basename(path)),
+    ...config.map((path) => basename(path)),
   ].join('|')
 }
 

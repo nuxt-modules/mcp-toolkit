@@ -21,7 +21,7 @@ export default defineMcpTool({
     weightKg: z.number().positive().describe('Weight in kilograms'),
   }),
   outputSchema: bmiOutput,
-  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+  handler: ({ heightM, weightKg }) => {
     const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
     const category = bmi < 18.5 ? 'underweight'
       : bmi < 25 ? 'normal'
@@ -88,7 +88,7 @@ Cache application values rather than JSON-RPC responses. Authorize private opera
 
 The beta does not accept the old tool-level `cache: '10m'` option. See [errors and caching](https://mcp-toolkit.nuxt.dev/tools/errors-caching) for storage, lifecycle, and client-cache distinctions. Worker lifecycle support must use the host's event/runtime; a toolkit MCP event inside Nitro 2 is not its native H3 v1 cache event.
 
-## Typed schema examples
+## Schema examples
 
 ```ts [server/mcp/tools/preview-search.ts]
 import { z } from 'zod'
@@ -98,7 +98,7 @@ const input = z.object({
   query: z.string(),
   limit: z.number().int().positive().default(10),
 })
-const examples = [{ query: 'caching' }] satisfies z.input<typeof input>[]
+const examples = [{ query: 'caching' }]
 
 export default defineMcpTool({
   description: 'Preview search parameters',
@@ -107,7 +107,7 @@ export default defineMcpTool({
 })
 ```
 
-Zod's `.meta({ examples })` emits the JSON Schema `examples` annotation. The explicit `satisfies` check types the examples. Client use of examples varies.
+Zod's `.meta({ examples })` emits the JSON Schema `examples` annotation. Client use of examples varies.
 
 MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a custom convention, not a standard MCP input-example field. The 0.x top-level `inputExamples` helper is not in the current beta; do not generate it as though it exists. Use the custom metadata convention only for a client that expects it. See [annotations and metadata](https://mcp-toolkit.nuxt.dev/tools/annotations).
 
@@ -115,6 +115,6 @@ MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a c
 
 Use `toolResult({ content, structuredContent })` for a full protocol envelope alongside an output schema. Without it, objects with fields named `content` or `isError` still mean schema data when an output schema exists. `imageResult` and `audioResult` create media blocks.
 
-Thrown application errors become `isError` results; numeric HTTP error status and data are included in the public error text. Invalid arguments and invalid advertised output are protocol errors. Keep private diagnostics in application logging.
+Thrown application errors become `isError` results; numeric HTTP error status and data are included in the public error text. Arguments that fail input validation produce an `isError` result without invoking the handler. Unknown tools and invalid advertised output produce protocol errors. Keep private diagnostics in application logging.
 
 Annotations describe behavior but never grant authorization. Use typed `group`, `tags`, and `scopes` properties; do not hand-build their generated `_meta` entries. For private catalog metadata, use independently authenticated endpoints.

@@ -1,4 +1,6 @@
 ---
+title: Nuxt MCP Toolkit
+description: Build typed MCP tools, resources, and prompts in Nuxt with the shared Nitro runtime.
 seo:
   ogImage: /og.jpg
   title: Expose your Nuxt app to any LLM with MCP — Nuxt MCP Toolkit

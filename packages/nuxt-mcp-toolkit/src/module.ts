@@ -1,4 +1,4 @@
-import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, getLayerDirectories, getNitroVersion, hasNuxtModule, logger, resolveServerVariant } from '@nuxt/kit'
+import { addServerHandler, addServerPlugin, addServerTemplate, createResolver, defineNuxtModule, getLayerDirectories, getNitroVersion, hasNuxtModule, logger, resolveAlias, resolveServerVariant } from '@nuxt/kit'
 import mcp from 'nitro-mcp-toolkit/module/nitro2'
 import mcp3 from 'nitro-mcp-toolkit/module'
 import { resolve as resolvePath } from 'pathe'
@@ -44,7 +44,13 @@ export default defineNuxtModule<ModuleOptions>({
 
     addServerTemplate({
       filename: '#nuxt-mcp-toolkit/config.mjs',
-      getContents: () => `export default ${JSON.stringify({ name: options.name, route: baseRoute, description: options.description, websiteUrl: options.websiteUrl })}`,
+      getContents: () => {
+        const server = configured.get('default')
+        if (!server) return `export default ${JSON.stringify({ route: baseRoute })}`
+        const trimmed = (server.route ?? baseRoute).trim().replace(/\/+$/, '')
+        const route = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+        return `import metadata from ${JSON.stringify(`#mcp-config:${route}`)}\nexport default { ...metadata, route: ${JSON.stringify(route)} }`
+      },
     })
 
     nuxt.hook('modules:done', () => {
@@ -53,6 +59,7 @@ export default defineNuxtModule<ModuleOptions>({
         const dirs = typeof dir === 'string' ? [dir] : dir
         instances.push(createModule({
           ...config,
+          ...(typeof config.auth === 'string' ? { auth: resolvePath(nuxt.options.rootDir, resolveAlias(config.auth, nuxt.options.alias)) } : {}),
           route: server.route ?? (key === 'default' ? baseRoute : `${baseRoute}/${key}`),
           dir: [...new Set(dirs.flatMap(root => layers.map(layer => resolvePath(layer.server, root))))],
         }))

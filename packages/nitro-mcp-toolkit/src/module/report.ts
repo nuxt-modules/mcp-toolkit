@@ -1,6 +1,11 @@
 import { basename, relative } from 'pathe'
 import { glob } from 'tinyglobby'
-import { DEFINITION_DIRS, discoverDefinitions, discoverPlugins } from './discover.ts'
+import {
+  DEFINITION_DIRS,
+  discoverDefinitions,
+  discoverPlugins,
+  discoverServerConfig,
+} from './discover.ts'
 import type { DiscoveredDefinition } from './discover.ts'
 import type { McpModuleOptions } from './options.ts'
 import type { McpNitro } from './nitro.ts'
@@ -58,9 +63,10 @@ export function reportDefinitions(
   let reported: string | undefined
 
   nitro.hooks.hook('compiled', async () => {
-    const [definitions, plugins, misnamed] = await Promise.all([
+    const [definitions, plugins, config, misnamed] = await Promise.all([
       discoverDefinitions(dir, include),
       discoverPlugins(dir),
+      discoverServerConfig(dir),
       Promise.all(
         dir.map(async (root) => (await nearMisses(root)).map((found) => ({ ...found, root }))),
       ).then((layers) => layers.flat()),
@@ -68,6 +74,7 @@ export function reportDefinitions(
     const current = [
       ...definitions.map((definition) => definition.file),
       ...plugins.map((path) => basename(path)),
+      ...config.map((path) => basename(path)),
       ...(include?.plugins ?? []),
       ...misnamed.map((directory) => `${directory.root}/${directory.found}`),
     ].join('|')
@@ -89,6 +96,7 @@ export function reportDefinitions(
       const [pluginsFile] = plugins
       const installed = [
         ...(pluginsFile ? [basename(pluginsFile)] : []),
+        ...config.map((path) => basename(path)),
         ...(include?.plugins ?? []),
       ]
       const withPlugins = installed.length ? `, with ${installed.join(', ')}` : ''

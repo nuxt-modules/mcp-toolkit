@@ -55,7 +55,7 @@ try {
   await writeFile(
     join(temporary, 'check.ts'),
     `
-import { createMcpHandler, defineMcpTool, toolResult } from 'nitro-mcp-toolkit'
+import { createMcpHandler, defineMcpAuth, defineMcpTool, toolResult } from 'nitro-mcp-toolkit'
 import type { EmbeddedResource, ResourceLink, StandardTypedV1 } from 'nitro-mcp-toolkit'
 import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
 import { okta } from 'nitro-mcp-toolkit/oauth/okta'
@@ -64,14 +64,16 @@ import mcp from 'nitro-mcp-toolkit/module'
 import mcp2 from 'nitro-mcp-toolkit/module/nitro2'
 import { createMcpTestClient } from 'nitro-mcp-toolkit/testing'
 import { z } from 'zod'
-const handler = createMcpHandler({ tools: [defineMcpTool({ name: 'value', _meta: { 'consumer/extension': true }, outputSchema: z.object({ n: z.number() }), handler: () => toolResult({ content: [], structuredContent: { n: 1 } }) })] })
+const auth = defineMcpAuth({ schemes: ['bearer'], validate: ({ token }, event) => token === 'consumer-token' && event.req.headers.get('authorization') === 'Bearer consumer-token' })
+const health = defineMcpTool({ name: 'health', outputSchema: z.object({ status: z.enum(['ok', 'degraded']), checks: z.array(z.enum(['ok', 'degraded'])) }), handler: async () => ({ status: 'ok', checks: ['ok', 'degraded'] }) })
+const handler = createMcpHandler({ auth, tools: [defineMcpTool({ name: 'value', _meta: { 'consumer/extension': true }, outputSchema: z.object({ n: z.number() }), handler: () => toolResult({ content: [], structuredContent: { n: 1 } }) })] })
 const schema: StandardTypedV1 = z.object({ n: z.number() })
 const link: ResourceLink = { type: 'resource_link', uri: 'docs://example', name: 'example' }
 const embedded: EmbeddedResource = { type: 'resource', resource: { uri: 'docs://example', text: 'example' } }
-const options = { dir: ['server/mcp', 'layers/base/server/mcp'], include: { tools: ['#consumer/tool.ts'], plugins: ['#consumer/plugins.ts'] }, session: { enabled: true, maxSessions: 10 }, logging: true, limits: { maxBodySize: 8192 } } as const
-void [mcp(options), mcp2(options), schema, link, embedded]
+const options = { auth: './server/auth.ts', dir: ['server/mcp', 'layers/base/server/mcp'], include: { tools: ['#consumer/tool.ts'], plugins: ['#consumer/plugins.ts'] }, session: { enabled: true, maxSessions: 10 }, logging: true, limits: { maxBodySize: 8192 } } as const
+void [mcp(options), mcp2(options), schema, link, embedded, health]
 void handler.fetch(new Request('http://localhost/mcp'), { user: 'consumer' })
-await using client = await createMcpTestClient(handler)
+await using client = await createMcpTestClient(handler, { headers: { authorization: 'Bearer consumer-token' } })
 await client.callTool({ name: 'value' })
 void [clerk, okta, workos, mcp, mcp2]
 `,
@@ -166,6 +168,11 @@ try {
 } finally { await nitro.close() }
 `)
   run(process.execPath, ['verify-nitro2.ts'])
+  await cp(
+    join(root, 'packages/nitro-mcp-toolkit/test/fixtures/consumer/tree-shaking.ts'),
+    join(temporary, 'tree-shaking.ts'),
+  )
+  run(process.execPath, ['tree-shaking.ts'])
   console.log('Packed runtime, types, ordinary peer resolution and Nitro 2/3 endpoints passed.')
 }
 finally {
