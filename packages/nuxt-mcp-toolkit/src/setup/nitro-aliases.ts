@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { getNitroVersion } from '@nuxt/kit'
 import type { Resolver } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
 import type { NitroConfig } from 'nitropack'
@@ -17,6 +18,7 @@ export interface NitroAliasesHandle {
  * 2. **Force `h3` resolution through nitropack** — when pnpm hoists the
  *    module's `h3` peer dependency to v2 while Nitro still ships v1,
  *    Rollup may pick v2 for ALL h3 imports and break Nitro internals.
+ *    Only on Nitro 2: Nitro 3 runs on h3 v2.
  * 3. **Mark `secure-exec` as external** — it is an optional lazy-loaded
  *    dependency for Code Mode and must never be bundled.
  */
@@ -35,7 +37,9 @@ export function setupNitroAliases(nuxt: Nuxt, resolver: Resolver): NitroAliasesH
       isCloudflare = cfPreset
     }
 
-    forceH3ResolutionViaNitropack(nitroConfig)
+    if (getNitroVersion(nuxt) === 2) {
+      forceH3ResolutionViaNitropack(nitroConfig)
+    }
     markSecureExecExternal(nitroConfig)
   })
 
