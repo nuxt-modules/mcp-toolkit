@@ -1,5 +1,4 @@
 import { logger } from '@nuxt/kit'
-import { refreshCustomTabs } from '@nuxt/devtools-kit'
 import type { Nuxt } from 'nuxt/schema'
 import type { McpHeaderValue, ModuleOptions } from '../../../../module'
 import { spawn } from 'node:child_process'
@@ -459,7 +458,9 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
     return
   }
 
+  // DevTools hooks are not in the Nuxt hook types, and `@nuxt/devtools-kit` is not a dependency of this module.
   const registerCustomHook = nuxt.hook as (name: string, callback: (...args: unknown[]) => void) => void
+  const callCustomHook = nuxt.callHook as (name: string) => Promise<unknown>
 
   registerCustomHook('devtools:customTabs', (tabsArg) => {
     const tabs = tabsArg as { push: (tab: Record<string, unknown>) => number }
@@ -481,7 +482,7 @@ export function addDevToolsCustomTabs(nuxt: Nuxt, options: ModuleOptions) {
                 pending: !!promise,
                 handle() {
                   promise = promise || launchMcpInspector(nuxt, options).then(() => {
-                    refreshCustomTabs(nuxt)
+                    callCustomHook('devtools:customTabs:refresh')
                   }).finally(() => {
                     promise = null
                   })
