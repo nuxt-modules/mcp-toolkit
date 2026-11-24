@@ -27,12 +27,12 @@ async function runNitroConfig(serverDeps: Record<string, string>, nitroMajor?: n
   const modules = join(root, 'node_modules')
   await writePackage(join(modules, 'nuxt'), { name: 'nuxt', main: 'index.js' })
   await writePackage(join(modules, '@nuxt/nitro-server'), { name: '@nuxt/nitro-server', main: 'index.js', dependencies: serverDeps })
-  await writePackage(join(modules, 'nitropack'), { name: 'nitropack', version: '2.13.6', main: 'index.js' })
+  await writePackage(join(modules, 'nitropack'), { name: 'nitropack', main: 'index.js' })
   await writePackage(join(modules, 'h3'), { name: 'h3', version: '1.15.11', main: 'index.js' })
   const appDir = join(modules, 'nuxt/dist/app')
   await mkdir(appDir, { recursive: true })
 
-  const nuxt = { _version: '4.6.4', options: { appDir, rootDir: root, modulesDir: [modules], _nitroMajor: nitroMajor } } as unknown as Nuxt
+  const nuxt = { options: { appDir, _nitroMajor: nitroMajor } } as unknown as Nuxt
   const config: NitroConfig = {}
   await forceH3ResolutionViaNitropack(nuxt, config)
   return config

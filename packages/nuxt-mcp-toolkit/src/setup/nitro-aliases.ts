@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { directoryToURL, getNitroVersion, tryResolveModule } from '@nuxt/kit'
+import { directoryToURL, tryResolveModule } from '@nuxt/kit'
 import type { Resolver } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
 import type { NitroConfig } from 'nitropack'
@@ -47,7 +47,7 @@ export function setupNitroAliases(nuxt: Nuxt, resolver: Resolver): NitroAliasesH
 
 export async function forceH3ResolutionViaNitropack(nuxt: Nuxt, nitroConfig: NitroConfig): Promise<void> {
   // Nuxt 4.7 can opt into Nitro v3 while `@nuxt/nitro-server` still depends on nitropack.
-  if (getNitroVersion(nuxt) === 3) {
+  if (nuxt.options._nitroMajor === 3) {
     return
   }
   const appDir = nuxt.options.appDir
