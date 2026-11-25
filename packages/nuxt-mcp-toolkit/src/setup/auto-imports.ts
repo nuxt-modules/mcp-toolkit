@@ -3,12 +3,12 @@ import type { Resolver } from '@nuxt/kit'
 
 const DEFINITION_HELPERS = [
   'defineMcpTool', 'defineMcpResource', 'defineMcpPrompt', 'defineMcpPlugins',
-  'createMcpHandler', 'createMcpOAuth', 'imageResult', 'audioResult', 'toolResult',
+  'defineMcpServer', 'createMcpHandler', 'createMcpOAuth', 'defineMcpAuth', 'imageResult', 'audioResult', 'toolResult',
   'inputRequired', 'mcpElicit', 'mcpElicitUrl', 'getElicitedContent', 'getInputResponses',
   'getMissingInputs', 'canRequestInput', 'getSupportedInputs', 'defineRequestState', 'McpJsonRpcError',
 ] as const
 
-const DEFINITION_TYPES = ['McpEvent', 'McpTool', 'McpResource', 'McpPrompt', 'McpHandler', 'McpHandlerOptions'] as const
+const DEFINITION_TYPES = ['McpEvent', 'McpTool', 'McpResource', 'McpPrompt', 'McpHandler', 'McpHandlerOptions', 'McpServerConfig'] as const
 
 /** Register module auto-imports — definition helpers, types, and the `<InstallButton>` component. */
 export function setupAutoImports(resolver: Resolver): void {

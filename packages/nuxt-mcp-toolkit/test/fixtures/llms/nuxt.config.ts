@@ -20,11 +20,6 @@ const config: FixtureConfig = {
       },
     ],
   },
-  mcp: {
-    name: 'Fixture MCP',
-    description: 'Fixture MCP server used in tests.',
-    websiteUrl: 'https://docs.fixture.test/mcp',
-  },
 }
 
 export default defineNuxtConfig(config)

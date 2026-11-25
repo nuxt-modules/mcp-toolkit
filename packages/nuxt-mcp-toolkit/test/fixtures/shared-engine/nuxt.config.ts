@@ -6,7 +6,8 @@ export default defineNuxtConfig({
     name: 'shared-engine-fixture',
     servers: {
       default: { route: '/mcp' },
-      admin: { route: '/admin/mcp', dir: 'mcp-admin', auth: { tokens: ['demo-token'] } },
+      admin: { route: '/admin/mcp', dir: 'mcp-admin' },
     },
   }]],
+  runtimeConfig: { mcpAdminToken: 'demo-token' },
 })

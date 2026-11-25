@@ -25,6 +25,12 @@ export default function mcp(options: McpModuleOptions = {}): NitroModule {
   const h3 = normalize(require.resolve('h3/generic'))
   const engine = dirname(normalize(require.resolve('h3-mcp')))
   const runtime = resolve(dirname(fileURLToPath(import.meta.url)), '../runtime')
+  const bundled = [
+    dirname(normalize(require.resolve('h3/package.json'))),
+    engine,
+    dirname(normalize(require.resolve('jose'))),
+    resolve(runtime, '..'),
+  ].map((dir) => `${dir}/`)
   const module = createModule(options, { h3 })
 
   return {
@@ -34,6 +40,15 @@ export default function mcp(options: McpModuleOptions = {}): NitroModule {
         createRequire(require.resolve('nitropack/package.json')).resolve('h3'),
       )
       module.setup(nitro)
+      nitro.options.externals ??= { outDir: nitro.options.output.serverDir }
+      nitro.options.externals.inline ??= []
+      // Nitro's package-name external rules outrank path strings; a scoped
+      // matcher tree-shakes the toolkit without matching the host's H3 v1.
+      nitro.options.externals.inline.push(
+        (id) =>
+          /^(nitro-mcp-toolkit|h3-mcp|jose)(\/|$)/.test(id) ||
+          bundled.some((dir) => normalize(id).startsWith(dir)),
+      )
       nitro.hooks.hook('rollup:before', (_nitro, config) => {
         config.plugins = [
           {

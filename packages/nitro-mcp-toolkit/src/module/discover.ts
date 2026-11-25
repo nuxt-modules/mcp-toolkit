@@ -13,7 +13,7 @@ export type DefinitionFiles = Partial<Record<DefinitionDir, readonly string[]>>
 
 const PATTERN = '**/*.{ts,js,mts,mjs}'
 
-const PLUGINS_PATTERN = 'plugins.{ts,js,mts,mjs}'
+const MODULE_EXTENSIONS = '{ts,js,mts,mjs}'
 const PLUGINS_FILE_RE = /^plugins\.(?:ts|js|mts|mjs)$/
 
 /** A definition file, and everything its path says about the definition. */
@@ -92,16 +92,27 @@ async function discoverDirectory(dir: string): Promise<DiscoveredDefinition[]> {
  * Sorted, and every match is returned — two of them is a configuration error,
  * reported where it can name the route rather than swallowed here.
  */
-export async function discoverPlugins(dir: string | readonly string[]): Promise<string[]> {
+export function discoverPlugins(dir: string | readonly string[]): Promise<string[]> {
+  return discoverRootFile(dir, 'plugins')
+}
+
+export function discoverServerConfig(dir: string | readonly string[]): Promise<string[]> {
+  return discoverRootFile(dir, 'index')
+}
+
+async function discoverRootFile(
+  dir: string | readonly string[],
+  name: 'plugins' | 'index',
+): Promise<string[]> {
   if (typeof dir !== 'string') {
     for (const root of dir) {
-      const files = await discoverPlugins(root)
+      const files = await discoverRootFile(root, name)
       if (files.length) return files
     }
     return []
   }
 
-  const paths = await glob(PLUGINS_PATTERN, {
+  const paths = await glob(`${name}.${MODULE_EXTENSIONS}`, {
     cwd: dir,
     absolute: true,
     onlyFiles: true,
@@ -114,6 +125,10 @@ export async function discoverPlugins(dir: string | readonly string[]): Promise<
 /** Whether `path` is the plugins file of the directory scanned at `dir`. */
 export function isPluginsFile(dir: string, path: string): boolean {
   return dirname(path) === dir && PLUGINS_FILE_RE.test(basename(path))
+}
+
+export function isServerConfigFile(dir: string, path: string): boolean {
+  return dirname(path) === dir && /^index\.(?:ts|js|mts|mjs)$/.test(basename(path))
 }
 
 function describe(dir: DefinitionDir, root: string, path: string): DiscoveredDefinition {

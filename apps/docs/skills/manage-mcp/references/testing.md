@@ -1,32 +1,88 @@
 # Testing — 1.0
 
-## Testing and evals
+## Test the protocol contract first
 
-```ts
-import { createMcpTestClient, textOf } from 'nitro-mcp-toolkit/testing'
-import handler from '../server/routes/mcp'
+The shared testing helper connects a real MCP client to a handler in memory. Use ordinary assertions for schemas, results, errors, authorization, resources, prompts, and completion:
+
+```ts [test/mcp.test.ts]
 import { expect, it } from 'vitest'
+import { z } from 'zod'
+import { createMcpHandler, defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+import { createMcpTestClient } from 'nitro-mcp-toolkit/testing'
 
-it('greets a caller', async () => {
-  await using client = await createMcpTestClient(handler)
-  expect(textOf(await client.callTool({ name: 'greet', arguments: { name: 'Ada' } }))).toBe('Hello Ada!')
+const handler = createMcpHandler({
+  tools: [defineMcpTool({
+    name: 'greet',
+    inputSchema: z.object({ name: z.string() }),
+    outputSchema: z.object({ greeting: z.string() }),
+    handler: ({ name }) => ({ greeting: `Hello ${name}!` }),
+  })],
+})
+
+const eras: ('modern' | 'legacy')[] = ['modern', 'legacy']
+for (const era of eras) {
+  it(`returns typed output for ${era} clients`, async () => {
+    await using client = await createMcpTestClient(handler, { era })
+    const result = await client.callTool({ name: 'greet', arguments: { name: 'Ada' } })
+    expect(result.structuredContent).toEqual({ greeting: 'Hello Ada!' })
+  })
+}
+```
+
+Install `vitest` and the testing helper's optional peer `@modelcontextprotocol/client@^2` as development dependencies. Ensure `nitro-mcp-toolkit/testing` is available to your application. A strict package manager may require `nitro-mcp-toolkit` as a direct development dependency, matching the beta used by the Nuxt module. Run the tests with `pnpm exec vitest run`.
+
+The helper closes the connection with `await using`. Its options include `era`, `headers`, `url`, and client capabilities. Set `era: 'legacy'` as well as modern mode when compatibility matters; one negotiated version does not prove the other.
+
+## Test the Nuxt integration
+
+Build a real Nuxt consumer for discovery, layers, middleware, generated imports, endpoint ownership, OAuth metadata, streaming, and disconnect behavior. An in-memory test of `fetch` does not exercise the native host route adapter.
+
+Use real HTTP requests to verify unauthenticated rejection, valid access, wrong audience/issuer, expired tokens, missing scopes, and concurrent user isolation. Provider login and client refresh also need tests with your actual authorization server and intended MCP clients.
+
+For modern input-required flows, test capability checks, accepted and declined input, resumed validation, state tampering/expiry, and reauthorization. Keep ordinary arguments available for older clients.
+
+## Evaluate model tool selection
+
+Model evals answer a different question: does a chosen model understand the advertised tools and select the right operation? Run them after deterministic protocol tests pass.
+
+This example follows the installed AI SDK 7 and Evalite 1 beta APIs. Install the matching application dev dependencies (`evalite`, `vitest`, `@ai-sdk/mcp`, and `ai`). Run a development server with the [greet tool](https://mcp-toolkit.nuxt.dev/getting-started/installation#add-a-typed-tool), configure your provider credentials, and set `EVAL_MODEL` to an available provider/model identifier.
+
+```ts [test/mcp.eval.ts]
+import { createMCPClient } from '@ai-sdk/mcp'
+import { generateText, isStepCount } from 'ai'
+import { evalite } from 'evalite'
+import { toolCallAccuracy } from 'evalite/scorers'
+
+const model = process.env.EVAL_MODEL
+if (!model) throw new Error('Set EVAL_MODEL to a model available through your configured provider.')
+const url = process.env.MCP_URL ?? 'http://localhost:3000/mcp'
+
+evalite('Greeting tool selection', {
+  data: async () => [{
+    input: 'Use the greeting tool to greet Ada.',
+    expected: [{ toolName: 'greet', input: { name: 'Ada' } }],
+  }],
+  task: async (input) => {
+    const client = await createMCPClient({ transport: { type: 'http', url } })
+    try {
+      const result = await generateText({
+        model,
+        prompt: input,
+        tools: await client.tools(),
+        stopWhen: isStepCount(3),
+      })
+      return result.steps.flatMap(step => step.toolCalls)
+    }
+    finally {
+      await client.close()
+    }
+  },
+  scorers: [({ output, expected }) => toolCallAccuracy({ actualCalls: output, expectedCalls: expected })],
 })
 ```
 
-The helper connects a real SDK client in memory and closes it on scope exit. Pass `{ era: 'legacy' }` to verify 2025 behavior. Use `headers` for authentication or a tool allowlist.
+Use `pnpm exec evalite` or `pnpm exec evalite watch`. Set `MCP_URL` for a different endpoint. Add the client's authentication configuration when evaluating a protected endpoint; never run destructive production tools as an eval fixture.
 
-Use a built Nuxt fixture to verify discovery, layers, middleware, generated imports, and streaming. Keep service logic and schema tests fast and independent of a full application build. Model evals complement these checks; they do not replace protocol or authorization tests.
+The client is closed even when generation fails. Multi-step results inspect all steps rather than only the final response. Pin dependencies in your eval project and consult the [AI SDK MCP guide](https://ai-sdk.dev/docs/ai-sdk-core/mcp-tools) when upgrading.
 
-## Inspector
-
-Start Nuxt and open the MCP Inspector tab in Nuxt DevTools. The launcher opens the official inspector in a separate tab.
-
-You can also run:
-
-```sh
-npx @modelcontextprotocol/inspector
-```
-
-Choose Streamable HTTP and enter `http://localhost:3000/mcp`. Configure authorization headers when the endpoint requires a credential. Each named endpoint has its own catalog and authentication.
-
-For repeatable checks, use the [in-memory testing helpers](/advanced/evals). Verify a legacy client as well as a modern client when using capabilities that differ between revisions.
+Record model/provider, client revision, fixture inputs, expected calls, and failure examples. Evals complement contract tests; they do not establish protocol conformance or compatibility with every host.

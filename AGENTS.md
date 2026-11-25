@@ -121,7 +121,7 @@ The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/
 
 `dir` can also be an array in priority order: the first root containing the same relative definition file wins, and all roots are watched. Plugins come from the first root containing `plugins.*`; an ambiguous pair in that root remains an error. Framework integrations add generated module specifiers through `include.tools`, `include.resources`, `include.prompts`, and `include.plugins`. Definition modules default-export one definition; plugins modules default-export arrays appended after the discovered plugins. Included definitions remain additive and participate in duplicate validation.
 
-**Discovery generates two Nitro virtual modules per instance** — `#mcp/<slug>/registry`, which imports each definition file, and `#mcp/<slug>/handler`, which is what `options.handlers` mounts. Apps never import those ids: every instance is re-exported from a third virtual, `nitro-mcp-toolkit/servers` (`mcp` for `/mcp`, `adminMcp` for `/admin/mcp`). These were established empirically and are easy to break:
+**Discovery generates registry and handler Nitro virtual modules per instance** — `#mcp/<slug>/registry`, which imports each definition file, and `#mcp/<slug>/handler`, which is what `options.handlers` mounts. A metadata-only `#mcp-config:<route>` virtual also exposes the resolved name, description and website to Nuxt installation links and `llms.txt`, without loading definitions or plugins. Apps never import those ids: every instance is re-exported from a third virtual, `nitro-mcp-toolkit/servers` (`mcp` for `/mcp`, `adminMcp` for `/admin/mcp`). These were established empirically and are easy to break:
 
 - A bare `nitro-mcp-toolkit` import inside a virtual module resolves fine, in dev and in a production build, so the generated handler imports the toolkit exactly as a user's file does — one module instance.
 - The registry inlines its own `fromFile` helper rather than importing one, which keeps build-time naming out of the runtime bundle and the runtime free of an export that only generated code would call.
@@ -209,6 +209,10 @@ The runtime is written against a pinned `h3-mcp` (currently 0.2.0). That release
 
 **Plugins reach a `mcp()` server through `<dir>/plugins.ts`, not through an option** — an `ExtensionPlugin` is a live function and `mcp()` options cross into generated code as JSON. `discoverPlugins` returns *every* match so the caller can refuse an ambiguous pair; `onePluginsFile` in `src/module/index.ts` does that where it can name the route, which also keeps the watcher's `served()` from dying on a misconfiguration. The handler virtual is `async` for the same reason the registry is: a file written after `setup` must be seen at rebuild. The file's default export goes through `defineMcpPlugins` (`src/runtime/plugins.ts`), an identity function that exists purely to typecheck it — generated code is its only importer and is not checked with the app. Keep its parameter `readonly ExtensionPlugin[]` and **not** a generic: a generic preserves each plugin's `TState` but loses excess-property checking during inference, so a misspelled hook slips through, and nothing reads state through the array anyway (`pluginState` types off the instance). Adding the convention means four places, not one — `discover.ts`, `template.ts` (`renderHandler`'s second argument), `watch.ts` (`couldChangeServed` plus `served`, or creating the file triggers no `rollup:reload`), and `report.ts`.
 
+**Endpoint runtime configuration** lives in an optional `<dir>/index.ts` default-exporting `defineMcpServer({ ... })`. Keep metadata, instructions and authentication callbacks there; keep routing, directory discovery and OAuth metadata mounting in module options. The first root containing an index wins, and its settings override module defaults. Combining index authentication with module authentication or OAuth is an error. Creating or deleting an index triggers a development rebuild.
+
+**Runtime endpoint authentication** uses an explicit `auth: './server/mcp-admin/auth.ts'` module reference. The file default-exports `defineMcpAuth()` with the engine's `AuthOptions`; callbacks read runtime secrets and receive the current MCP event. Nuxt resolves aliases and project-relative paths before delegation; bare Nitro resolves relative paths from its root. Keep file discovery and let the engine authenticate both eras. Never serialize a callback or read private tokens in build-time configuration. A missing or invalid auth export must fail closed.
+
 **OAuth** is a generic resource-server: `mcp({ oauth: { resource, authorizationServers, jwt } })` or `createMcpOAuth`. JWT verify, claims on `event.context.oauth`, RFC 9728 metadata mounted. Connectors (`nitro-mcp-toolkit/oauth/clerk`, `/okta`, `/workos`) return that same options object — Clerk infers issuer/JWKS from `CLERK_PUBLISHABLE_KEY` and requires `aud` equal to the MCP resource. WorkOS uses `WORKOS_AUTHKIT_ISSUER` and Connect resource-bound tokens, not AuthKit session tokens. JWTs require `exp`; disabling audience checks requires a custom resource verifier. The package does not mint tokens. Opaque tokens still mean `createMcpOAuth({ verify })` in a route file.
 
 For Nitro tools with `outputSchema`, plain objects are schema data; full protocol envelopes must use `toolResult()`.
@@ -216,6 +220,8 @@ For Nitro tools with `outputSchema`, plain objects are schema data; full protoco
 ### Nitro 2 adapter
 
 `nitro-mcp-toolkit/module/nitro2` shares module setup with Nitro 3. Only imports from the toolkit runtime and h3-mcp resolve to the internal H3 v2; the host keeps H3 v1. The generated adapter preserves middleware context, headers, request bodies, and runtime facilities. H3 v1 does not cancel a returned web stream when its socket closes, so the adapter relays SSE and cancels its source reader on disconnect.
+
+The Nitro 2 module inlines the toolkit runtime, h3-mcp, its own H3 v2 and jose for tree-shaking. Its matcher covers package specifiers and resolved paths without matching the host's H3 v1. Keeping only dependency paths misses imports behind an external toolkit package. Leaving jose external lets Nitro's tracer copy it even after unused OAuth exports disappear. Packed consumers check that bearer-only servers emit no JWT code or external jose files, and that OAuth still verifies signed tokens on Nitro 2 and 3.
 
 The toolkit notifier lives at `event.context.mcp.notifier`. Preserve the engine's callable `event.context.mcp.notify`, which progress and logging use. `handler.notify` continues to broadcast catalog changes.
 
@@ -247,6 +253,8 @@ export default defineMcpTool({
 Schemas are complete Standard Schema objects. With input, handlers receive `(args, event)`; without input, they receive `event`. Output schemas narrow and validate the returned data. Full envelopes alongside output schemas require `toolResult()`.
 
 For definitions without arguments, omit `inputSchema` and any unused schema-library import. Do not add an empty `z.object({})` as boilerplate.
+
+The 1.0 docs include Nuxt OAuth setup at `/getting-started/oauth`, and retired Code Mode links redirect to migration guidance. Keep examples complete and validate them against generated Nuxt types; document provider-login checks separately from local JWT verification.
 
 Keep substantive documentation examples for typed output and caching. Explain the actual beta API: schema `examples` are JSON Schema annotations, MCP `_meta` is extension metadata, and `_meta.inputExamples` is a custom client convention. Do not present removed convenience options as implemented APIs or remove useful examples merely to shorten a guide.
 
@@ -468,3 +476,5 @@ Discovery catalog: [https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json](
 A correction is a few lines, not a rewrite — keep this file lean.
 
 The Nuxt integration builds the Nitro toolkit before generating types. Its public H3 types import `h3/generic` so Nuxt’s H3 v1 alias cannot change the MCP callback’s web request type. The composed-route adapter preserves the host context by reference and relays disconnects; do not replace it with a context copy.
+
+Engine input helpers retain their original function references and publish `h3/generic` event signatures, including signed-state codecs. The test client requires only a request-to-response fetch function, independently of host context types.

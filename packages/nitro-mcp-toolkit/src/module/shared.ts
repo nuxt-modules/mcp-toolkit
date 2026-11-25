@@ -1,5 +1,6 @@
+import { statSync } from 'node:fs'
 import { basename, resolve } from 'pathe'
-import { discoverDefinitions, discoverPlugins } from './discover.ts'
+import { discoverDefinitions, discoverPlugins, discoverServerConfig } from './discover.ts'
 import { resolveModuleOptions } from './options.ts'
 import { reportDefinitions } from './report.ts'
 import { registerServer, slugify } from './servers.ts'
@@ -11,6 +12,7 @@ import {
   renderOAuth,
   renderOAuthMetadata,
   renderRegistry,
+  renderServerMetadata,
 } from './template.ts'
 import { watchDefinitions } from './watch.ts'
 import type { McpModuleOptions } from './options.ts'
@@ -18,11 +20,11 @@ import type { McpNitro } from './nitro.ts'
 
 const AS_METADATA = '/.well-known/oauth-authorization-server'
 
-/** Which plugins file the handler installs, when the convention is unambiguous. */
-function onePluginsFile(route: string, paths: string[]): string | undefined {
+/** Select a root module when the convention is unambiguous. */
+function oneRootFile(route: string, name: string, paths: string[]): string | undefined {
   if (paths.length > 1) {
     throw new Error(
-      `[nitro-mcp-toolkit] ${route} has more than one plugins file ` +
+      `[nitro-mcp-toolkit] ${route} has more than one ${name} file ` +
         `(${paths.map((path) => basename(path)).join(', ')}). Keep one.`,
     )
   }
@@ -31,7 +33,7 @@ function onePluginsFile(route: string, paths: string[]): string | undefined {
 }
 
 export function createModule(options: McpModuleOptions, nitro2?: { h3: string }) {
-  const { route, dir, server, oauth, include } = resolveModuleOptions(options)
+  const { route, dir, server, auth, oauth, include } = resolveModuleOptions(options)
   const slug = slugify(route)
 
   return {
@@ -50,18 +52,31 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
         )
       }
 
+      const authPath = auth ? resolve(nitro.options.rootDir, auth) : undefined
+      if (authPath && !statSync(authPath, { throwIfNoEntry: false })?.isFile()) {
+        throw new Error(`[nitro-mcp-toolkit] ${route} auth module not found: ${authPath}`)
+      }
+
       const definitionsDir = (typeof dir === 'string' ? [dir] : dir).map((root) =>
         resolve(nitro.options.rootDir, root),
       )
 
       nitro.options.virtual[registryId] = async () =>
         renderRegistry(await discoverDefinitions(definitionsDir, include))
+      nitro.options.virtual[`#mcp-config:${route}`] = async () =>
+        renderServerMetadata(
+          server,
+          oneRootFile(route, 'index', await discoverServerConfig(definitionsDir)),
+        )
       // Async like the registry: a plugins file written after setup is picked
       // up by the rebuild the watcher triggers, rather than needing a restart.
       nitro.options.virtual[handlerId] = async () => {
-        const pluginsPath = onePluginsFile(route, await discoverPlugins(definitionsDir))
+        const pluginsPath = oneRootFile(route, 'plugins', await discoverPlugins(definitionsDir))
+        const configPath = oneRootFile(route, 'index', await discoverServerConfig(definitionsDir))
 
         return renderHandler(registryId, server, {
+          ...(authPath ? { authPath } : {}),
+          ...(configPath ? { configPath } : {}),
           ...(include?.plugins?.length ? { extraPlugins: include.plugins } : {}),
           ...(nitro2 ? { nitro2: true } : {}),
           ...(oauth ? { oauthId } : {}),

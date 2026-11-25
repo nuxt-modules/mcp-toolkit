@@ -27,6 +27,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/index.css'],
 
   runtimeConfig: {
+    mcpAdminToken: '',
     public: {
       auth: {
         redirectUserTo: '/app',
@@ -65,16 +66,9 @@ export default defineNuxtConfig({
   },
 
   mcp: {
-    name: 'Playground MCP',
-    description: 'A demo MCP server showcasing authentication, todos, and user management.',
-    instructions: 'Authenticate with an API key before calling protected tools. Use list-todos before create-todo to avoid duplicates.',
     servers: {
       default: {},
-      ...(process.env.MCP_ADMIN_TOKEN
-        ? {
-            admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN] } },
-          }
-        : {}),
+      admin: {},
     },
   },
 })

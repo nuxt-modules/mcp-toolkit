@@ -6,8 +6,10 @@ Requires Nuxt 4.6 or later. The default endpoint supports the modern `2026-07-28
 
 ## Install
 
+Install the beta explicitly. Before its first publication, use the exact PR preview package command; stable 0.x remains on `latest`.
+
 ```sh
-pnpm add @nuxtjs/mcp-toolkit zod
+pnpm add @nuxtjs/mcp-toolkit@beta zod
 ```
 
 ```ts
@@ -52,7 +54,7 @@ export default defineMcpTool({
     weightKg: z.number().positive().describe('Weight in kilograms'),
   }),
   outputSchema: bmiOutput,
-  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+  handler: ({ heightM, weightKg }) => {
     const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
     const category = bmi < 18.5 ? 'underweight'
       : bmi < 25 ? 'normal'
@@ -112,15 +114,38 @@ Standalone Nitro 3 uses `nitro/cache` for the cached function and `nitro-mcp-too
 
 Use JSON Schema examples when documenting expected input; Zod 4 emits them from `.meta({ examples })`. MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a custom client convention, not a core MCP feature, and the old typed top-level `inputExamples` helper is not currently available in the beta. See [annotations and metadata](https://github.com/nuxt-modules/mcp-toolkit/blob/v1/apps/docs/content/2.tools/2.annotations.md).
 
-## Named endpoints and layers
+## OAuth
+
+The module exposes the shared resource-server setup globally or per named endpoint:
 
 ```ts [nuxt.config.ts]
 export default defineNuxtConfig({
   modules: ['@nuxtjs/mcp-toolkit'],
   mcp: {
+    oauth: {
+      resource: 'https://example.com/mcp',
+      authorizationServers: ['https://auth.example.com'],
+      jwt: { jwks: 'https://auth.example.com/.well-known/jwks.json' },
+      scopesSupported: ['profile:read'],
+    },
+  },
+})
+```
+
+The module mounts protected-resource metadata and verifies JWT signature, issuer, resource audience, expiry, and subject. Claims are available on `event.context.oauth`. Put required `scopes` on definitions; advertising `scopesSupported` alone does not enforce them.
+
+The authorization provider owns login, client registration, and token issuance. Provider connectors are available at `nitro-mcp-toolkit/oauth/clerk`, `/okta`, and `/workos`. See the [Nuxt OAuth guide](https://mcp-toolkit.nuxt.dev/getting-started/oauth) and [manual wiring](https://mcp-toolkit.nuxt.dev/examples/authentication#compose-oauth-manually). Test the actual client/provider flow as well as local token verification.
+
+## Named endpoints and layers
+
+```ts [nuxt.config.ts]
+export default defineNuxtConfig({
+  modules: ['@nuxtjs/mcp-toolkit'],
+  runtimeConfig: { mcpAdminToken: '' },
+  mcp: {
     servers: {
       default: { dir: 'mcp' },
-      admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+      admin: { dir: 'mcp-admin' },
     },
   },
 })
@@ -130,7 +155,26 @@ This mounts `/mcp` and `/mcp/admin`. Each server scans its own directories. `dir
 
 Use `oauth` for JWT resource-server verification, and `scopes` on definitions for operation-level checks. Scopes gate invocation while static metadata remains listed. Put sensitive catalogs on separately authenticated endpoints. Clients can request a tool subset through `X-MCP-Tools`.
 
-Import generated servers from `nitro-mcp-toolkit/servers` to read `handler.definitions` or send notifications. Manually compose routes with the Nuxt `createMcpHandler` helper when live callbacks are needed.
+Import generated servers from `nitro-mcp-toolkit/servers` to read `handler.definitions` or send notifications. Manually compose routes with the Nuxt `createMcpHandler` helper when custom route wiring is needed.
+
+Put endpoint metadata, instructions and runtime authentication beside its definitions:
+
+```ts
+// server/mcp-admin/index.ts
+import { defineMcpServer } from '@nuxtjs/mcp-toolkit/server'
+import { useRuntimeConfig } from 'nuxt/server'
+
+export default defineMcpServer({
+  name: 'admin',
+  instructions: 'Use these tools for team operations.',
+  auth: {
+    schemes: ['bearer'],
+    validate: ({ token }) => token === useRuntimeConfig().mcpAdminToken,
+  },
+})
+```
+
+Set `NUXT_MCP_ADMIN_TOKEN` in the deployment environment. The engine authenticates every request before invoking tools. The module discovers `index.ts` in the first configured root containing one and imports it into the server. Its fields override module defaults; the credential stays out of generated configuration. Invalid exports and conflicting index/module authentication refuse access. Routing and directory selection stay in Nuxt config. See [configuration](https://mcp-toolkit.nuxt.dev/getting-started/configuration) for static auth and path resolution.
 
 ## Beta scope
 

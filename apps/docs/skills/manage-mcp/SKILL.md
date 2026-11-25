@@ -9,7 +9,7 @@ Use this skill to install the module, author tools/resources/prompts, configure 
 
 ## Start
 
-Install `@nuxtjs/mcp-toolkit` and a Standard Schema library such as Zod. Requires Nuxt 4.6 or later and a Nitro server builder.
+Install `@nuxtjs/mcp-toolkit@beta` and a Standard Schema library such as Zod. Before the first beta publication, use the reviewed package-preview command. Inspect the installed version; unversioned installs select stable 0.x while `latest` remains there. Requires Nuxt 4.6 or later and a Nitro server builder.
 
 ```ts
 export default defineNuxtConfig({
@@ -37,7 +37,7 @@ export default defineMcpTool({
     weightKg: z.number().positive().describe('Weight in kilograms'),
   }),
   outputSchema: bmiOutput,
-  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+  handler: ({ heightM, weightKg }) => {
     const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
     const category = bmi < 18.5 ? 'underweight'
       : bmi < 25 ? 'normal'
@@ -62,7 +62,7 @@ Prompts return a string for one user message, or an explicit `messages` result. 
 
 Cache reusable application functions with Nitro `defineCachedFunction`, leaving tool input/output schemas in place. Use `nitropack/runtime` in Nuxt 4/Nitro 2 or `nitro/cache` in Nitro 3. Define the cached function outside the handler, specify `name`, set `maxAge` in seconds, and choose `swr` explicitly. Hash all data-selection arguments, including verified identity for private results; authorization must run on every invocation before calling the cached function. Follow the host version’s storage and lifecycle requirements.
 
-The current beta has no tool-level `cache` option or typed top-level `inputExamples` helper. For schema examples, use JSON Schema annotations (Zod 4: `.meta({ examples })`) and check their types with `satisfies z.input<typeof schema>[]`. `_meta` is standard MCP extension metadata, but `_meta.inputExamples` is a custom convention that clients may ignore. Do not describe it as a required or universally supported API. See the complete [tool examples](references/tools.md).
+The current beta has no tool-level `cache` option or typed top-level `inputExamples` helper. For schema examples, use JSON Schema annotations (Zod 4: `.meta({ examples })`). `_meta` is standard MCP extension metadata, but `_meta.inputExamples` is a custom convention that clients may ignore. Do not describe it as a required or universally supported API. See the complete [tool examples](references/tools.md).
 
 ## Endpoints and discovery
 
@@ -72,7 +72,7 @@ export default defineNuxtConfig({
   mcp: {
     servers: {
       default: { dir: 'mcp' },
-      admin: { dir: 'mcp-admin', auth: { tokens: [process.env.MCP_ADMIN_TOKEN!] } },
+      admin: { dir: 'mcp-admin', auth: './server/mcp-admin/auth.ts' },
     },
   },
 })
@@ -82,11 +82,11 @@ This mounts `/mcp` and `/mcp/admin`. Each server scans only its own roots. Paths
 
 Use groups and tags for metadata, not authorization. Import generated endpoints from `nitro-mcp-toolkit/servers` and filter `handler.definitions` with ordinary arrays. A non-default export name follows the camel-cased route slug. See [servers](references/handlers.md).
 
-Put endpoint extension plugins in `<dir>/plugins.ts` with `defineMcpPlugins([...])`. Live verifiers and manual collections belong in an ordinary route exporting `createMcpHandler(...)`.
+Put endpoint extension plugins in `<dir>/plugins.ts` with `defineMcpPlugins([...])`. An `auth` file default-exports `defineMcpAuth({ schemes: ['bearer'], validate })` options; callbacks can read private runtime configuration. Paths resolve from the project root, with Nuxt aliases supported. Keep automatic discovery for live verifiers; manual collections can still use an ordinary route exporting `createMcpHandler(...)`.
 
 ## Authorization and request context
 
-Use endpoint `oauth` for JWT access tokens and protected-resource metadata. Provider connectors under `nitro-mcp-toolkit/oauth/*` return the same options. Custom verifiers use `createMcpOAuth({ verify })`.
+Use endpoint `oauth` for JWT access tokens and protected-resource metadata. Provider connectors under `nitro-mcp-toolkit/oauth/*` return the same options. Custom verifiers use `createMcpOAuth({ verify })`. The toolkit serves protected-resource metadata and validates access tokens; the provider owns login, client registration and token issuance. Test wrong audience/issuer, expiry, missing scopes and the real client login flow. See [OAuth setup](references/oauth.md).
 
 Definition `scopes` check verified `event.context.oauth` claims before invocation or application enumeration/completion. Static metadata remains listed. Sensitive catalogs belong behind their own endpoint authentication. Do not trust client role headers or argument user IDs as identity.
 
