@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
+import { H3Event } from 'h3'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { createMcpHandler, defineMcpServer, defineMcpTool } from 'nitro-mcp-toolkit'
 import { betterAuth } from 'nitro-mcp-toolkit/oauth/better-auth'
@@ -56,7 +57,8 @@ try {
       }),
     ],
   })
-  assert.deepEqual(handler.oauth?.metadata, {
+  assert(handler.oauth)
+  assert.deepEqual(await handler.oauth.metadataHandler(new H3Event(new Request(resource))).json(), {
     resource,
     authorization_servers: [issuer],
     bearer_methods_supported: ['header'],

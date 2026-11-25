@@ -1,5 +1,6 @@
 import { McpJsonRpcError } from 'h3-mcp'
 import { attachNotify } from './context.ts'
+import { buildDefinition } from './definition.ts'
 import { isInputRequired, toCallToolResult, toErrorResult } from './results.ts'
 import { resolveSchema } from './schema.ts'
 import { requireScopes } from './scopes.ts'
@@ -174,7 +175,7 @@ export function defineMcpTool(
     tags,
     scopes,
     _meta,
-    build(identity, into, notify, onToolCall) {
+    [buildDefinition](identity, into, notify, onToolCall) {
       const advertised = {
         name: identity.name,
         title: identity.title,

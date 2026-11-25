@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3/generic'
-import type { RequestContext } from 'h3-mcp'
+import type { ClientCapabilities, Implementation } from 'h3-mcp'
 
 /**
  * Push list-changed and resource-updated events to every client currently
@@ -12,26 +12,47 @@ export interface McpNotifier {
   resourceUpdated: (uri: string) => void
 }
 
+/** Minimum severity a client asked to receive, per RFC 5424. */
+export type McpLogLevel =
+  | 'debug'
+  | 'info'
+  | 'notice'
+  | 'warning'
+  | 'error'
+  | 'critical'
+  | 'alert'
+  | 'emergency'
+
 /** What a definition handler can read about the MCP request it serves. */
-export type McpRequestContext = Pick<
-  RequestContext,
-  | 'sessionId'
-  | 'requestId'
-  | 'signal'
-  | 'protocolVersion'
-  | 'meta'
-  | 'era'
-  | 'clientCapabilities'
-  | 'clientInfo'
-  | 'logLevel'
-  | 'trace'
-  | 'inputResponses'
-  | 'notify'
-  | 'progress'
-  | 'log'
-  | 'requireClientCapability'
-  | 'requireExtension'
-> & { notifier: McpNotifier }
+export interface McpRequestContext {
+  /** Legacy protocol session, when sessions are enabled. */
+  sessionId?: string
+  requestId?: string | number
+  /** Aborted when the client cancels the request or its stream closes. */
+  signal?: AbortSignal
+  protocolVersion?: string
+  /** The request's raw `params._meta`. Untrusted input. */
+  meta?: Record<string, unknown>
+  era?: 'modern' | 'legacy'
+  clientCapabilities?: ClientCapabilities
+  clientInfo?: Implementation
+  logLevel?: McpLogLevel
+  /** W3C trace-context values propagated through `_meta`. */
+  trace?: { traceparent?: string; tracestate?: string; baggage?: string }
+  /** Multi round-trip responses the client sent back on a retry. */
+  inputResponses?: Record<string, unknown>
+  /** Send a notification on this request's response stream, when it has one. */
+  notify?: (method: string, params?: Record<string, unknown>) => void
+  /** Report progress. A no-op when the request carried no progress token. */
+  progress?: (progress: number, total?: number, message?: string) => void
+  /** Send `notifications/message`. A no-op unless the client asked for this level. */
+  log?: (level: McpLogLevel, data: unknown, logger?: string) => void
+  /** Throw `-32021` when the client did not declare these capabilities. */
+  requireClientCapability?: (...capabilities: string[]) => void
+  /** Throw `-32021` when the client did not negotiate these extensions. */
+  requireExtension?: (...extensionIds: string[]) => void
+  notifier: McpNotifier
+}
 
 /**
  * The event a tool, resource or prompt handler is called with: a plain

@@ -17,6 +17,23 @@ export interface McpDefinitionBuckets {
 }
 
 /**
+ * Key of the function that adds a definition to what an endpoint serves. Not
+ * exported from the package, so a definition is data to everyone but
+ * `createMcpHandler`; spreading a definition keeps it.
+ *
+ * @internal
+ */
+export const buildDefinition: unique symbol = Symbol.for('nitro-mcp-toolkit.build')
+
+/** @internal */
+export type McpDefinitionBuild = (
+  identity: McpIdentity,
+  into: McpDefinitionBuckets,
+  notify: McpNotifier,
+  onToolCall?: McpToolCallListener,
+) => void
+
+/**
  * Where a definition was found, for definitions the module discovered on disk.
  */
 export interface McpDefinitionSource {
@@ -57,18 +74,8 @@ export interface McpDefinition {
   readonly _meta?: Record<string, unknown>
   /** Set for discovered definitions; absent for hand-written ones. */
   readonly source?: McpDefinitionSource
-  /**
-   * Adds this definition to what the endpoint serves, under `identity` when the
-   * definition does not name itself.
-   *
-   * @internal
-   */
-  readonly build: (
-    identity: McpIdentity,
-    into: McpDefinitionBuckets,
-    notify: McpNotifier,
-    onToolCall?: McpToolCallListener,
-  ) => void
+  /** @internal */
+  readonly [buildDefinition]: McpDefinitionBuild
 }
 
 /**

@@ -111,11 +111,10 @@ describe('createMcpOAuth', () => {
     })
 
     expect(oauth.metadataPath).toBe('/.well-known/oauth-protected-resource/mcp')
-    expect(oauth.resourceMetadataUrl).toBe(
+    expect(oauth.auth.schemes).toEqual(['bearer'])
+    expect(oauth.auth.resourceMetadataUrl).toBe(
       'https://api.example.com/.well-known/oauth-protected-resource/mcp',
     )
-    expect(oauth.auth.schemes).toEqual(['bearer'])
-    expect(oauth.auth.resourceMetadataUrl).toBe(oauth.resourceMetadataUrl)
   })
 
   it('answers RFC 9728 metadata with CORS, including OPTIONS', async () => {
@@ -157,7 +156,7 @@ describe('createMcpOAuth', () => {
     const unauthenticated = await handler.fetch(ping())
     expect(unauthenticated.status).toBe(401)
     expect(unauthenticated.headers.get('www-authenticate')).toBe(
-      `Bearer realm="mcp", resource_metadata="${oauth.resourceMetadataUrl}"`,
+      'Bearer realm="mcp", resource_metadata="http://localhost:3030/.well-known/oauth-protected-resource/mcp"',
     )
 
     const denied = await handler.fetch(ping('http://localhost:3030/mcp', 'nope'))

@@ -64,10 +64,12 @@ describe('Clerk runtime OAuth', () => {
   it('passes the advertised audience to the SDK for a resource with a trailing slash', async () => {
     const { client, event } = fixture()
     const options = clerk({ resource: `${RESOURCE}/`, publishableKey: KEY, client })
-    expect(options.metadata.resource).toBe(RESOURCE)
+    expect(await options.metadataHandler(new H3Event(new Request(RESOURCE))).json()).toMatchObject({
+      resource: RESOURCE,
+    })
     expect(await options.auth.validate?.({ scheme: 'bearer', token: OPAQUE }, event)).toBe(true)
-    expect(client.authenticateRequest.mock.calls[0]?.[1].audience).toBe(options.metadata.resource)
-    expect(event.context.oauth?.aud).toBe(options.metadata.resource)
+    expect(client.authenticateRequest.mock.calls[0]?.[1].audience).toBe(RESOURCE)
+    expect(event.context.oauth?.aud).toBe(RESOURCE)
   })
 
   it.each([OPAQUE, jwt()])(

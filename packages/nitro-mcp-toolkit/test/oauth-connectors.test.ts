@@ -1,3 +1,4 @@
+import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
 import { createMcpOAuth } from '../src/runtime/index.ts'
 import { clerk } from '../src/runtime/oauth/clerk.ts'
@@ -50,10 +51,11 @@ describe('clerk', () => {
     )
   })
 
-  it('is accepted by createMcpOAuth', () => {
+  it('is accepted by createMcpOAuth', async () => {
     const oauth = createMcpOAuth(clerk({ resource: RESOURCE, publishableKey: clerkKey() }))
-
-    expect(oauth.metadata.authorization_servers).toEqual(['https://acme.clerk.accounts.dev'])
+    expect(await oauth.metadataHandler(new H3Event(new Request(RESOURCE))).json()).toMatchObject({
+      authorization_servers: ['https://acme.clerk.accounts.dev'],
+    })
     expect(oauth.authorizationServerHandler).toBeTypeOf('function')
   })
 })

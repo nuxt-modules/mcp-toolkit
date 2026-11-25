@@ -132,26 +132,41 @@ export type McpOAuthSetup = Omit<McpOAuthOptions, 'jwt' | 'verify'> & {
   jwt: Omit<McpOAuthJwtOptions, 'audience'> & { audience?: string | string[] }
 }
 
-export interface McpOAuth {
-  resource: string
-  /** Path to mount `metadataHandler` on, derived from `resource` per RFC 9728. */
-  metadataPath: string
+/** What the metadata handlers read from a request event. */
+export interface McpMetadataEvent {
+  req: { method: string }
+}
+
+/**
+ * Key of what the handler needs to build OAuth challenges. Kept off the public
+ * shape so a request-derived `resource` can be added without changing it.
+ *
+ * @internal
+ */
+export const oauthChallenge: unique symbol = Symbol.for('nitro-mcp-toolkit.oauth-challenge')
+
+/** @internal */
+export interface McpOAuthChallenge {
   /** Absolute URL carried on every `401` `WWW-Authenticate`. */
   resourceMetadataUrl: string
-  metadata: McpProtectedResourceMetadata
-  /**
-   * Scopes named in the `401` challenge (`scopesSupported`), which MCP
-   * clients request first. Absent when no scopes are advertised.
-   */
-  challengeScope?: string
+  /** Scopes named in the `401` challenge (`scopesSupported`), when any are advertised. */
+  scope?: string
+}
+
+export interface McpOAuth {
+  /** Path to mount `metadataHandler` on, derived from `resource` per RFC 9728. */
+  metadataPath: string
   /** Pass as `auth` to `createMcpHandler`. */
   auth: McpAuthOptions
-  metadataHandler: (event: H3Event) => Response
+  /** Serves the RFC 9728 protected resource metadata, with CORS. Nitro 2 events work too. */
+  metadataHandler: (event: McpMetadataEvent) => Response
   /**
    * RFC 8414 document for this issuer, with CORS. Only set when
    * `authorizationServer` was given.
    */
-  authorizationServerHandler?: (event: H3Event) => Promise<Response>
+  authorizationServerHandler?: (event: McpMetadataEvent) => Promise<Response>
+  /** @internal */
+  readonly [oauthChallenge]: McpOAuthChallenge
 }
 
 function corsResponse(body: unknown, status = 200): Response {
@@ -239,7 +254,7 @@ function normalizeIssuer(value: string, label: string): string {
 }
 
 function metadataHandlerFor(metadata: McpProtectedResourceMetadata) {
-  return (event: H3Event): Response => {
+  return (event: McpMetadataEvent): Response => {
     if (event.req.method === 'OPTIONS') return corsResponse(null, 204)
     return corsResponse(metadata)
   }
@@ -248,7 +263,7 @@ function metadataHandlerFor(metadata: McpProtectedResourceMetadata) {
 function authorizationServerHandlerFor(issuer: string) {
   const url = authorizationServerMetadataUrl(issuer).href
 
-  return async (event: H3Event): Promise<Response> => {
+  return async (event: McpMetadataEvent): Promise<Response> => {
     if (event.req.method === 'OPTIONS') return corsResponse(null, 204)
 
     const response = await fetch(url)
@@ -329,19 +344,16 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
     },
   }
 
+  const scope = challengeScopes(options.scopesSupported)
+
   return {
-    resource,
     metadataPath: metadataUrl.pathname,
-    resourceMetadataUrl: metadataUrl.href,
-    metadata,
-    ...(challengeScopes(options.scopesSupported)
-      ? { challengeScope: challengeScopes(options.scopesSupported) }
-      : {}),
     auth,
     metadataHandler: metadataHandlerFor(metadata),
     ...(authorizationServer
       ? { authorizationServerHandler: authorizationServerHandlerFor(authorizationServer) }
       : {}),
+    [oauthChallenge]: { resourceMetadataUrl: metadataUrl.href, ...(scope ? { scope } : {}) },
   }
 }
 
