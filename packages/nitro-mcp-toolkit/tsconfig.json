@@ -19,7 +19,9 @@
     // `typecheck` independent of whether `dist` has been built.
     "paths": {
       "nitro-mcp-toolkit": ["./src/runtime/index.ts"],
-      "nitro-mcp-toolkit/servers": ["./src/runtime/servers.ts"]
+      "nitro-mcp-toolkit/servers": ["./src/runtime/servers.ts"],
+      "nitro-mcp-toolkit/oauth/*": ["./src/runtime/oauth/*.ts"],
+      "nitro-mcp-toolkit/testing": ["./src/testing/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "benchmarks/**/*.ts"],

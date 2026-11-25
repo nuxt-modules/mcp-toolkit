@@ -19,6 +19,7 @@ import type {
   McpEvent,
   McpHandler,
   McpHandlerOptions,
+  McpOAuth,
   McpPrompt,
   McpResource,
   McpTool,
@@ -180,6 +181,21 @@ it('lists the handler options the toolkit owns', () => {
     | 'resources'
     | 'prompts'
     | 'onToolCall'
+  >()
+})
+
+// A definition is data: how the engine registers it is not reachable by name.
+it('keeps engine registration off the definition shape', () => {
+  expectTypeOf<Extract<keyof McpTool, string>>().toEqualTypeOf<
+    'kind' | 'name' | 'title' | 'description' | 'group' | 'tags' | 'scopes' | '_meta' | 'source'
+  >()
+})
+
+// `resource` may later come from the request, so nothing derived from it as an
+// absolute URL is public.
+it('exposes only request-independent OAuth fields', () => {
+  expectTypeOf<Extract<keyof McpOAuth, string>>().toEqualTypeOf<
+    'metadataPath' | 'auth' | 'metadataHandler' | 'authorizationServerHandler'
   >()
 })
 

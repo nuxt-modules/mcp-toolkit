@@ -1,3 +1,4 @@
+import { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
 import {
   MODERN_PROTOCOL_VERSION,
@@ -39,7 +40,7 @@ describe('runtime OAuth server configuration', () => {
     const config = defineMcpServer({ oauth: createMcpOAuth(provider) })
     expect(defineMcpServer(config).oauth).toBe(config.oauth)
     const handler = createMcpHandler(config)
-    expect(handler.oauth?.metadata).toMatchObject({
+    expect(await handler.oauth?.metadataHandler(new H3Event(request())).json()).toMatchObject({
       resource,
       authorization_servers: provider.authorizationServers,
     })

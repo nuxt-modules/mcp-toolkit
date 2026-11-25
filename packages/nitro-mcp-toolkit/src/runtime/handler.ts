@@ -3,17 +3,11 @@ import type { H3Event as McpRequestEvent, H3EventContext } from 'h3/generic'
 import { defineMcpHandler } from 'h3-mcp'
 import { assertMcpOAuth } from './auth.ts'
 import { insufficientScope } from './scopes.ts'
-import { challengeScopes } from './oauth.ts'
+import { challengeScopes, oauthChallenge } from './oauth.ts'
 import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
-import type {
-  HandlerOptions as EngineOptions,
-  LimitsOptions,
-  OriginOptions,
-  PluginOptions,
-  SessionOptions,
-  Subscription,
-} from 'h3-mcp'
+import { buildDefinition } from './definition.ts'
+import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
 import type { McpAuthOptions } from './auth.ts'
 import type { McpOAuth, McpOAuthClaims } from './oauth.ts'
 import type { McpNotifier } from './context.ts'
@@ -28,10 +22,36 @@ import type {
 
 /** Which protocol eras an endpoint serves: `dual` answers both 2026-07-28 and the 2025 revisions. */
 export type McpEra = 'dual' | 'modern' | 'legacy'
-export type McpOriginOptions = OriginOptions
-export type McpSessionOptions = SessionOptions
-export type McpLimitsOptions = LimitsOptions
-/** Engine setup that is not data, such as extension plugins. */
+
+/** Which browser origins may reach an endpoint. */
+export interface McpOriginOptions {
+  /** Origins accepted beside the default. */
+  allow?: string[]
+  /** Accept requests without an `Origin` header. */
+  allowMissing?: boolean
+  /** Replaces the default loopback check. */
+  validate?: (origin: string, event: McpRequestEvent) => boolean | Promise<boolean>
+}
+
+/** Legacy protocol sessions. */
+export interface McpSessionOptions {
+  enabled?: boolean
+  generateId?: (event: McpRequestEvent) => string | Promise<string>
+  maxSessions?: number
+}
+
+/** Request body, batch, and content-type limits. `false` lifts one. */
+export interface McpLimitsOptions {
+  maxBodySize?: number | false
+  contentType?: false | string | string[]
+  maxBatchSize?: number | false
+}
+
+/**
+ * Engine setup that is not data, such as extension plugins.
+ *
+ * @experimental Follows the protocol engine's plugin contract and may change in any release.
+ */
 export type McpHandlerSetup = PluginOptions
 
 export interface McpHandlerOptions extends Pick<
@@ -97,15 +117,16 @@ export interface McpHandlerOptions extends Pick<
  * failure inside a `200` stream, which carries no challenge.
  */
 function withOAuthChallenge(response: Response, event: H3Event, oauth: McpOAuth): Response {
-  const metadata = `resource_metadata="${oauth.resourceMetadataUrl}"`
+  const { resourceMetadataUrl, scope: challengeScope } = oauth[oauthChallenge]
+  const metadata = `resource_metadata="${resourceMetadataUrl}"`
   let challenge: string | undefined
 
-  if (response.status === 401 && oauth.challengeScope) {
+  if (response.status === 401 && challengeScope) {
     const current = response.headers.get('www-authenticate')
     if (current?.includes('Bearer ') && !current.includes('scope=')) {
       challenge = current.replace(
         /(Bearer realm="mcp"(?:, resource_metadata="[^"]*")?)/,
-        `$1, scope="${oauth.challengeScope}"`,
+        `$1, scope="${challengeScope}"`,
       )
     }
   } else if (response.status === 403) {
@@ -278,7 +299,7 @@ export function createMcpHandler(
   }
 
   for (const { definition, identity } of registrations) {
-    definition.build(identity, buckets, notify, onToolCall)
+    definition[buildDefinition](identity, buckets, notify, onToolCall)
   }
 
   const toolNames = new Set(tools.map((tool) => tool.name!))

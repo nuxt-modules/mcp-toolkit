@@ -160,6 +160,9 @@ Declared `group`, non-empty `tags`, and non-empty `scopes` take precedence over 
 
 ### Plugins
 
+> [!WARNING]
+> Extension plugins are experimental. They expose the protocol engine's plugin contract, so `McpExtensionPlugin`, `defineMcpPlugins`, `plugins.ts` and `{ extensionPlugins }` may change in any release, including after 1.0.
+
 `server/mcp/plugins.ts`, beside the three directories, installs [h3-mcp](https://github.com/h3js/h3-mcp) extension plugins on that endpoint. Its default export is the array:
 
 ```ts
@@ -526,7 +529,7 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [g
 
 Handwritten definitions name themselves, since no filename is there to do it.
 
-The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` (`McpHandlerSetup`) as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps.
+The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` (`McpHandlerSetup`) as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps. Like `plugins.ts`, this is experimental.
 
 Framework adapters can pass request context by reference with `handler.fetch(request, context)`:
 

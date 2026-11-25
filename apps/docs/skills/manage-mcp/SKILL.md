@@ -82,7 +82,7 @@ This mounts `/mcp` and `/mcp/admin`. Each server scans only its own roots. Paths
 
 Use groups and tags for metadata, not authorization. Import generated endpoints from `nitro-mcp-toolkit/servers` and filter `handler.definitions` with ordinary arrays. A non-default export name follows the camel-cased route slug. See [servers](references/handlers.md).
 
-Put endpoint extension plugins in `<dir>/plugins.ts` with `defineMcpPlugins([...])`. An `auth` file default-exports `defineMcpAuth({ schemes: ['bearer'], validate })` options; callbacks can read private runtime configuration. Paths resolve from the project root, with Nuxt aliases supported. Keep automatic discovery for live verifiers; manual collections can still use an ordinary route exporting `createMcpHandler(...)`.
+Put endpoint extension plugins in `<dir>/plugins.ts` with `defineMcpPlugins([...])`. Plugins are experimental: they expose the engine's plugin contract and may change in any release. An `auth` file default-exports `defineMcpAuth({ schemes: ['bearer'], validate })` options; callbacks can read private runtime configuration. Paths resolve from the project root, with Nuxt aliases supported. Keep automatic discovery for live verifiers; manual collections can still use an ordinary route exporting `createMcpHandler(...)`.
 
 ## Authorization and request context
 

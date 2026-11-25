@@ -27,7 +27,7 @@ export {
 } from './input.ts'
 export { mcpElicit, mcpElicitUrl, McpJsonRpcError } from 'h3-mcp'
 
-export type { McpEvent, McpNotifier, McpRequestContext } from './context.ts'
+export type { McpEvent, McpLogLevel, McpNotifier, McpRequestContext } from './context.ts'
 export type {
   McpEra,
   McpHandler,
@@ -42,6 +42,7 @@ export type {
   McpOAuth,
   McpOAuthClaims,
   McpOAuthJwtOptions,
+  McpMetadataEvent,
   McpOAuthOptions,
   McpOAuthServiceToken,
   McpOAuthSetup,

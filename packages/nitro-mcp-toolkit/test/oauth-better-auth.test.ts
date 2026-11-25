@@ -59,7 +59,7 @@ describe('betterAuth', () => {
     return new H3Event(new Request(RESOURCE))
   }
 
-  it('returns prepared resource-server options with explicit provider URLs and advertised scopes', () => {
+  it('returns prepared resource-server options with explicit provider URLs and advertised scopes', async () => {
     const options = betterAuth({
       resource: RESOURCE,
       issuer: ISSUER,
@@ -75,7 +75,9 @@ describe('betterAuth', () => {
       verify: expect.any(Function),
     })
     expect(options.jwt).toBeUndefined()
-    expect(options.metadata.scopes_supported).toEqual(['mcp:read'])
+    expect(await options.metadataHandler(new H3Event(new Request(RESOURCE))).json()).toMatchObject({
+      scopes_supported: ['mcp:read'],
+    })
     expect(options.auth.schemes).toEqual(['bearer'])
     expect(options.authorizationServerHandler).toBeTypeOf('function')
   })
@@ -95,12 +97,14 @@ describe('betterAuth', () => {
 
   it('verifies the resource audience advertised for a URL with a trailing slash', async () => {
     const options = betterAuth({ resource: `${RESOURCE}/`, issuer: ISSUER, jwks })
-    expect(options.metadata.resource).toBe(RESOURCE)
+    expect(await options.metadataHandler(new H3Event(new Request(RESOURCE))).json()).toMatchObject({
+      resource: RESOURCE,
+    })
     const request = event()
     expect(await options.auth.validate?.({ scheme: 'bearer', token: await sign() }, request)).toBe(
       true,
     )
-    expect(request.context.oauth?.aud).toBe(options.metadata.resource)
+    expect(request.context.oauth?.aud).toBe(RESOURCE)
   })
 
   it('verifies a signed access token with the official verifier and publishes its claims', async () => {

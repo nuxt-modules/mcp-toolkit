@@ -1,9 +1,29 @@
-import type { AuthCredentials, AuthOptions, AuthScheme } from 'h3-mcp'
+import type { H3Event } from 'h3/generic'
 import type { McpOAuth } from './oauth.ts'
 
-export type McpAuthOptions = AuthOptions
-export type McpAuthCredentials = AuthCredentials
-export type McpAuthScheme = AuthScheme
+export type McpAuthScheme = 'bearer' | 'api-key'
+
+/** The credential a request presented, as `validate` receives it. */
+export interface McpAuthCredentials {
+  scheme: McpAuthScheme
+  token: string
+}
+
+/** Bearer token or API key authentication for an endpoint. */
+export interface McpAuthOptions {
+  /** @default true */
+  enabled?: boolean
+  /** @default ['bearer'] */
+  schemes?: McpAuthScheme[]
+  /** Static tokens accepted as-is. */
+  tokens?: string[]
+  /** Return `true` to accept the credential. Runs when no static token matched. */
+  validate?: (credentials: McpAuthCredentials, event: H3Event) => boolean | Promise<boolean>
+  /** Header carrying an API key. */
+  header?: string
+  /** RFC 9728 metadata URL carried on the `401` challenge. */
+  resourceMetadataUrl?: string
+}
 
 export function assertMcpOAuth(oauth: McpOAuth): void {
   if (

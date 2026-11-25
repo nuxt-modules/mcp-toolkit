@@ -1,5 +1,6 @@
 import { defineResourceTemplate } from 'h3-mcp'
 import { attachNotify } from './context.ts'
+import { buildDefinition } from './definition.ts'
 import { requireScopes } from './scopes.ts'
 import { resolveMeta } from './validate.ts'
 import type { H3Event } from 'h3'
@@ -107,7 +108,7 @@ export function defineMcpResource(
     scopes,
     _meta,
     uri: isStaticUri ? definition.uri : definition.uriTemplate,
-    build(identity, into, notify) {
+    [buildDefinition](identity, into, notify) {
       const advertised = {
         name: identity.name,
         title: identity.title,

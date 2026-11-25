@@ -8,13 +8,17 @@ Open the foundation PR first. Later PRs target the preceding branch while it is 
 
 | Order | Branch | Review scope |
 | --- | --- | --- |
-| 1 | `v1-01-release-rails` | CI for the integration branch and stack, release-channel checks, beta activation for both packages |
-| 2 | `v1-02-nitro2` | Nitro 2 adapter, H3 version isolation, transport/context/cancellation tests |
-| 3 | `v1-03-shared-api` | Definition metadata, directory overlays, generated imports, shared request APIs |
-| 4 | `v1-04-no-mcp-apps` | Remove built-in MCP Apps, their Vue bundler and host bridge, and update migration guidance |
-| 5 | `v1-05-nuxt` | Nuxt adapter, retirement of the old runtime and APIs, migrated fixtures and example applications |
-| 6 | `v1-06-docs` | Complete migration guide, docs site, READMEs, published agent skill |
-| 7 | `v1-07-beta` | Beta consumer validation and release readiness |
+| 1 | `v1-01-release-rails` | CI for the integration branch and stack, release-channel checks, beta activation for both packages (merged, #398) |
+| 2 | `v1-02-nitro2` | Nitro 2 adapter, H3 version isolation, transport/context/cancellation tests (merged, #399) |
+| 3 | `v1-03-shared-api` | Definition metadata, directory overlays, generated imports, shared request APIs (#402) |
+| 4 | `v1-04-no-mcp-apps` | Remove built-in MCP Apps, their Vue bundler and host bridge, and update migration guidance (#403) |
+| 5 | `v1-05-nuxt` | Nuxt adapter, retirement of the old runtime and APIs, migrated fixtures and example applications (#405) |
+| 6 | `v1-06-docs` | Migration guide, docs site, READMEs, published agent skill, server configuration DX (#406) |
+| 7 | `v1-07-auth-dx` | Runtime OAuth provider adapters (#415) |
+| 8 | `v1-08-toolkit-types` | Toolkit-owned names for exported engine types (#420) |
+| 9 | `v1-09-oauth-challenges` | OAuth scope challenges and service tokens (#421) |
+| 10 | `v1-10-engine-seams` | Engine-neutral public shapes, experimental plugins |
+| 11 | not opened | Beta consumer validation and release readiness |
 
 Keep each step buildable and tested. Public changes carry their own changesets and enough documentation to use them; the docs step completes the migration material. Example application code moves with the API changes it consumes so CI previews remain usable.
 

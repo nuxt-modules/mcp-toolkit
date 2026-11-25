@@ -1,4 +1,5 @@
 import { attachNotify } from './context.ts'
+import { buildDefinition } from './definition.ts'
 import { resolveSchema } from './schema.ts'
 import { requireScopes } from './scopes.ts'
 import { resolveMeta } from './validate.ts'
@@ -95,7 +96,7 @@ export function defineMcpPrompt(
     tags,
     scopes,
     _meta,
-    build(identity, into, notify) {
+    [buildDefinition](identity, into, notify) {
       const advertised = {
         name: identity.name,
         title: identity.title,
