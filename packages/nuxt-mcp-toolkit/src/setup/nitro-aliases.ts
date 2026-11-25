@@ -38,14 +38,19 @@ export function setupNitroAliases(nuxt: Nuxt, resolver: Resolver): NitroAliasesH
       isCloudflare = cfPreset
     }
 
-    await forceH3ResolutionViaNitropack(nuxt.options.appDir, nitroConfig)
+    await forceH3ResolutionViaNitropack(nuxt, nitroConfig)
     markSecureExecExternal(nitroConfig)
   })
 
   return { isCloudflare: () => isCloudflare }
 }
 
-export async function forceH3ResolutionViaNitropack(appDir: string, nitroConfig: NitroConfig): Promise<void> {
+export async function forceH3ResolutionViaNitropack(nuxt: Nuxt, nitroConfig: NitroConfig): Promise<void> {
+  // Nuxt 4.7 can opt into Nitro v3 while `@nuxt/nitro-server` still depends on nitropack.
+  if (nuxt.options._nitroMajor === 3) {
+    return
+  }
+  const appDir = nuxt.options.appDir
   // Nuxt 3.20+ / 4.2+ build the server in `@nuxt/nitro-server`; earlier versions in `nuxt` itself.
   const nuxtDir = directoryToURL(appDir)
   const serverPkgPath = await tryResolveModule('@nuxt/nitro-server/package.json', nuxtDir)
