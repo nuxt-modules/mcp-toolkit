@@ -1,5 +1,6 @@
-import type { Era, HandlerOptions, Icon } from 'h3-mcp'
+import type { Icon } from 'h3-mcp'
 import type { DefinitionDir } from './discover.ts'
+import type { McpEra, McpLimitsOptions } from '../runtime/handler.ts'
 import type { McpOAuthSetup } from '../runtime/oauth.ts'
 
 /**
@@ -26,13 +27,13 @@ export interface McpServerOptions {
    *
    * @default 'dual'
    */
-  era?: Era
+  era?: McpEra
   /** Enable the engine's legacy protocol sessions. */
   session?: boolean | { enabled?: boolean; maxSessions?: number }
   /** Advertise client logging support. */
   logging?: boolean
   /** Request body, batch, and header limits, enforced by the engine. */
-  limits?: HandlerOptions['limits']
+  limits?: false | McpLimitsOptions
   /**
    * Browser origins allowed beyond the app's own loopback pages, which pass by
    * default. Requests carrying no `Origin` — every MCP client proper — are

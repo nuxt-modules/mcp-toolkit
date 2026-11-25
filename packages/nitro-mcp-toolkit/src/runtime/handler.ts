@@ -4,7 +4,15 @@ import { defineMcpHandler } from 'h3-mcp'
 import { assertMcpOAuth } from './auth.ts'
 import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
-import type { HandlerOptions as EngineOptions, PluginOptions, Subscription } from 'h3-mcp'
+import type {
+  HandlerOptions as EngineOptions,
+  LimitsOptions,
+  OriginOptions,
+  PluginOptions,
+  SessionOptions,
+  Subscription,
+} from 'h3-mcp'
+import type { McpAuthOptions } from './auth.ts'
 import type { McpOAuth, McpOAuthClaims } from './oauth.ts'
 import type { McpNotifier } from './context.ts'
 import type { McpToolCallListener } from './tool.ts'
@@ -16,17 +24,26 @@ import type {
   McpTool,
 } from './definition.ts'
 
-/**
- * Everything the engine takes that is not a definition: eras, caching, auth,
- * origin checks, request limits, subscriptions. Passed straight through, so the
- * toolkit never has to keep up with it.
- */
-type EngineWiring = Omit<
-  EngineOptions,
-  'name' | 'version' | 'tools' | 'resources' | 'resourceTemplates' | 'prompts'
->
+/** Which protocol eras an endpoint serves: `dual` answers both 2026-07-28 and the 2025 revisions. */
+export type McpEra = 'dual' | 'modern' | 'legacy'
+export type McpOriginOptions = OriginOptions
+export type McpSessionOptions = SessionOptions
+export type McpLimitsOptions = LimitsOptions
+/** Engine setup that is not data, such as extension plugins. */
+export type McpHandlerSetup = PluginOptions
 
-export interface McpHandlerOptions extends EngineWiring {
+export interface McpHandlerOptions extends Pick<
+  EngineOptions,
+  'title' | 'description' | 'icons' | 'websiteUrl' | 'instructions' | 'logging'
+> {
+  /** @default 'dual' */
+  era?: McpEra
+  /** Legacy protocol sessions. */
+  session?: boolean | McpSessionOptions
+  /** Request body, batch, and header limits. */
+  limits?: false | McpLimitsOptions
+  /** Bearer token or API key authentication. */
+  auth?: false | McpAuthOptions
   /** Prepared OAuth resource server, also used to serve discovery metadata. */
   oauth?: McpOAuth
   /** Runs after authentication for each request. A denied user receives HTTP 403. */
@@ -53,7 +70,7 @@ export interface McpHandlerOptions extends EngineWiring {
    * createMcpHandler({ origin: { allow: ['https://app.example.com'] } })
    * ```
    */
-  origin?: EngineWiring['origin']
+  origin?: false | McpOriginOptions
   /**
    * Called once per tool call that settles into a result, with its duration.
    * An error it throws reaches the client.
@@ -93,7 +110,7 @@ function resolveOrigin(origin: McpHandlerOptions['origin']): EngineOptions['orig
 
 function createNotifier(): {
   notify: McpNotifier
-  onListen: NonNullable<EngineWiring['onListen']>
+  onListen: NonNullable<EngineOptions['onListen']>
 } {
   const listeners = new Set<Subscription>()
 
@@ -166,7 +183,7 @@ export interface McpHandler {
  */
 export function createMcpHandler(
   options: McpHandlerOptions = {},
-  setup?: PluginOptions,
+  setup?: McpHandlerSetup,
 ): McpHandler {
   const {
     name = 'nitro-mcp-server',
@@ -178,7 +195,6 @@ export function createMcpHandler(
     auth: configuredAuth,
     oauth,
     authorize,
-    onListen: userOnListen,
     onToolCall,
     ...wiring
   } = options
@@ -277,10 +293,7 @@ export function createMcpHandler(
       resources: buckets.resources,
       resourceTemplates: buckets.resourceTemplates,
       prompts: buckets.prompts,
-      onListen(subscription, listenEvent) {
-        onListen(subscription, listenEvent)
-        return userOnListen?.(subscription, listenEvent)
-      },
+      onListen,
     }
   }, setup)
 

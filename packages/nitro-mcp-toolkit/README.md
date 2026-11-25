@@ -198,7 +198,7 @@ mcp({
 })
 ```
 
-These cross into generated code, so they are data only. For runtime authentication, set `auth` to a file path as shown below. Other callbacks such as `onListen` still require [wiring it by hand](#wiring-it-by-hand).
+These cross into generated code, so they are data only. For runtime authentication, set `auth` to a file path as shown below.
 
 ### Browser clients
 
@@ -526,7 +526,7 @@ export default createMcpHandler({ name: 'my-server', version: '1.0.0', tools: [g
 
 Handwritten definitions name themselves, since no filename is there to do it.
 
-The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps.
+The handler also exposes a web-standard `fetch`, so it mounts anywhere else too — `new H3().all('/mcp', handler)`, or straight onto any fetch-native runtime. Pass `{ extensionPlugins }` (`McpHandlerSetup`) as the second argument to install [h3-mcp](https://mcp.h3.dev) extensions such as tasks or MCP Apps.
 
 Framework adapters can pass request context by reference with `handler.fetch(request, context)`:
 
@@ -562,7 +562,7 @@ export default defineMcpAuth({
 })
 ```
 
-`verifyAccessToken` is your application service and must return a boolean. The options use the engine's `AuthOptions` contract; each request still authenticates, including legacy clients. Credentials read by the runtime module stay out of generated module configuration. A missing file fails setup; an invalid default export refuses requests. Nuxt uses the same reference in `mcp.servers.admin.auth`, with Nuxt aliases supported.
+`verifyAccessToken` is your application service and must return a boolean. The options are typed as `McpAuthOptions`; each request still authenticates, including legacy clients. Credentials read by the runtime module stay out of generated module configuration. A missing file fails setup; an invalid default export refuses requests. Nuxt uses the same reference in `mcp.servers.admin.auth`, with Nuxt aliases supported.
 
 Off by default — many MCP endpoints sit behind a gateway that already authenticates. Turn it on and every request to the route, `POST`, `GET` and `DELETE` alike, must present a credential:
 

@@ -1,5 +1,9 @@
-import type { AuthOptions } from 'h3-mcp'
+import type { AuthCredentials, AuthOptions, AuthScheme } from 'h3-mcp'
 import type { McpOAuth } from './oauth.ts'
+
+export type McpAuthOptions = AuthOptions
+export type McpAuthCredentials = AuthCredentials
+export type McpAuthScheme = AuthScheme
 
 export function assertMcpOAuth(oauth: McpOAuth): void {
   if (
@@ -14,7 +18,7 @@ export function assertMcpOAuth(oauth: McpOAuth): void {
 }
 
 /** Type runtime auth modules and refuse an invalid export before serving requests. */
-export function defineMcpAuth(auth: AuthOptions): AuthOptions {
+export function defineMcpAuth(auth: McpAuthOptions): McpAuthOptions {
   if (!auth || typeof auth !== 'object') {
     throw new TypeError('MCP auth modules must default-export authentication options.')
   }

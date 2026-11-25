@@ -1,5 +1,8 @@
 import type { ExtensionPlugin } from 'h3-mcp'
 
+/** An engine extension, such as `mcpTasks()` from `h3-mcp/tasks`. */
+export type McpExtensionPlugin = ExtensionPlugin
+
 /**
  * Define the extension plugins an endpoint installs, as the default export of
  * `<dir>/plugins.ts`.
@@ -15,6 +18,8 @@ import type { ExtensionPlugin } from 'h3-mcp'
  * export default defineMcpPlugins([mcpTasks({ max: 100 })])
  * ```
  */
-export function defineMcpPlugins(plugins: readonly ExtensionPlugin[]): readonly ExtensionPlugin[] {
+export function defineMcpPlugins(
+  plugins: readonly McpExtensionPlugin[],
+): readonly McpExtensionPlugin[] {
   return plugins
 }

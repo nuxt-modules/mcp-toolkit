@@ -1,6 +1,6 @@
 import { defineEventHandler } from 'nuxt/server'
 import { createMcpHandler as createHandler } from 'nitro-mcp-toolkit'
-import type { McpHandlerOptions, PluginOptions } from 'nitro-mcp-toolkit'
+import type { McpHandlerOptions, McpHandlerSetup } from 'nitro-mcp-toolkit'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { RequestEvent } from 'nuxt/server'
 
@@ -9,7 +9,7 @@ interface NitroRequestEvent extends RequestEvent {
   waitUntil?: (promise: Promise<unknown>) => void
 }
 
-export function createMcpHandler(options: McpHandlerOptions = {}, plugins?: PluginOptions) {
+export function createMcpHandler(options: McpHandlerOptions = {}, plugins?: McpHandlerSetup) {
   const handler = createHandler(options, plugins)
   return Object.assign(
     defineEventHandler(async (event: NitroRequestEvent) => {

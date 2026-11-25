@@ -7,7 +7,7 @@ import {
 } from './oauth-url.ts'
 import type { H3Event } from 'h3/generic'
 import type { JWTPayload } from 'jose'
-import type { AuthOptions } from 'h3-mcp'
+import type { McpAuthOptions } from './auth.ts'
 
 export { authorizationServerMetadataUrl, protectedResourceMetadataUrl } from './oauth-url.ts'
 
@@ -119,7 +119,7 @@ export interface McpOAuth {
   resourceMetadataUrl: string
   metadata: McpProtectedResourceMetadata
   /** Pass as `auth` to `createMcpHandler`. */
-  auth: AuthOptions
+  auth: McpAuthOptions
   metadataHandler: (event: H3Event) => Response
   /**
    * RFC 8414 document for this issuer, with CORS. Only set when
@@ -251,7 +251,7 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
     ...(options.scopesSupported ? { scopes_supported: options.scopesSupported } : {}),
   }
 
-  const auth: AuthOptions = {
+  const auth: McpAuthOptions = {
     schemes: ['bearer'],
     resourceMetadataUrl: metadataUrl.href,
     validate: async (credential, event) => {

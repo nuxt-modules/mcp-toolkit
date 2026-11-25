@@ -12,6 +12,27 @@ export interface McpNotifier {
   resourceUpdated: (uri: string) => void
 }
 
+/** What a definition handler can read about the MCP request it serves. */
+export type McpRequestContext = Pick<
+  RequestContext,
+  | 'sessionId'
+  | 'requestId'
+  | 'signal'
+  | 'protocolVersion'
+  | 'meta'
+  | 'era'
+  | 'clientCapabilities'
+  | 'clientInfo'
+  | 'logLevel'
+  | 'trace'
+  | 'inputResponses'
+  | 'notify'
+  | 'progress'
+  | 'log'
+  | 'requireClientCapability'
+  | 'requireExtension'
+> & { notifier: McpNotifier }
+
 /**
  * The event a tool, resource or prompt handler is called with: a plain
  * `H3Event` whose `context.mcp` is guaranteed present, rather than the
@@ -19,7 +40,7 @@ export interface McpNotifier {
  */
 export type McpEvent = H3Event & {
   context: H3Event['context'] & {
-    mcp: RequestContext & { notifier: McpNotifier }
+    mcp: McpRequestContext
     oauth?: import('./oauth.ts').McpOAuthClaims
   }
 }
