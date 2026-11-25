@@ -7,7 +7,8 @@ export default defineNuxtConfig({
     servers: {
       default: { route: '/mcp' },
       admin: { route: '/admin/mcp', dir: 'mcp-admin' },
+      runtime: { route: '/runtime/mcp', dir: 'mcp-runtime' },
     },
   }]],
-  runtimeConfig: { mcpAdminToken: 'demo-token' },
+  runtimeConfig: { mcpAdminToken: 'demo-token', mcpRuntimeToken: 'member-token' },
 })

@@ -45,9 +45,10 @@ async function sign(audience = resource, expiration = '2m') {
 
 try {
   for (const framework of [2, 3] as const) {
-    for (const oauth of [false, true]) {
+    for (const configuration of ['bearer', 'oauth-module', 'oauth-index'] as const) {
+      const oauth = configuration !== 'bearer'
       const directory = await mkdtemp(
-        join(root, `tree-shaking-nitro${framework}-${oauth ? 'oauth' : 'bearer'}-`),
+        join(root, `tree-shaking-nitro${framework}-${configuration}-`),
       )
       const tools = join(directory, 'server/mcp/tools')
       await mkdir(tools, { recursive: true })
@@ -76,15 +77,16 @@ export default defineMcpTool({
           },
         ],
       }
-      const options = oauth
-        ? {
-            oauth: {
-              resource,
-              authorizationServers: [issuer],
-              jwt: { jwks: `http://127.0.0.1:${address.port}/jwks` },
-            },
-          }
-        : {}
+      const options =
+        configuration === 'oauth-module'
+          ? {
+              oauth: {
+                resource,
+                authorizationServers: [issuer],
+                jwt: { jwks: `http://127.0.0.1:${address.port}/jwks` },
+              },
+            }
+          : {}
       if (!oauth) {
         await writeFile(
           join(directory, 'server/mcp/index.ts'),
@@ -93,6 +95,22 @@ import { defineMcpServer } from 'nitro-mcp-toolkit'
 export default defineMcpServer({
   name: 'packed-index',
   auth: { schemes: ['bearer'], validate: ({ token }) => token === 'fixture-token' },
+})
+`,
+        )
+      }
+      if (configuration === 'oauth-index') {
+        await writeFile(
+          join(directory, 'server/mcp/index.ts'),
+          `
+import { createMcpOAuth, defineMcpServer } from 'nitro-mcp-toolkit'
+export default defineMcpServer({
+  oauth: createMcpOAuth({
+    resource: ${JSON.stringify(resource)},
+    authorizationServers: [${JSON.stringify(issuer)}],
+    jwt: { jwks: ${JSON.stringify(`http://127.0.0.1:${address.port}/jwks`)} },
+  }),
+  authorize: identity => identity.sub === 'reader',
 })
 `,
         )
@@ -146,6 +164,17 @@ export default { fetch(request) {
           pathToFileURL(join(app.output, 'index.mjs')).href
         )
         const handler = { fetch: (request: Request) => Promise.resolve(server.fetch(request)) }
+        if (configuration === 'oauth-index') {
+          const response = await server.fetch(
+            new Request('http://localhost/.well-known/oauth-protected-resource/mcp'),
+          )
+          assert.equal(response.status, 200)
+          assert.deepEqual(await response.json(), {
+            resource,
+            authorization_servers: [issuer],
+            bearer_methods_supported: ['header'],
+          })
+        }
         const token = oauth ? await sign() : 'fixture-token'
         for (const era of ['modern', 'legacy'] as const) {
           await using client = await createMcpTestClient(handler, {
@@ -186,7 +215,7 @@ export default { fetch(request) {
         console.log(
           JSON.stringify({
             framework,
-            oauth,
+            configuration,
             javaScriptFiles: javascript.length,
             bytes,
             gzipBytes,

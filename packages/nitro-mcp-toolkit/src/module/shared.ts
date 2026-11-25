@@ -12,6 +12,7 @@ import {
   renderOAuth,
   renderOAuthMetadata,
   renderRegistry,
+  renderRuntimeOAuthMetadata,
   renderServerMetadata,
 } from './template.ts'
 import { watchDefinitions } from './watch.ts'
@@ -76,7 +77,13 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
 
         return renderHandler(registryId, server, {
           ...(authPath ? { authPath } : {}),
-          ...(configPath ? { configPath } : {}),
+          ...(configPath
+            ? {
+                configPath,
+                oauthMetadataPath: protectedResourceMetadataUrl(`http://localhost${route}`)
+                  .pathname,
+              }
+            : {}),
           ...(include?.plugins?.length ? { extraPlugins: include.plugins } : {}),
           ...(nitro2 ? { nitro2: true } : {}),
           ...(oauth ? { oauthId } : {}),
@@ -125,6 +132,17 @@ export function createModule(options: McpModuleOptions, nitro2?: { h3: string })
             middleware: false,
           })
         }
+      }
+
+      if (!oauth) {
+        const metadataPath = protectedResourceMetadataUrl(`http://localhost${route}`).pathname
+        nitro.options.virtual[metadataId] = () => renderRuntimeOAuthMetadata(handlerId)
+        nitro.options.handlers.push({
+          route: metadataPath,
+          handler: mount(metadataId),
+          lazy: true,
+          middleware: false,
+        })
       }
 
       reportDefinitions(nitro, route, definitionsDir, include)

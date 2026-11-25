@@ -345,6 +345,36 @@ describe('createMcpOAuth jwt', () => {
     },
   )
 
+  it('rejects proof-bound tokens presented without a proof', async () => {
+    expect(
+      (await handler().fetch(ping(RESOURCE, await sign({ cnf: { jkt: 'bound-key' } })))).status,
+    ).toBe(401)
+  })
+
+  it('enforces the configured access-token profile', async () => {
+    const oauth = createMcpOAuth({
+      resource: RESOURCE,
+      authorizationServers: [ISSUER],
+      jwt: { jwks: jwksUrl, typ: 'at+jwt', requiredClaims: ['azp'] },
+    })
+    const endpoint = createMcpHandler({ oauth })
+    const token = (typ: string, claims: Record<string, unknown>) =>
+      new SignJWT(claims)
+        .setProtectedHeader({ alg: 'RS256', kid: 'k1', typ })
+        .setSubject('ada')
+        .setIssuer(ISSUER)
+        .setAudience(RESOURCE)
+        .setExpirationTime('5m')
+        .sign(privateKey)
+    expect(
+      (await endpoint.fetch(ping(RESOURCE, await token('JWT', { azp: 'client' })))).status,
+    ).toBe(401)
+    expect((await endpoint.fetch(ping(RESOURCE, await token('at+jwt', {})))).status).toBe(401)
+    expect(
+      (await endpoint.fetch(ping(RESOURCE, await token('at+jwt', { azp: 'client' })))).status,
+    ).toBe(200)
+  })
+
   it('refuses a token that is not a JWT', async () => {
     const response = await handler().fetch(ping(RESOURCE, 'nope'))
     expect(response.status).toBe(401)
