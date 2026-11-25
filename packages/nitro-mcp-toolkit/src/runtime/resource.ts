@@ -16,6 +16,9 @@ import type { McpResource } from './definition.ts'
 
 type Awaitable<T> = T | Promise<T>
 
+/** How long clients may cache what a resource read returns. */
+export type McpCacheHints = CacheHints
+
 /**
  * What a resource handler may return: the text of the resource, or a full
  * protocol result when it carries several contents or binary data.
@@ -40,7 +43,7 @@ interface McpResourceMetadata {
   mimeType?: string
   icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
-  cache?: CacheHints
+  cache?: McpCacheHints
 }
 
 export interface McpResourceDefinition extends McpResourceMetadata {

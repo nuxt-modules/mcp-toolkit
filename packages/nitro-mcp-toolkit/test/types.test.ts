@@ -14,10 +14,11 @@ import type { CallToolResult, McpToolResult } from '../src/runtime/index.ts'
 import type generated from '#mcp/admin-mcp/handler'
 import type { mcp } from 'nitro-mcp-toolkit/servers'
 import type {
-  ExtensionPlugin,
+  McpExtensionPlugin,
   McpDefinitionSummary,
   McpEvent,
   McpHandler,
+  McpHandlerOptions,
   McpPrompt,
   McpResource,
   McpTool,
@@ -146,14 +147,40 @@ describe('the generated handler modules', () => {
 // failure. It takes the plugins as h3-mcp installs them, and nothing narrower.
 describe('the plugins convention', () => {
   it('checks the array server/mcp/plugins.ts exports', () => {
-    expectTypeOf(defineMcpPlugins).parameter(0).toEqualTypeOf<readonly ExtensionPlugin[]>()
+    expectTypeOf(defineMcpPlugins).parameter(0).toEqualTypeOf<readonly McpExtensionPlugin[]>()
     expectTypeOf(defineMcpPlugins([{ id: 'acme/stamp', settings: () => ({}) }])).toEqualTypeOf<
-      readonly ExtensionPlugin[]
+      readonly McpExtensionPlugin[]
     >()
 
     // The id is the key the extension is advertised under, so it is required.
-    expectTypeOf<[{ settings: () => Record<string, never> }]>().not.toExtend<ExtensionPlugin[]>()
+    expectTypeOf<[{ settings: () => Record<string, never> }]>().not.toExtend<McpExtensionPlugin[]>()
   })
+})
+
+// Every option is one the toolkit maps onto its engine; passing the engine's
+// own options through would make each of them public API.
+it('lists the handler options the toolkit owns', () => {
+  expectTypeOf<keyof McpHandlerOptions>().toEqualTypeOf<
+    | 'name'
+    | 'version'
+    | 'title'
+    | 'description'
+    | 'icons'
+    | 'websiteUrl'
+    | 'instructions'
+    | 'era'
+    | 'session'
+    | 'logging'
+    | 'limits'
+    | 'origin'
+    | 'auth'
+    | 'oauth'
+    | 'authorize'
+    | 'tools'
+    | 'resources'
+    | 'prompts'
+    | 'onToolCall'
+  >()
 })
 
 describe('scope typing', () => {

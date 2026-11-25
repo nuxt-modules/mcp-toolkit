@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createMcpHandler, defineMcpAuth, defineMcpTool } from '../src/runtime/index.ts'
 import { createMcpTestClient, textOf } from '../src/testing/index.ts'
-import type { AuthOptions } from '../src/runtime/index.ts'
+import type { McpAuthOptions } from '../src/runtime/index.ts'
 
 /** A request the handler sees directly, bypassing the SDK client. */
 function request(headers: Record<string, string> = {}): Request {
@@ -13,7 +13,7 @@ function request(headers: Record<string, string> = {}): Request {
 }
 
 /** A real SDK client, so the happy path is proven end to end, not just per-response. */
-function withHeader(auth: AuthOptions, header?: string, value?: string) {
+function withHeader(auth: McpAuthOptions, header?: string, value?: string) {
   const handler = createMcpHandler({
     auth,
     tools: [defineMcpTool({ name: 'ping', handler: () => 'pong' })],
@@ -188,13 +188,13 @@ describe('a custom validate callback', () => {
   })
 
   it('refuses when it returns false', async () => {
-    const auth: AuthOptions = { validate: () => false }
+    const auth: McpAuthOptions = { validate: () => false }
 
     await expect(withHeader(auth, 'authorization', 'Bearer anything')).rejects.toThrow()
   })
 
   it('falls through to validate when the token is not on the list', async () => {
-    const auth: AuthOptions = {
+    const auth: McpAuthOptions = {
       tokens: ['static'],
       validate: (credential) => credential.token === 'dynamic',
     }

@@ -4,6 +4,7 @@ export { createMcpHandler } from './handler.ts'
 export { defineMcpServer } from './server.ts'
 export type { McpServerConfig } from './server.ts'
 export { defineMcpAuth } from './auth.ts'
+export type { McpAuthCredentials, McpAuthOptions, McpAuthScheme } from './auth.ts'
 export {
   createMcpOAuth,
   authorizationServerMetadataUrl,
@@ -26,8 +27,17 @@ export {
 } from './input.ts'
 export { mcpElicit, mcpElicitUrl, McpJsonRpcError } from 'h3-mcp'
 
-export type { McpEvent, McpNotifier } from './context.ts'
-export type { McpHandler, McpHandlerOptions } from './handler.ts'
+export type { McpEvent, McpNotifier, McpRequestContext } from './context.ts'
+export type {
+  McpEra,
+  McpHandler,
+  McpHandlerOptions,
+  McpHandlerSetup,
+  McpLimitsOptions,
+  McpOriginOptions,
+  McpSessionOptions,
+} from './handler.ts'
+export type { McpExtensionPlugin } from './plugins.ts'
 export type {
   McpOAuth,
   McpOAuthClaims,
@@ -43,6 +53,7 @@ export type {
   McpPromptReturn,
 } from './prompt.ts'
 export type {
+  McpCacheHints,
   McpResourceDefinition,
   McpResourceReturn,
   McpResourceTemplateDefinition,
@@ -66,20 +77,12 @@ export type {
 } from './tool.ts'
 
 export type {
-  AuthCredentials,
-  AuthOptions,
-  AuthScheme,
-  CacheHints,
   CallToolResult,
   ContentBlock,
   EmbeddedResource,
-  Era,
-  ExtensionPlugin,
   GetPromptResult,
   Icon,
   InputRequiredResult,
-  OriginOptions,
-  PluginOptions,
   ReadResourceResult,
   ResourceLink,
   StandardTypedV1,
