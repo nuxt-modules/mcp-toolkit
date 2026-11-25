@@ -9,6 +9,9 @@ import type { McpOAuthClaims } from './oauth.ts'
  */
 const INSUFFICIENT_SCOPE = -32003
 
+/** Scopes a refused call needs, per request, for the `403` `WWW-Authenticate` challenge. */
+export const insufficientScope = new WeakMap<object, string[]>()
+
 function spaceDelimited(value: unknown): string[] {
   return typeof value === 'string' ? value.split(' ').filter((scope) => scope !== '') : []
 }
@@ -48,6 +51,10 @@ export function requireScopes(
   const missing = scopes.filter((scope) => !granted.has(scope))
 
   if (missing.length === 0) return
+
+  // Read by the handler to send RFC 6750's `insufficient_scope` challenge,
+  // asking for what the token already holds plus what this call needs.
+  insufficientScope.set(event, [...new Set([...granted, ...scopes])])
 
   throw new McpJsonRpcError(
     INSUFFICIENT_SCOPE,

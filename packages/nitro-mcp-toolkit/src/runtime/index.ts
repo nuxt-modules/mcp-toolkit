@@ -43,6 +43,7 @@ export type {
   McpOAuthClaims,
   McpOAuthJwtOptions,
   McpOAuthOptions,
+  McpOAuthServiceToken,
   McpOAuthSetup,
   McpProtectedResourceMetadata,
 } from './oauth.ts'

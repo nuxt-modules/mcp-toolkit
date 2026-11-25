@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MODERN_PROTOCOL_VERSION,
   createMcpHandler,
   createMcpOAuth,
   defineMcpServer,
@@ -142,5 +143,98 @@ describe('runtime OAuth server configuration', () => {
         )
       }
     }
+  })
+})
+
+describe('OAuth challenges and service tokens', () => {
+  const envelope = 'io.modelcontextprotocol/'
+  const call = (token: string | undefined, name: string) =>
+    new Request(resource, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        'mcp-protocol-version': MODERN_PROTOCOL_VERSION,
+        'mcp-method': 'tools/call',
+        'mcp-name': name,
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name,
+          arguments: {},
+          _meta: {
+            [`${envelope}protocolVersion`]: MODERN_PROTOCOL_VERSION,
+            [`${envelope}clientCapabilities`]: {},
+          },
+        },
+      }),
+    })
+
+  let serviceToken: string | undefined = 'agent-secret'
+  const handler = createMcpHandler({
+    oauth: createMcpOAuth({
+      ...provider,
+      scopesSupported: ['read', 'write'],
+      serviceTokens: [{ token: () => serviceToken, claims: { sub: 'agent', scope: 'read write' } }],
+    }),
+    tools: [
+      defineMcpTool({ name: 'read', scopes: ['read'], handler: () => 'read' }),
+      defineMcpTool({
+        name: 'write',
+        scopes: ['write'],
+        handler: (event) => event.context.oauth?.sub ?? 'anonymous',
+      }),
+    ],
+  })
+
+  it('names the advertised scopes in the 401 challenge', async () => {
+    const response = await handler.fetch(call(undefined, 'read'))
+    expect(response.status).toBe(401)
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer realm="mcp", resource_metadata="https://example.com/.well-known/oauth-protected-resource/mcp", scope="read write"',
+    )
+  })
+
+  it('answers a missing scope with an insufficient_scope challenge on the modern revision', async () => {
+    const response = await handler.fetch(call('member', 'write'))
+    expect(response.status).toBe(403)
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer error="insufficient_scope", scope="read write", resource_metadata="https://example.com/.well-known/oauth-protected-resource/mcp"',
+    )
+    expect((await handler.fetch(call('member', 'read'))).status).toBe(200)
+  })
+
+  it('leaves an authorize denial without a challenge', async () => {
+    const denying = createMcpHandler({
+      oauth: createMcpOAuth({ ...provider, scopesSupported: ['read'] }),
+      authorize: () => false,
+    })
+    const response = await denying.fetch(request('member'))
+    expect(response.status).toBe(403)
+    expect(response.headers.has('www-authenticate')).toBe(false)
+  })
+
+  it('accepts a service token with its fixed claims, read at request time', async () => {
+    const response = await handler.fetch(call('agent-secret', 'write'))
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('agent')
+    expect((await handler.fetch(call('agent-secreT', 'write'))).status).toBe(401)
+    serviceToken = ''
+    expect((await handler.fetch(call('', 'write'))).status).toBe(401)
+    expect((await handler.fetch(call('agent-secret', 'write'))).status).toBe(401)
+    serviceToken = 'agent-secret'
+  })
+
+  it('refuses a service token entry without a subject', () => {
+    expect(() =>
+      createMcpOAuth({
+        ...provider,
+        serviceTokens: [{ token: 'x', claims: { sub: '' } }],
+      }),
+    ).toThrow(/claims\.sub/)
   })
 })

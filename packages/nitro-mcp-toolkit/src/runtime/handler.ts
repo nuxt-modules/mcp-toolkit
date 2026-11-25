@@ -2,6 +2,8 @@ import { H3Event, HTTPError, toResponse } from 'h3'
 import type { H3Event as McpRequestEvent, H3EventContext } from 'h3/generic'
 import { defineMcpHandler } from 'h3-mcp'
 import { assertMcpOAuth } from './auth.ts'
+import { insufficientScope } from './scopes.ts'
+import { challengeScopes } from './oauth.ts'
 import { parseMcpToolsHeader, unknownToolNames, unknownToolsResponse } from './tools-header.ts'
 import { resolveDefinitions, summarize } from './validate.ts'
 import type {
@@ -86,6 +88,39 @@ export interface McpHandlerOptions extends Pick<
    * ```
    */
   onToolCall?: McpToolCallListener
+}
+
+/**
+ * RFC 6750 challenges the MCP authorization spec asks for: `scope` on the
+ * `401` so clients request it first, and `insufficient_scope` on a `403` from
+ * a scoped definition so they can step up. A legacy request reports a scope
+ * failure inside a `200` stream, which carries no challenge.
+ */
+function withOAuthChallenge(response: Response, event: H3Event, oauth: McpOAuth): Response {
+  const metadata = `resource_metadata="${oauth.resourceMetadataUrl}"`
+  let challenge: string | undefined
+
+  if (response.status === 401 && oauth.challengeScope) {
+    const current = response.headers.get('www-authenticate')
+    if (current?.includes('Bearer ') && !current.includes('scope=')) {
+      challenge = current.replace(
+        /(Bearer realm="mcp"(?:, resource_metadata="[^"]*")?)/,
+        `$1, scope="${oauth.challengeScope}"`,
+      )
+    }
+  } else if (response.status === 403) {
+    const scope = challengeScopes(insufficientScope.get(event))
+    if (scope) challenge = `Bearer error="insufficient_scope", scope="${scope}", ${metadata}`
+  }
+
+  if (!challenge) return response
+  const headers = new Headers(response.headers)
+  headers.set('www-authenticate', challenge)
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
 }
 
 class AccessDenied extends HTTPError {
@@ -312,12 +347,14 @@ export function createMcpHandler(
   }
 
   const run = async (event: H3Event): Promise<Response> => {
+    let response: Response
     try {
-      return await execute(event)
+      response = await execute(event)
     } catch (error) {
-      if (error instanceof AccessDenied) return toResponse(error, event)
-      throw error
+      if (!(error instanceof AccessDenied)) throw error
+      response = await toResponse(error, event)
     }
+    return oauth ? withOAuthChallenge(response, event, oauth) : response
   }
 
   return Object.assign(run, {
