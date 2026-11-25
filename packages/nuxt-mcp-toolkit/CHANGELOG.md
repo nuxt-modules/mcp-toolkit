@@ -1,5 +1,15 @@
 # @nuxtjs/mcp-toolkit
 
+## 0.24.4
+
+### Patch Changes
+
+- [#418](https://github.com/nuxt-modules/mcp-toolkit/pull/418) [`8a94b32`](https://github.com/nuxt-modules/mcp-toolkit/commit/8a94b3289de1f31c72a832f95112799d251005d8) Thanks [@HugoRCD](https://github.com/HugoRCD)! - The module only aliases `h3` to the copy `nitropack` uses when Nuxt builds the server with Nitro v2. On Nuxt 5 (Nitro v3) with `nitropack` still installed, the alias made the build fail on `h3/rules`, or, with `nitroLegacy.h3`, made Nuxt remove it and warn with `NUXT_B9015`.
+
+- [#419](https://github.com/nuxt-modules/mcp-toolkit/pull/419) [`1a04a4a`](https://github.com/nuxt-modules/mcp-toolkit/commit/1a04a4a3af281c3adc8d82b2d6d99d01dacfe8bd) Thanks [@onmax](https://github.com/onmax)! - The module no longer aliases `h3` to nitropack's copy when Nuxt 4.7 opts into Nitro v3. Nuxt 4.7's `@nuxt/nitro-server` still depends on `nitropack`, so the alias reached Nitro v3 builds, where Nuxt removed it and warned with `NUXT_B9015`, or kept it when `nitroLegacy` was off.
+
+- [#408](https://github.com/nuxt-modules/mcp-toolkit/pull/408) [`c4f0414`](https://github.com/nuxt-modules/mcp-toolkit/commit/c4f04142349fd9a82ea9b110cf5c0b8f4974fd38) Thanks [@onmax](https://github.com/onmax)! - The module registers its server templates in a fixed order, so the key order of `nuxt.options.nitro.virtual` stays the same between identical builds.
+
 ## 0.24.3
 
 ### Patch Changes

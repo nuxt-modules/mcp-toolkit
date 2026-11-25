@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Prepares an Amp orb: the Node version CI uses, workspace dependencies, and generated type stubs.
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+step() {
+  local start=$SECONDS
+  echo "==> $1"
+  shift
+  "$@"
+  echo "<== done in $((SECONDS - start))s"
+}
+
+node_version="$(tr -d '[:space:]' < .node-version)"
+node_root="$HOME/.local/share/node"
+
+install_node() {
+  local dir="$node_root/v$node_version"
+  if [[ -x "$dir/bin/node" ]]; then
+    echo "Node $node_version already installed"
+    return
+  fi
+  local arch
+  case "$(uname -m)" in
+    x86_64) arch=x64 ;;
+    aarch64) arch=arm64 ;;
+    *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+  esac
+  local name="node-v$node_version-linux-$arch"
+  local tmp
+  tmp="$(mktemp -d)"
+  curl -fsSL "https://nodejs.org/dist/v$node_version/$name.tar.xz" -o "$tmp/$name.tar.xz"
+  curl -fsSL "https://nodejs.org/dist/v$node_version/SHASUMS256.txt" -o "$tmp/SHASUMS256.txt"
+  (cd "$tmp" && grep " $name.tar.xz\$" SHASUMS256.txt | sha256sum -c -)
+  mkdir -p "$node_root"
+  tar -xJf "$tmp/$name.tar.xz" -C "$tmp"
+  mv "$tmp/$name" "$dir"
+  rm -rf "$tmp"
+}
+
+# Login shells (Amp, supervised services, terminals) pick the version from .node-version at login,
+# so a version bump only needs setup to install the new release.
+persist_node_path() {
+  local marker="# mcp-toolkit: Node version from .node-version"
+  if grep -Fqx "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+    echo "PATH hook already present"
+    return
+  fi
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$marker
+if [[ -r "$repo_root/.node-version" ]]; then
+  export PATH="$node_root/v\$(tr -d '[:space:]' < "$repo_root/.node-version")/bin:\$PATH"
+fi
+EOF
+}
+
+step "Install Node $node_version" install_node
+step "Persist Node on login PATH" persist_node_path
+export PATH="$node_root/v$node_version/bin:$PATH"
+echo "node $(node -v), pnpm $(pnpm -v)"
+
+export TURBO_TELEMETRY_DISABLED=1
+# The registry flakes often enough to be worth one retry, as in CI.
+step "Install dependencies" bash -c 'pnpm install --frozen-lockfile || pnpm install --frozen-lockfile'
+step "Generate type stubs" pnpm run dev:prepare

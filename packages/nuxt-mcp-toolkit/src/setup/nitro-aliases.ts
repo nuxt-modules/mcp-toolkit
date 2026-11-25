@@ -1,4 +1,6 @@
+import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { directoryToURL, tryResolveModule } from '@nuxt/kit'
 import type { Resolver } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
 import type { NitroConfig } from 'nitropack'
@@ -17,13 +19,14 @@ export interface NitroAliasesHandle {
  * 2. **Force `h3` resolution through nitropack** — when pnpm hoists the
  *    module's `h3` peer dependency to v2 while Nitro still ships v1,
  *    Rollup may pick v2 for ALL h3 imports and break Nitro internals.
+ *    Nitro v2 only.
  * 3. **Mark `secure-exec` as external** — it is an optional lazy-loaded
  *    dependency for Code Mode and must never be bundled.
  */
 export function setupNitroAliases(nuxt: Nuxt, resolver: Resolver): NitroAliasesHandle {
   let isCloudflare = false
 
-  nuxt.hook('nitro:config', (nitroConfig) => {
+  nuxt.hook('nitro:config', async (nitroConfig) => {
     const preset = String(nitroConfig.preset || process.env.NITRO_PRESET || '')
     const cfPreset = preset.includes('cloudflare')
     if (cfPreset) {
@@ -35,25 +38,34 @@ export function setupNitroAliases(nuxt: Nuxt, resolver: Resolver): NitroAliasesH
       isCloudflare = cfPreset
     }
 
-    forceH3ResolutionViaNitropack(nitroConfig)
+    await forceH3ResolutionViaNitropack(nuxt, nitroConfig)
     markSecureExecExternal(nitroConfig)
   })
 
   return { isCloudflare: () => isCloudflare }
 }
 
-function forceH3ResolutionViaNitropack(nitroConfig: NitroConfig): void {
-  try {
-    const _require = createRequire(import.meta.url)
-    const nitroPkgPath = _require.resolve('nitropack/package.json')
-    const h3Path = createRequire(nitroPkgPath).resolve('h3')
-    nitroConfig.alias ??= {}
-    nitroConfig.alias.h3 ??= h3Path
+export async function forceH3ResolutionViaNitropack(nuxt: Nuxt, nitroConfig: NitroConfig): Promise<void> {
+  // Nuxt 4.7 can opt into Nitro v3 while `@nuxt/nitro-server` still depends on nitropack.
+  if (nuxt.options._nitroMajor === 3) {
+    return
   }
-  catch {
-    // nitropack not installed in this layout — skip silently. The default
-    // h3 resolution is fine when the version mismatch doesn't apply.
+  const appDir = nuxt.options.appDir
+  // Nuxt 3.20+ / 4.2+ build the server in `@nuxt/nitro-server`; earlier versions in `nuxt` itself.
+  const nuxtDir = directoryToURL(appDir)
+  const serverPkgPath = await tryResolveModule('@nuxt/nitro-server/package.json', nuxtDir)
+    ?? await tryResolveModule('nuxt/package.json', nuxtDir)
+  if (!serverPkgPath) {
+    throw new Error(`[@nuxtjs/mcp-toolkit] Could not resolve the Nuxt package from ${appDir}`)
   }
+  // Nitro v3 (Nuxt 5) runs on h3 v2: an alias to the h3 v1 of a hoisted `nitropack` would break it.
+  const serverPkg: { dependencies?: Record<string, string> } = JSON.parse(await readFile(serverPkgPath, 'utf8'))
+  if (!serverPkg.dependencies?.nitropack) {
+    return
+  }
+  const nitroPkgPath = createRequire(serverPkgPath).resolve('nitropack/package.json')
+  nitroConfig.alias ??= {}
+  nitroConfig.alias.h3 ??= createRequire(nitroPkgPath).resolve('h3')
 }
 
 function markSecureExecExternal(nitroConfig: NitroConfig): void {
