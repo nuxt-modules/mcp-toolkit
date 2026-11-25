@@ -36,6 +36,7 @@ interface McpResourceMetadata {
    * Static definition metadata remains visible.
    */
   scopes?: string[]
+  _meta?: Record<string, unknown>
   mimeType?: string
   icons?: Icon[]
   /** Advertised to clients so they may cache the read. */
@@ -89,7 +90,8 @@ export function defineMcpResource(definition: McpResourceTemplateDefinition): Mc
 export function defineMcpResource(
   definition: McpResourceDefinition | McpResourceTemplateDefinition,
 ): McpResource {
-  const { name, title, description, group, tags, scopes, mimeType, icons, cache } = definition
+  const { name, title, description, group, tags, scopes, _meta, mimeType, icons, cache } =
+    definition
   const isStaticUri = isStatic(definition)
 
   return {
@@ -100,6 +102,7 @@ export function defineMcpResource(
     group,
     tags,
     scopes,
+    _meta,
     uri: isStaticUri ? definition.uri : definition.uriTemplate,
     build(identity, into, notify) {
       const advertised = {
@@ -109,7 +112,7 @@ export function defineMcpResource(
         mimeType,
         icons,
         cache,
-        _meta: resolveMeta(identity.group, tags, scopes),
+        _meta: resolveMeta(identity.group, tags, scopes, _meta),
       }
 
       if (isStaticUri) {

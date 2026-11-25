@@ -71,6 +71,7 @@ export type {
   CacheHints,
   CallToolResult,
   ContentBlock,
+  EmbeddedResource,
   Era,
   ExtensionPlugin,
   GetPromptResult,
@@ -79,5 +80,7 @@ export type {
   OriginOptions,
   PluginOptions,
   ReadResourceResult,
+  ResourceLink,
+  StandardTypedV1,
   ToolAnnotations,
 } from 'h3-mcp'

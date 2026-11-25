@@ -49,6 +49,7 @@ interface McpToolMetadata {
    * ```
    */
   scopes?: string[]
+  _meta?: Record<string, unknown>
   annotations?: ToolAnnotations
   icons?: Icon[]
 }
@@ -138,7 +139,7 @@ export function defineMcpTool(
     | McpToolDefinition<Schema, Schema | undefined>
     | McpToolDefinitionWithoutInput<Schema | undefined>,
 ): McpTool {
-  const { name, title, description, group, tags, scopes, annotations, icons, outputSchema } =
+  const { name, title, description, group, tags, scopes, _meta, annotations, icons, outputSchema } =
     definition
   const hasOutputSchema = outputSchema !== undefined
 
@@ -150,6 +151,7 @@ export function defineMcpTool(
     group,
     tags,
     scopes,
+    _meta,
     build(identity, into, notify, onToolCall) {
       const advertised = {
         name: identity.name,
@@ -158,7 +160,7 @@ export function defineMcpTool(
         outputSchema: resolveSchema(outputSchema),
         annotations,
         icons,
-        _meta: resolveMeta(identity.group, tags, scopes),
+        _meta: resolveMeta(identity.group, tags, scopes, _meta),
       }
 
       if (definition.inputSchema) {

@@ -24,11 +24,11 @@ try {
       ...(engine ? { overrides: { 'h3-mcp': `file:${engine}` } } : {}),
       dependencies: {
         'nitro-mcp-toolkit': `file:${tarball}`,
-        h3: metadata.dependencies.h3,
+        'h3': metadata.dependencies.h3,
         '@modelcontextprotocol/client': metadata.devDependencies['@modelcontextprotocol/client'],
-        typescript: metadata.devDependencies.typescript,
+        'typescript': metadata.devDependencies.typescript,
         '@types/node': '26.2.0',
-        zod: metadata.devDependencies.zod,
+        'zod': metadata.devDependencies.zod,
       },
     }),
   )
@@ -47,8 +47,8 @@ try {
 
   await cp(join(root, 'apps/nitro-playground'), join(temporary, 'playground'), {
     recursive: true,
-    filter: (path) =>
-      !['node_modules', '.nitro', '.output', '.turbo'].some((part) =>
+    filter: path =>
+      !['node_modules', '.nitro', '.output', '.turbo'].some(part =>
         path.split(/[\\/]/).includes(part),
       ),
   })
@@ -56,6 +56,7 @@ try {
     join(temporary, 'check.ts'),
     `
 import { createMcpHandler, defineMcpTool, toolResult } from 'nitro-mcp-toolkit'
+import type { EmbeddedResource, ResourceLink, StandardTypedV1 } from 'nitro-mcp-toolkit'
 import { clerk } from 'nitro-mcp-toolkit/oauth/clerk'
 import { okta } from 'nitro-mcp-toolkit/oauth/okta'
 import { workos } from 'nitro-mcp-toolkit/oauth/workos'
@@ -63,7 +64,13 @@ import mcp from 'nitro-mcp-toolkit/module'
 import mcp2 from 'nitro-mcp-toolkit/module/nitro2'
 import { createMcpTestClient } from 'nitro-mcp-toolkit/testing'
 import { z } from 'zod'
-const handler = createMcpHandler({ tools: [defineMcpTool({ name: 'value', outputSchema: z.object({ n: z.number() }), handler: () => toolResult({ content: [], structuredContent: { n: 1 } }) })] })
+const handler = createMcpHandler({ tools: [defineMcpTool({ name: 'value', _meta: { 'consumer/extension': true }, outputSchema: z.object({ n: z.number() }), handler: () => toolResult({ content: [], structuredContent: { n: 1 } }) })] })
+const schema: StandardTypedV1 = z.object({ n: z.number() })
+const link: ResourceLink = { type: 'resource_link', uri: 'docs://example', name: 'example' }
+const embedded: EmbeddedResource = { type: 'resource', resource: { uri: 'docs://example', text: 'example' } }
+const options = { dir: ['server/mcp', 'layers/base/server/mcp'], include: { tools: ['#consumer/tool.ts'], plugins: ['#consumer/plugins.ts'] }, session: { enabled: true, maxSessions: 10 }, logging: true, limits: { maxBodySize: 8192 } } as const
+void [mcp(options), mcp2(options), schema, link, embedded]
+void handler.fetch(new Request('http://localhost/mcp'), { user: 'consumer' })
 await using client = await createMcpTestClient(handler)
 await client.callTool({ name: 'value' })
 void [clerk, okta, workos, mcp, mcp2]
@@ -160,6 +167,7 @@ try {
 `)
   run(process.execPath, ['verify-nitro2.ts'])
   console.log('Packed runtime, types, ordinary peer resolution and Nitro 2/3 endpoints passed.')
-} finally {
+}
+finally {
   await rm(temporary, { recursive: true, force: true })
 }

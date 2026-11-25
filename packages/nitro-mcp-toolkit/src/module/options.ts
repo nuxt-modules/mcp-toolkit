@@ -1,4 +1,5 @@
-import type { Era, Icon } from 'h3-mcp'
+import type { Era, HandlerOptions, Icon } from 'h3-mcp'
+import type { DefinitionDir } from './discover.ts'
 import type { McpOAuthSetup } from '../runtime/oauth.ts'
 
 /**
@@ -26,6 +27,12 @@ export interface McpServerOptions {
    * @default 'dual'
    */
   era?: Era
+  /** Enable the engine's legacy protocol sessions. */
+  session?: boolean | { enabled?: boolean; maxSessions?: number }
+  /** Advertise client logging support. */
+  logging?: boolean
+  /** Request body, batch, and header limits, enforced by the engine. */
+  limits?: HandlerOptions['limits']
   /**
    * Browser origins allowed beyond the app's own loopback pages, which pass by
    * default. Requests carrying no `Origin` — every MCP client proper — are
@@ -80,6 +87,8 @@ export interface ResolvedMcpOAuthOptions {
 }
 
 export interface McpModuleOptions extends McpServerOptions {
+  /** Additional modules imported alongside discovered definitions and plugins. */
+  include?: Partial<Record<DefinitionDir | 'plugins', readonly string[]>>
   /**
    * Where the endpoint is mounted.
    *
@@ -87,12 +96,12 @@ export interface McpModuleOptions extends McpServerOptions {
    */
   route?: string
   /**
-   * Directory scanned for `tools/`, `resources/` and `prompts/`, relative to
-   * the Nitro root.
+   * Directories scanned for definitions, relative to the Nitro root. Earlier
+   * directories override matching relative files in later directories.
    *
    * @default 'server/mcp'
    */
-  dir?: string
+  dir?: string | readonly string[]
   /**
    * Protect this endpoint as an OAuth 2.1 resource server: JWT verify against
    * a JWKS, RFC 9728 metadata mounted for you. Cannot be combined with `auth`.
@@ -111,9 +120,10 @@ export interface McpModuleOptions extends McpServerOptions {
 
 export interface ResolvedMcpModuleOptions {
   route: string
-  dir: string
+  dir: string | readonly string[]
   server: McpServerOptions
   oauth?: ResolvedMcpOAuthOptions
+  include?: McpModuleOptions['include']
 }
 
 /** `/Mcp/` and `mcp` alike become `/mcp`, so a route always matches as written. */
@@ -148,7 +158,7 @@ export function resolveOAuthOptions(oauth: McpModuleOAuthOptions): ResolvedMcpOA
 }
 
 export function resolveModuleOptions(options: McpModuleOptions = {}): ResolvedMcpModuleOptions {
-  const { route = '/mcp', dir = 'server/mcp', oauth, ...server } = options
+  const { route = '/mcp', dir = 'server/mcp', oauth, include, ...server } = options
 
   if (oauth && server.auth) {
     throw new Error(
@@ -160,6 +170,7 @@ export function resolveModuleOptions(options: McpModuleOptions = {}): ResolvedMc
     route: normalizeRoute(route),
     dir,
     server,
+    ...(include ? { include } : {}),
     ...(oauth ? { oauth: resolveOAuthOptions(oauth) } : {}),
   }
 }

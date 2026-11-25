@@ -42,10 +42,12 @@ export function resolveMeta(
   group: string | undefined,
   tags: string[] | undefined,
   scopes?: string[],
+  meta?: Record<string, unknown>,
 ): Record<string, unknown> | undefined {
-  if (!group && !tags?.length && !scopes?.length) return undefined
+  if (!group && !tags?.length && !scopes?.length && !meta) return undefined
 
   return {
+    ...meta,
     ...(group ? { group } : {}),
     ...(tags?.length ? { tags } : {}),
     ...(scopes?.length ? { scopes } : {}),

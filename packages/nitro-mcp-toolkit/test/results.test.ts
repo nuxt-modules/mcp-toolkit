@@ -96,6 +96,53 @@ describe('result coercion', () => {
       content: [{ type: 'text', text: 'plain string' }],
     })
   })
+
+  it('preserves details of H3 v1 errors, such as Nuxt createError', async () => {
+    class H3Error extends Error {
+      static __h3_error__ = true
+      statusCode = 404
+      data = { id: 'demo' }
+    }
+    const handler = createMcpHandler({
+      tools: [
+        defineMcpTool({
+          name: 'missing',
+          handler: () => {
+            throw new H3Error('Not found')
+          },
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+    expect(await client.callTool({ name: 'missing' })).toMatchObject({
+      isError: true,
+      content: [{ type: 'text', text: '[404] Not found\n{\n  "id": "demo"\n}' }],
+    })
+  })
+
+  it('keeps upstream response bodies of other errors from the client', async () => {
+    // The shape of ofetch's FetchError when an upstream API refuses a `$fetch` call.
+    class FetchError extends Error {
+      status = 401
+      statusCode = 401
+      data = { internal_user_id: 42 }
+    }
+    const handler = createMcpHandler({
+      tools: [
+        defineMcpTool({
+          name: 'upstream',
+          handler: () => {
+            throw new FetchError('[GET] "https://api.example.com": 401 Unauthorized')
+          },
+        }),
+      ],
+    })
+    await using client = await createMcpTestClient(handler)
+    expect(await client.callTool({ name: 'upstream' })).toMatchObject({
+      isError: true,
+      content: [{ type: 'text', text: '[GET] "https://api.example.com": 401 Unauthorized' }],
+    })
+  })
 })
 
 it.each(['modern', 'legacy'] as const)(

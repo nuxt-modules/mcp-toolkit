@@ -9,6 +9,7 @@ import { identityFromFilename } from './naming.ts'
 export const DEFINITION_DIRS = ['tools', 'resources', 'prompts'] as const
 
 export type DefinitionDir = (typeof DEFINITION_DIRS)[number]
+export type DefinitionFiles = Partial<Record<DefinitionDir, readonly string[]>>
 
 const PATTERN = '**/*.{ts,js,mts,mjs}'
 
@@ -34,7 +35,35 @@ export interface DiscoveredDefinition {
  * Find every definition file under `dir`. Results are sorted, so the registry
  * generated from an unchanged tree is byte-identical between builds.
  */
-export async function discoverDefinitions(dir: string): Promise<DiscoveredDefinition[]> {
+export async function discoverDefinitions(
+  dir: string | readonly string[],
+  include: DefinitionFiles = {},
+): Promise<DiscoveredDefinition[]> {
+  const roots = typeof dir === 'string' ? [dir] : dir
+  const layers = await Promise.all(roots.map(discoverDirectory))
+  const definitions = new Map<string, DiscoveredDefinition>()
+  for (const layer of layers.reverse()) {
+    for (const definition of layer) definitions.set(definition.file, definition)
+  }
+
+  return [
+    ...[...definitions.values()].sort(
+      (a, b) =>
+        DEFINITION_DIRS.indexOf(a.dir) - DEFINITION_DIRS.indexOf(b.dir) ||
+        a.file.localeCompare(b.file),
+    ),
+    ...DEFINITION_DIRS.flatMap((kind) =>
+      (include[kind] ?? []).map((path) => ({
+        dir: kind,
+        path,
+        file: `${kind}/${basename(path)}`,
+        ...identityFromFilename(basename(path)),
+      })),
+    ),
+  ]
+}
+
+async function discoverDirectory(dir: string): Promise<DiscoveredDefinition[]> {
   const perDir = await Promise.all(
     DEFINITION_DIRS.map(async (definitionDir) => {
       const root = join(dir, definitionDir)
@@ -63,7 +92,15 @@ export async function discoverDefinitions(dir: string): Promise<DiscoveredDefini
  * Sorted, and every match is returned — two of them is a configuration error,
  * reported where it can name the route rather than swallowed here.
  */
-export async function discoverPlugins(dir: string): Promise<string[]> {
+export async function discoverPlugins(dir: string | readonly string[]): Promise<string[]> {
+  if (typeof dir !== 'string') {
+    for (const root of dir) {
+      const files = await discoverPlugins(root)
+      if (files.length) return files
+    }
+    return []
+  }
+
   const paths = await glob(PLUGINS_PATTERN, {
     cwd: dir,
     absolute: true,
