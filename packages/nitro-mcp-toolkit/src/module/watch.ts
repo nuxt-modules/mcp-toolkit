@@ -113,25 +113,43 @@ export function watchDefinitions(nitro: McpNitro, dir: string): void {
       while (!controller.signal.aborted) {
         const root = watchableRoot(dir)
         const inside = root === dir
+        const round = new AbortController()
         // Watching an ancestor recursively would register a watch for every
         // directory under it, node_modules included, to learn one name.
-        const events = watch(nativePath(root), { recursive: inside, signal: controller.signal })
+        const events = watch(nativePath(root), {
+          recursive: inside,
+          signal: AbortSignal.any([controller.signal, round.signal]),
+        })[Symbol.asyncIterator]()
+        // The watch is attached by the first `next()`, not by `watch()`: request
+        // it before looking, or a change in between would report no event.
+        let next = events.next()
 
         if (inside) await reloadIfChanged()
 
-        for await (const { eventType, filename } of events) {
-          if (!inside) {
-            // Ancestors can report directory creation as `change`, without a `rename`.
-            if (watchableRoot(dir) !== root) break
+        // Ancestors can report directory creation as `change`, without a `rename`.
+        while (inside || watchableRoot(dir) === root) {
+          const { done, value } = await next
 
-            continue
-          }
+          if (done) break
 
           // `rename` is what an added or removed file reports; `change` is an edit.
-          if (eventType !== 'rename' || !filename) continue
+          if (
+            inside &&
+            value.eventType === 'rename' &&
+            value.filename &&
+            couldChangeServed(dir, resolve(root, value.filename))
+          ) {
+            await reloadIfChanged()
+          }
 
-          if (couldChangeServed(dir, resolve(root, filename))) await reloadIfChanged()
+          next = events.next()
         }
+
+        // Leaving an ancestor leaves a request pending, which aborting rejects.
+        round.abort()
+        await next.catch((error: unknown) => {
+          if (!(error instanceof Error && error.name === 'AbortError')) throw error
+        })
       }
     } catch (error) {
       if (controller.signal.aborted) return
