@@ -96,11 +96,32 @@ export interface McpOAuthOptions {
    */
   verify?: (token: string, event: H3Event) => boolean | Promise<boolean>
   /**
+   * Static bearer tokens accepted beside OAuth access tokens, for callers that
+   * cannot sign in, such as an agent or a scheduled job. Each token is read at
+   * request time, so it can come from private runtime configuration; an empty
+   * value matches nothing. A match skips `jwt` and `verify` and sets `claims`
+   * on `event.context.oauth`, so `scopes` and `authorize` apply to it as well.
+   *
+   * @example
+   * ```ts
+   * serviceTokens: [{
+   *   token: () => useRuntimeConfig().agentToken,
+   *   claims: { sub: 'agent', scope: 'reports:read' },
+   * }]
+   * ```
+   */
+  serviceTokens?: McpOAuthServiceToken[]
+  /**
    * When set, `authorizationServerHandler` proxies this issuer's RFC 8414
    * document. Old MCP clients look for it on the resource origin rather than
    * the issuer.
    */
   authorizationServer?: string
+}
+
+export interface McpOAuthServiceToken {
+  token: string | (() => string | undefined)
+  claims: McpOAuthClaims & { sub: string }
 }
 
 /**
@@ -118,6 +139,11 @@ export interface McpOAuth {
   /** Absolute URL carried on every `401` `WWW-Authenticate`. */
   resourceMetadataUrl: string
   metadata: McpProtectedResourceMetadata
+  /**
+   * Scopes named in the `401` challenge (`scopesSupported`), which MCP
+   * clients request first. Absent when no scopes are advertised.
+   */
+  challengeScope?: string
   /** Pass as `auth` to `createMcpHandler`. */
   auth: McpAuthOptions
   metadataHandler: (event: H3Event) => Response
@@ -178,6 +204,35 @@ function createJwtVerifier(jwt: McpOAuthJwtOptions, resource: string, issuers: s
   }
 }
 
+const encoder = new TextEncoder()
+
+// Compares every byte whatever the first difference, so timing does not reveal a prefix.
+function sameToken(expected: string, actual: string): boolean {
+  const a = encoder.encode(expected)
+  const b = encoder.encode(actual)
+  let difference = a.length ^ b.length
+  for (let index = 0; index < b.length; index++) difference |= (a[index] ?? 0) ^ b[index]!
+  return difference === 0
+}
+
+function matchServiceToken(
+  serviceTokens: McpOAuthServiceToken[] | undefined,
+  token: string,
+): McpOAuthServiceToken | undefined {
+  return serviceTokens?.find((entry) => {
+    const expected = typeof entry.token === 'function' ? entry.token() : entry.token
+    return typeof expected === 'string' && expected !== '' && sameToken(expected, token)
+  })
+}
+
+// RFC 6749 scope tokens: printable ASCII without space, `"` or `\`, so they fit a quoted challenge.
+const SCOPE_TOKEN = /^[\x21\x23-\x5B\x5D-\x7E]+$/
+
+export function challengeScopes(scopes: readonly string[] | undefined): string | undefined {
+  const valid = scopes?.filter((scope) => SCOPE_TOKEN.test(scope))
+  return valid?.length ? valid.join(' ') : undefined
+}
+
 function normalizeIssuer(value: string, label: string): string {
   const url = assertAbsoluteHttpUrl(value, label)
   return url.href.replace(/\/+$/, '') || url.origin
@@ -229,6 +284,12 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
     throw new Error('[nitro-mcp-toolkit] `createMcpOAuth` needs `jwt` or `verify`.')
   }
 
+  for (const entry of options.serviceTokens ?? []) {
+    if (typeof entry?.claims?.sub !== 'string' || entry.claims.sub === '') {
+      throw new Error('[nitro-mcp-toolkit] Each `serviceTokens` entry needs `claims.sub`.')
+    }
+  }
+
   if (options.jwt?.audience === false && !options.verify) {
     throw new Error(
       '[nitro-mcp-toolkit] Disabling audience validation requires a resource verifier in `verify`.',
@@ -257,6 +318,11 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
     validate: async (credential, event) => {
       delete event.context.oauth
       if (credential.scheme !== 'bearer') return false
+      const service = matchServiceToken(options.serviceTokens, credential.token)
+      if (service) {
+        stashClaims(event, { ...service.claims })
+        return true
+      }
       if (verifyJwt && !(await verifyJwt(credential.token, event))) return false
       if (options.verify && !(await options.verify(credential.token, event))) return false
       return true
@@ -268,6 +334,9 @@ export function createMcpOAuth(options: McpOAuthOptions): McpOAuth {
     metadataPath: metadataUrl.pathname,
     resourceMetadataUrl: metadataUrl.href,
     metadata,
+    ...(challengeScopes(options.scopesSupported)
+      ? { challengeScope: challengeScopes(options.scopesSupported) }
+      : {}),
     auth,
     metadataHandler: metadataHandlerFor(metadata),
     ...(authorizationServer
