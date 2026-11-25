@@ -1,5 +1,11 @@
 # nitro-mcp-toolkit
 
+## 0.4.1
+
+### Patch Changes
+
+- [#424](https://github.com/nuxt-modules/mcp-toolkit/pull/424) [`277ee77`](https://github.com/nuxt-modules/mcp-toolkit/commit/277ee77e23f9779245cc102e8f3cc49043393cbd) Thanks [@HugoRCD](https://github.com/HugoRCD)! - Development servers no longer miss a definitions directory created after startup. The watcher now attaches before it checks the directory, so a folder or file that appears in between still triggers a rebuild.
+
 ## 0.4.0
 
 ### Minor Changes
