@@ -9,9 +9,9 @@ export default defineMcpTool({
     destructiveHint: false,
     openWorldHint: false,
   },
-  inputSchema: {
+  inputSchema: z.object({
     message: z.string().describe('A message to echo back'),
-  },
+  }),
   handler: async ({ message }) => {
     return `Hello, ${message}!`
   },

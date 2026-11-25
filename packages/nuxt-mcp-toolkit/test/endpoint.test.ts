@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { setup, $fetch, url } from '@nuxt/test-utils/e2e'
+import { setup, url } from '@nuxt/test-utils/e2e'
 import { setupMcpClient, cleanupMcpTests } from './helpers/mcp-setup.js'
 
 describe('Endpoint', async () => {
@@ -20,36 +20,30 @@ describe('Endpoint', async () => {
     await cleanupMcpTests()
   })
 
-  it('should have the /mcp endpoint accessible', async () => {
-    // Try to fetch the endpoint (it should redirect browsers, but we can check it exists)
-    try {
-      await $fetch('/mcp', {
-        headers: {
-          Accept: 'application/json',
-        },
-      })
-    }
-    catch (error: unknown) {
-      // The endpoint might return an error for non-MCP requests, but it should exist
-      // We just need to verify it's not a 404
-      const httpError = error as { statusCode?: number }
-      expect(httpError.statusCode).not.toBe(404)
-    }
+  it('serves installation badges through the Nuxt request API', async () => {
+    const response = await fetch(url('/mcp/badge.svg?label=Demo'))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('image/svg+xml')
+    expect(await response.text()).toContain('Demo')
   })
 
-  it('should reject GET SSE requests in stateless mode with 405', async () => {
-    const body = await $fetch('/mcp', {
-      method: 'GET',
-      headers: {
-        Accept: 'text/event-stream',
-      },
-      ignoreResponseError: true,
-    })
+  it('serves client installation links with Unicode server names', async () => {
+    const response = await fetch(url(`/mcp/deeplink?name=${encodeURIComponent('Démo ✓')}`))
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('cursor://anysphere.cursor-deeplink/mcp/install')
+    expect(html).toContain(encodeURIComponent('Démo ✓'))
+  })
 
-    expect(body).toEqual({
-      jsonrpc: '2.0',
-      error: { code: -32000, message: 'Method not allowed. Use POST for MCP requests.' },
-      id: null,
+  it.each([
+    { accept: 'application/json', status: 406, error: 'Not Acceptable' },
+    { accept: 'text/event-stream', status: 405, error: 'Method not allowed' },
+  ])('rejects stateless GET requests accepting $accept', async ({ accept, status, error }) => {
+    const response = await fetch(url('/mcp'), {
+      method: 'GET',
+      headers: { accept },
     })
+    expect(response.status).toBe(status)
+    expect(await response.json()).toEqual({ error })
   })
 })

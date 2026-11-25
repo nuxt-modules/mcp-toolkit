@@ -11,15 +11,15 @@ export default defineMcpTool({
     idempotentHint: true,
     openWorldHint: false,
   },
-  inputExamples: [
+  _meta: { inputExamples: [
     { id: 1, title: 'Updated title', content: 'New content' },
     { id: 2, title: 'Just rename this' },
-  ],
-  inputSchema: {
+  ] },
+  inputSchema: z.object({
     id: z.number().describe('The ID of the todo to update'),
     title: z.string().optional().describe('New title for the todo'),
     content: z.string().optional().describe('New content/description for the todo'),
-  },
+  }),
   handler: async ({ id, title, content }) => {
     const event = useEvent()
     const userId = event.context.userId as string

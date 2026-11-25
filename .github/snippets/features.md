@@ -1,7 +1,7 @@
 - 🎯 **Zero Configuration** - Automatic discovery of tools, resources, and prompts
 - 📦 **File-based** - Organize definitions in intuitive directory structures
-- 🚀 **Multiple Handlers** - Create multiple MCP endpoints in a single app
+- 🚀 **Independent Endpoints** - Give each MCP server its own definitions and authentication
 - 🔍 **Built-in Inspector** - Visual debugging tool in Nuxt DevTools
 - 📝 **TypeScript First** - Full type safety with auto-imports
-- 🔒 **Zod Validation** - Built-in input/output validation
+- 🔒 **Schema Validation** - Typed inputs and outputs with Standard Schema libraries
 - 🤖 **Agent Discovery** - Advertises your server in `llms.txt` when `nuxt-llms` is registered

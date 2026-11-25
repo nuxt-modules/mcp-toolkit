@@ -4,7 +4,7 @@ A guide for AI coding agents working on the Nuxt MCP Toolkit project.
 
 ## Project Overview
 
-**Nuxt MCP Toolkit** is a Nuxt module that enables developers to create [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers directly in their Nuxt applications. It provides automatic discovery of tools, resources, and prompts with zero configuration - just create files and they're automatically registered.
+**Nuxt MCP Toolkit** integrates the shared `nitro-mcp-toolkit` runtime into Nuxt 4.6 or later and enables developers to create [Model Context Protocol (MCP)](https://modelcontextprotocol.io) servers directly in their Nuxt applications. It provides automatic discovery of tools, resources, and prompts with zero configuration - just create files and they're automatically registered.
 
 ### Monorepo Structure
 
@@ -77,19 +77,20 @@ Run from the repository root:
 packages/nuxt-mcp-toolkit/
 ├── src/
 │   ├── module.ts                    # Main module entry point
+│   ├── setup/auto-imports.ts        # Nuxt helper and component registration
 │   └── runtime/
 │       ├── components/              # Vue components (InstallButton)
 │       └── server/
+│           ├── handler.ts          # Nuxt route adapter
+│           ├── index.ts            # Shared runtime exports
 │           ├── mcp/
-│           │   ├── definitions/     # Tool, resource, prompt definitions
-│           │   ├── loaders/         # File discovery and loading
-│           │   ├── validators/      # Zod validation logic
-│           │   ├── handler.ts       # MCP HTTP handler
-│           │   └── utils.ts         # Utility functions
+│           │   ├── devtools/       # Inspector launcher
+│           │   ├── badge-image.ts  # Installation badge
+│           │   └── deeplink.ts     # Client installation link
+│           ├── plugins/llms.ts     # Optional llms.txt discovery
 │           └── types/               # TypeScript types
 └── test/
     ├── *.test.ts                    # Test files
-    ├── fixtures/                    # Test fixtures (mini Nuxt apps)
     └── helpers/                     # Test utilities
 ```
 
@@ -110,13 +111,13 @@ A full-featured example app demonstrating module usage with authentication, todo
 
 ### Nitro Playground (`apps/nitro-playground/`)
 
-A bare Nitro v3 app used to exercise `nitro-mcp-toolkit`. `pnpm dev:nitro` serves an **inspector** on port 3030 that lists every definition, generates a form from its advertised schema, renders the result, and exposes the raw JSON-RPC — use it in preference to `pnpm probe:nitro`, which is the same thing as a CLI. The inspector (`apps/nitro-playground/public/inspector.js`) speaks MCP directly over `fetch` rather than through the SDK, so it stays dependency-free and fails whenever the HTTP surface regresses; it is the seed of the Wave 6 dev inspector. The connection form selects a same-origin endpoint and keeps bearer tokens only in memory; all catalog pages are loaded on both protocol revisions. It depends on the toolkit as a plain `workspace:*` dependency and imports it by its public specifier, with **no alias**, so it validates the same resolution a user gets — a broken `exports` map fails here. Source-level reloading comes from two pieces instead: `dev:prepare` runs `obuild --stub`, which points the toolkit's `dist` at its source, and the app's `devServer.watch` reloads when that source changes. Because `dev:prepare` leaves stubs in `dist`, run `pnpm build:nitro` for a real artifact before publishing or measuring bundle size.
+A bare Nitro v3 app used to exercise `nitro-mcp-toolkit`. `pnpm dev:nitro` serves an **inspector** on port 3030 that lists every definition, generates a form from its advertised schema, renders the result, and exposes the raw JSON-RPC — use it in preference to `pnpm probe:nitro`, which is the same thing as a CLI. The inspector (`apps/nitro-playground/public/inspector.js`) speaks MCP directly over `fetch` rather than through the SDK, so it stays dependency-free and fails whenever the HTTP surface regresses; it is the seed of the Wave 6 dev inspector. The connection form selects a same-origin endpoint and keeps bearer tokens only in memory; all catalog pages are loaded on both protocol revisions. It depends on the toolkit as a plain `workspace:*` dependency and imports it by its public specifier, with **no alias**, so it validates the same resolution a user gets — a broken `exports` map fails here. Source-level reloading comes from two pieces instead: `dev:nitro` first runs `obuild --stub`, which points the toolkit's `dist` at its source, and the app's `devServer.watch` reloads when that source changes. Full workspace preparation builds the Nitro declarations for Nuxt consumers, while `dev:nitro` leaves source stubs in `dist`; run `pnpm build:nitro` for a real artifact before publishing or measuring bundle size.
 
 Relative imports inside `packages/nitro-mcp-toolkit/src` must carry their `.ts` extension — that is what makes the source loadable by Node, and therefore what makes the stub work.
 
 The app installs `mcp()` from `nitro-mcp-toolkit/module` twice, on `/mcp` and `/admin/mcp`, so both discovery and the multi-server case stay exercised by hand. Nothing collects definitions: dropping a file under `server/mcp/{tools,resources,prompts}` is the whole wiring, and its filename is its name. The package's own e2e fixture passes the `mcp()` instances to `createNitro` instead of declaring them in a `nitro.config.ts` — Nitro's config loader would otherwise transform `src/module` a second time, which wrecks coverage attribution. The playground is what proves a real `nitro.config.ts` can import the module by its public specifier.
 
-**Definitions belong to whichever `mcp()` scans their directory, and to nothing else.** Each instance globs its own `dir` and generates its own registry, so `/mcp` does not filter the admin definitions out — they were never in it. The Nuxt module works the opposite way, with one global pool, `_meta.handler` attribution and `orphansOnly` filtering per endpoint; none of that has an equivalent here, and it should not grow one. What the directory model can hide instead is a definition no instance scans, which is why every build reports what each endpoint serves (`src/module/report.ts`), and why the report warns about an empty `dir` or a near-miss directory name. The runtime side of the same set is `handler.definitions`, JSON-serializable and filtered with `Array.filter` rather than a query API.
+**Definitions belong to whichever `mcp()` scans their directory, and to nothing else.** Each instance globs its own `dir` and generates its own registry, so `/mcp` does not filter the admin definitions out — they were never in it. The Nuxt module delegates to this same per-endpoint discovery model; do not restore the old global pool, handler attribution, or orphan filtering. What the directory model can hide instead is a definition no instance scans, which is why every build reports what each endpoint serves (`src/module/report.ts`), and why the report warns about an empty `dir` or a near-miss directory name. The runtime side of the same set is `handler.definitions`, JSON-serializable and filtered with `Array.filter` rather than a query API.
 
 `dir` can also be an array in priority order: the first root containing the same relative definition file wins, and all roots are watched. Plugins come from the first root containing `plugins.*`; an ambiguous pair in that root remains an error. Framework integrations add generated module specifiers through `include.tools`, `include.resources`, `include.prompts`, and `include.plugins`. Definition modules default-export one definition; plugins modules default-export arrays appended after the discovered plugins. Included definitions remain additive and participate in duplicate validation.
 
@@ -228,75 +229,32 @@ The benchmark implementation lives in `packages/nitro-mcp-toolkit/benchmarks/cat
 
 `pnpm bench:consumer [ref=HEAD] --profile` builds committed package output in isolated Nitro consumers, records JavaScript/gzip sizes and fresh-process startup samples, and saves server-only HTTP CPU profiles. It uses current installed dependencies; it does not measure npm installation, JWT network verification or deployment cold starts. See `packages/nitro-mcp-toolkit/benchmarks/README.md` for metric definitions and artifact contents.
 
-### MCP Definitions
+### Shared definitions and Nuxt integration
 
-Use the helper functions:
+Both packages use the Nitro toolkit’s definitions and h3-mcp runtime. The Nuxt package re-exports the shared helpers from `@nuxtjs/mcp-toolkit/server` and adapts manually composed handlers through `nuxt/server`. It requires Nuxt 4.6 or later. Keep its Nuxt-ecosystem build and lint tooling.
 
-```typescript
-// Tools - server/mcp/tools/*.ts (or subdirectories like tools/admin/*.ts)
+```ts
 import { z } from 'zod'
 import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpTool({
-  name: 'tool-name',           // Optional - auto-generated from filename
-  group: 'admin',              // Optional - auto-inferred from subdirectory
-  tags: ['destructive'],       // Optional - free-form tags for filtering
-  description: 'What it does',
-  inputSchema: {
-    param: z.string().describe('Parameter description'),
-  },
-  handler: async ({ param }) => {
-    return 'Result' // string, number, boolean, object, or full CallToolResult
-  },
-})
-
-// Resources - server/mcp/resources/*.ts
-import { defineMcpResource } from '@nuxtjs/mcp-toolkit/server'
-
-export default defineMcpResource({
-  name: 'resource-name',
-  uri: 'file:///path/or/pattern',
-  handler: async (uri: URL) => {
-    return {
-      contents: [{ uri: uri.toString(), text: 'Content' }],
-    }
-  },
-})
-
-// Prompts - server/mcp/prompts/*.ts
-import { z } from 'zod'
-import { defineMcpPrompt } from '@nuxtjs/mcp-toolkit/server'
-
-export default defineMcpPrompt({
-  name: 'prompt-name',
-  inputSchema: {
-    arg: z.string(),
-  },
-  handler: async ({ arg }) => {
-    return {
-      messages: [{
-        role: 'user',
-        content: { type: 'text', text: `Message with ${arg}` },
-      }],
-    }
-  },
+  inputSchema: z.object({ id: z.string() }),
+  outputSchema: z.object({ name: z.string() }),
+  handler: ({ id }, event) => readForUser(id, event.context.oauth?.sub),
 })
 ```
 
-### Auto-Generated Names
+Schemas are complete Standard Schema objects. With input, handlers receive `(args, event)`; without input, they receive `event`. Output schemas narrow and validate the returned data. Full envelopes alongside output schemas require `toolResult()`.
 
-If `name` and `title` are omitted, they are auto-generated from the filename:
-- `list-documentation.ts` → name: `list-documentation`, title: `List Documentation`
+For definitions without arguments, omit `inputSchema` and any unused schema-library import. Do not add an empty `z.object({})` as boilerplate.
 
-### Client tool allowlist
+Keep substantive documentation examples for typed output and caching. Explain the actual beta API: schema `examples` are JSON Schema annotations, MCP `_meta` is extension metadata, and `_meta.inputExamples` is a custom client convention. Do not present removed convenience options as implemented APIs or remove useful examples merely to shorten a guide.
 
-Clients can send `X-MCP-Tools` (comma-separated names matching `tools/list`) to subset the catalog. Unknown names return HTTP 400. On `@nuxtjs/mcp-toolkit` this runs after `enabled()` and `mcp:config:resolved`. On `nitro-mcp-toolkit` it runs ahead of the engine (same place as origin/auth) and does not change `handler.definitions`.
+Resources use `uri` or `uriTemplate`, top-level MIME metadata, and text or contents results. Prompt strings are user messages; explicit messages support other roles. Completion uses explicit prompt `arguments` or resource-template callbacks.
 
-### Return Types
+Configure Nuxt endpoints with `mcp.servers`, keyed by logical name. `default` uses the base route; other keys use `<route>/<key>` unless overridden. Each `dir` is relative to every Nuxt layer’s server directory. Earlier roots take priority, with the main app before extended layers.
 
-- **Tools**: Return `string`, `number`, `boolean`, object, array (auto-wrapped), or full `CallToolResult`. Use `imageResult` / `audioResult` for image and audio content blocks. Thrown errors become `isError` results.
-- **Resources**: Return `{ contents: [{ uri: string, text: string }] }`
-- **Prompts**: Return `{ messages: [{ role: 'user' | 'assistant', content: { type: 'text', text: string } }] }`
+Code Mode, ambient session/logger/elicitation wrappers, SDK escape hatches, global registry-query helpers, per-definition result caching, and the old provider runtime are removed. Use explicit events, application services, and engine continuation helpers. Built-in MCP Apps remain excluded from the beta.
 
 ## Testing
 
@@ -317,7 +275,8 @@ pnpm test:watch
 - `tools.test.ts` - Tool definition tests
 - `resources.test.ts` - Resource definition tests
 - `prompts.test.ts` - Prompt definition tests
-- `handler.test.ts` - HTTP handler tests
+- `shared-engine.test.ts` - Modern/legacy Nuxt wiring, layers, auth, context, subscriptions, and disconnects
+- `types.test.ts` - Public MCP request types inside the Nuxt host
 - `fixtures/` - Mini Nuxt apps used as test fixtures
 
 ### Performance in Tests
@@ -429,16 +388,16 @@ Default: anything that stays on the local clone is fine; anything that touches t
 
 ### SDK Version
 
-This module uses `@modelcontextprotocol/sdk` version 1.23.0+. When referencing SDK documentation, ensure compatibility with this version.
+The runtime uses pinned `h3-mcp` through `nitro-mcp-toolkit`; SDK v1 is only a legacy-client test dependency. Protocol behavior belongs in the shared engine.
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
 | `packages/nuxt-mcp-toolkit/src/module.ts` | Main module entry point |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/mcp/handler.ts` | MCP HTTP handler |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/mcp/definitions/` | Definition processors |
-| `packages/nuxt-mcp-toolkit/src/runtime/server/mcp/loaders/` | File discovery logic |
+| `packages/nuxt-mcp-toolkit/src/runtime/server/handler.ts` | MCP HTTP handler |
+| `packages/nitro-mcp-toolkit/src/runtime/` | Shared definitions |
+| `packages/nitro-mcp-toolkit/src/module/` | Shared file discovery |
 | `packages/nuxt-mcp-toolkit/src/runtime/server/types/` | TypeScript type definitions |
 
 ## Troubleshooting
@@ -507,3 +466,5 @@ Discovery catalog: [https://mcp-toolkit.nuxt.dev/.well-known/skills/index.json](
 - A new convention that should be applied consistently
 
 A correction is a few lines, not a rewrite — keep this file lean.
+
+The Nuxt integration builds the Nitro toolkit before generating types. Its public H3 types import `h3/generic` so Nuxt’s H3 v1 alias cannot change the MCP callback’s web request type. The composed-route adapter preserves the host context by reference and relays disconnects; do not replace it with a context copy.

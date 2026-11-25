@@ -1,13 +1,13 @@
-import { defineMcpTool } from '../../../../../../src/runtime/server/types'
+import { defineMcpTool } from '../../../../../../src/runtime/server/index'
 import { z } from 'zod'
 
 export default defineMcpTool({
   name: 'test_tool',
   title: 'Test Tool',
   description: 'A simple test tool for MCP testing',
-  inputSchema: {
+  inputSchema: z.object({
     input: z.string().describe('Test input string'),
-  },
+  }),
   handler: async ({ input }) => {
     return {
       content: [

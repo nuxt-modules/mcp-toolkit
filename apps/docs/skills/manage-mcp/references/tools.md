@@ -1,256 +1,120 @@
-# Tool Examples
+# Tool examples — 1.0 beta
 
-Modern, copy-pasteable examples for `defineMcpTool`. All examples use **direct returns** (the toolkit auto-wraps strings, numbers, booleans, objects, and arrays into the right MCP shape) and **`throw createError({ statusCode, message })`** for failures.
+These examples use the current shared runtime. Keep full input/output schemas when data benefits from them, and omit `inputSchema` for tools with no arguments. Names and titles come from filenames unless explicitly set.
 
-## BMI Calculator (typed structured output)
+## Typed BMI calculator
 
-```typescript [server/mcp/tools/bmi-calculator.ts]
+```ts [server/mcp/tools/bmi-calculator.ts]
 import { z } from 'zod'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+const bmiOutput = z.object({
+  bmi: z.number(),
+  category: z.enum(['underweight', 'normal', 'overweight', 'obese']),
+})
 
 export default defineMcpTool({
-  description: 'Calculate Body Mass Index',
+  description: 'Calculate Body Mass Index from height and weight',
   annotations: { readOnlyHint: true, openWorldHint: false },
-  inputSchema: {
-    height: z.number().positive().describe('Height in meters'),
-    weight: z.number().positive().describe('Weight in kilograms'),
-  },
-  inputExamples: [{ height: 1.75, weight: 70 }],
-  outputSchema: {
-    bmi: z.number(),
-    category: z.string(),
-    healthy: z.boolean(),
-  },
-  handler: async ({ height, weight }) => {
-    const bmi = +(weight / (height * height)).toFixed(2)
-    const category = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese'
-    return {
-      structuredContent: { bmi, category, healthy: bmi >= 18.5 && bmi < 25 },
-    }
+  inputSchema: z.object({
+    heightM: z.number().positive().describe('Height in meters'),
+    weightKg: z.number().positive().describe('Weight in kilograms'),
+  }),
+  outputSchema: bmiOutput,
+  handler: ({ heightM, weightKg }): z.input<typeof bmiOutput> => {
+    const bmi = Number((weightKg / (heightM * heightM)).toFixed(2))
+    const category = bmi < 18.5 ? 'underweight'
+      : bmi < 25 ? 'normal'
+        : bmi < 30 ? 'overweight' : 'obese'
+
+    return { bmi, category }
   },
 })
 ```
 
-The toolkit auto-generates a text fallback (`JSON.stringify(structuredContent)`) when only `structuredContent` is set, so older clients still see something readable.
+`outputSchema` infers the callback's return shape and validates the result. Return its data directly: the toolkit emits `structuredContent` and a JSON text fallback. A return value that violates the advertised output schema is a protocol error.
 
-## External API (third-party fetch + caching)
+## Tool with no arguments
 
-```typescript [server/mcp/tools/weather.ts]
-import { z } from 'zod'
+```ts [server/mcp/tools/ping.ts]
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
 
 export default defineMcpTool({
-  description: 'Fetch current weather for a city',
+  description: 'Check connectivity',
+  handler: () => 'pong',
+})
+```
+
+Do not add an empty schema or an unused Zod import. A no-input handler receives `event` as its first argument if it needs request context. With an input schema, the signature is `(args, event)`.
+
+## Cached external data with typed output
+
+For Nuxt 4 / Nitro 2 on Node:
+
+```ts [server/mcp/tools/get-product.ts]
+import { defineCachedFunction } from 'nitropack/runtime'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+import { z } from 'zod'
+
+const productSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+const getProduct = defineCachedFunction(async (id: string) => {
+  const response = await fetch(
+    `https://api.example.com/products/${encodeURIComponent(id)}`,
+  )
+  if (!response.ok) throw new Error('The product service is unavailable.')
+  return productSchema.parse(await response.json())
+}, {
+  name: 'mcp-public-product',
+  maxAge: 600,
+  swr: false,
+})
+
+export default defineMcpTool({
+  description: 'Get a public product',
   annotations: { readOnlyHint: true, openWorldHint: true },
-  cache: '10m',
-  inputSchema: {
-    city: z.string().min(1).describe('City name'),
-    units: z.enum(['metric', 'imperial']).default('metric').describe('Temperature units'),
-  },
-  handler: async ({ city, units }) => {
-    const apiKey = process.env.WEATHER_API_KEY
-    if (!apiKey) throw createError({ statusCode: 500, message: 'WEATHER_API_KEY missing' })
-
-    const data = await $fetch<{ temperature: number, description: string }>('https://api.weather.com/v1/current', {
-      query: { city, units, apikey: apiKey },
-    })
-
-    return `Weather in ${city}: ${data.temperature}°${units === 'metric' ? 'C' : 'F'}, ${data.description}`
-  },
+  inputSchema: z.object({ id: z.string().min(1) }),
+  outputSchema: productSchema,
+  handler: ({ id }) => getProduct(id),
 })
 ```
 
-`cache: '10m'` keys on the input arguments. Pass a full Nitro cache options object for `swr`, custom `getKey`, etc. ([Nitro caching →](https://nitro.build/guide/cache#options))
+Replace the example upstream URL. The default key hashes function arguments, so each product ID gets its own entry. `maxAge` is seconds; `swr: false` waits for fresh data after expiry. Parse upstream data before caching it. For standalone Nitro 3, import `defineCachedFunction` from `nitro/cache` and tool helpers from `nitro-mcp-toolkit`.
 
-`swr` defaults to `false` here (Nitro defaults to `true`). With `swr: true`, the handler refreshes after the response is sent, so request-scoped logs/traces may be dropped — opt in only when you accept that.
+Cache application values rather than JSON-RPC responses. Authorize private operations on every invocation and include verified user/tenant identity in the cached function arguments. Do not capture identity in a shared closure or put the only access check inside a cached function.
 
-## Database Mutation (DB + soft auth + observability)
+The beta does not accept the old tool-level `cache: '10m'` option. See [errors and caching](https://mcp-toolkit.nuxt.dev/tools/errors-caching) for storage, lifecycle, and client-cache distinctions. Worker lifecycle support must use the host's event/runtime; a toolkit MCP event inside Nitro 2 is not its native H3 v1 cache event.
 
-```typescript [server/mcp/tools/create-todo.ts]
+## Typed schema examples
+
+```ts [server/mcp/tools/preview-search.ts]
 import { z } from 'zod'
-import { useDrizzle } from '~/server/utils/drizzle'
-import { todos } from '~/server/db/schema'
+import { defineMcpTool } from '@nuxtjs/mcp-toolkit/server'
+
+const input = z.object({
+  query: z.string(),
+  limit: z.number().int().positive().default(10),
+})
+const examples = [{ query: 'caching' }] satisfies z.input<typeof input>[]
 
 export default defineMcpTool({
-  description: 'Create a new todo for the current user',
-  annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  enabled: event => Boolean(event.context.user), // hidden when unauthenticated
-  inputSchema: {
-    title: z.string().min(1).describe('Todo title'),
-    completed: z.boolean().default(false).describe('Completion status'),
-  },
-  inputExamples: [
-    { title: 'Buy groceries' },
-    { title: 'Deploy v2', completed: false },
-  ],
-  handler: async ({ title, completed }) => {
-    const event = useEvent()
-    const log = useMcpLogger('todos')
-
-    const [todo] = await useDrizzle()
-      .insert(todos)
-      .values({ title, completed, userId: event.context.user.id })
-      .returning()
-
-    log.event('todo_created', { todoId: todo.id })
-    return todo // plain object — auto-stringified by the toolkit
-  },
+  description: 'Preview search parameters',
+  inputSchema: input.meta({ examples }),
+  handler: args => args,
 })
 ```
 
-## File Operation (graceful errors)
+Zod's `.meta({ examples })` emits the JSON Schema `examples` annotation. The explicit `satisfies` check types the examples. Client use of examples varies.
 
-```typescript [server/mcp/tools/read-file.ts]
-import { z } from 'zod'
-import { readFile, access } from 'node:fs/promises'
+MCP `_meta` is a separate extension-metadata field. `_meta.inputExamples` is a custom convention, not a standard MCP input-example field. The 0.x top-level `inputExamples` helper is not in the current beta; do not generate it as though it exists. Use the custom metadata convention only for a client that expects it. See [annotations and metadata](https://mcp-toolkit.nuxt.dev/tools/annotations).
 
-export default defineMcpTool({
-  description: 'Read the contents of a project file',
-  annotations: { readOnlyHint: true, openWorldHint: false },
-  inputSchema: {
-    path: z.string().describe('Path relative to project root'),
-  },
-  handler: async ({ path }) => {
-    try {
-      await access(path)
-    }
-    catch {
-      throw createError({ statusCode: 404, message: `File not found: ${path}` })
-    }
-    return await readFile(path, 'utf-8')
-  },
-})
-```
+## Results and errors
 
-## Image Tool (`imageResult`)
+Use `toolResult({ content, structuredContent })` for a full protocol envelope alongside an output schema. Without it, objects with fields named `content` or `isError` still mean schema data when an output schema exists. `imageResult` and `audioResult` create media blocks.
 
-```typescript [server/mcp/tools/screenshot.ts]
-import { z } from 'zod'
+Thrown application errors become `isError` results; numeric HTTP error status and data are included in the public error text. Invalid arguments and invalid advertised output are protocol errors. Keep private diagnostics in application logging.
 
-export default defineMcpTool({
-  description: 'Capture a screenshot of a URL',
-  annotations: { readOnlyHint: true, openWorldHint: true },
-  inputSchema: { url: z.string().url().describe('Page to capture') },
-  handler: async ({ url }) => {
-    const buffer = await captureUrl(url) // your screenshot util
-    return imageResult(buffer.toString('base64'), 'image/png')
-  },
-})
-```
-
-## Audio Tool (`audioResult`)
-
-```typescript [server/mcp/tools/synthesize-speech.ts]
-import { z } from 'zod'
-
-export default defineMcpTool({
-  description: 'Synthesize speech from text',
-  inputSchema: {
-    text: z.string().min(1),
-    voice: z.enum(['alloy', 'nova', 'shimmer']).default('alloy'),
-  },
-  handler: async ({ text, voice }) => {
-    const audio = await synthesize({ text, voice })
-    return audioResult(audio.toString('base64'), 'audio/mp3')
-  },
-})
-```
-
-## Interactive Tool (Elicitation)
-
-Ask the user for missing details mid-request:
-
-```typescript [server/mcp/tools/create-release.ts]
-import { z } from 'zod'
-
-export default defineMcpTool({
-  description: 'Create a release after asking for the channel',
-  inputSchema: { name: z.string().describe('Release name') },
-  handler: async ({ name }) => {
-    const elicit = useMcpElicitation()
-    if (!elicit.supports('form')) {
-      return `Use a client that supports elicitation, then re-run for "${name}".`
-    }
-
-    const result = await elicit.form({
-      message: `Pick a release channel for "${name}"`,
-      schema: {
-        channel: z.enum(['stable', 'beta', 'canary']).describe('Release channel'),
-        notify: z.boolean().default(true).describe('Notify subscribers'),
-      },
-    })
-
-    if (result.action !== 'accept') return `Release cancelled (${result.action}).`
-    return `Created "${name}" on ${result.content.channel} (notify=${result.content.notify}).`
-  },
-})
-```
-
-Requires `nitro.experimental.asyncContext: true`.
-
-## Observability (`useMcpLogger`)
-
-Stream `notifications/message` to the client and capture a structured wide event for the request:
-
-```typescript [server/mcp/tools/charge-card.ts]
-import { z } from 'zod'
-
-export default defineMcpTool({
-  description: 'Charge a payment method',
-  annotations: { destructiveHint: true, idempotentHint: false },
-  inputSchema: {
-    userId: z.string(),
-    amount: z.number().int().positive(),
-  },
-  handler: async ({ userId, amount }) => {
-    const log = useMcpLogger('billing')
-
-    log.set({ billing: { amount } })
-    await log.notify.info({ msg: 'starting charge', amount })
-
-    try {
-      const receipt = await chargeCard(userId, amount)
-      log.event('charge_completed', { receiptId: receipt.id })
-      await log.notify.info({ msg: 'charge ok', receiptId: receipt.id })
-      return `Charged ${amount}. Receipt: ${receipt.id}`
-    }
-    catch (err) {
-      log.evlog.error('charge failed', err as Error)
-      await log.notify.error({ msg: 'charge failed', error: String(err) })
-      throw err // re-throw → returned as `isError`
-    }
-  },
-})
-```
-
-Wide events are auto-tagged with `mcp.tool: 'charge-card'`, `mcp.session_id`, `mcp.request_id`, `service: '<env.service>/mcp'`, and (when middleware sets them) `user.id` / `session.id`.
-
-## Tool with Session State
-
-```typescript [server/mcp/tools/remember.ts]
-import { z } from 'zod'
-
-export default defineMcpTool({
-  description: 'Remember a fact for this session',
-  inputSchema: {
-    key: z.string().describe('Fact key'),
-    value: z.string().describe('Fact value'),
-  },
-  handler: async ({ key, value }) => {
-    const session = useMcpSession<{ facts: Record<string, string> }>()
-    const facts = (await session.get('facts')) ?? {}
-    facts[key] = value
-    await session.set('facts', facts)
-    return `Remembered ${Object.keys(facts).length} fact(s).`
-  },
-})
-```
-
-Requires `mcp.sessions: true` in `nuxt.config.ts`.
-
-## See also
-
-- [Tools docs](https://mcp-toolkit.nuxt.dev/tools/overview)
-- [Schema, handler & returns](https://mcp-toolkit.nuxt.dev/tools/schema-handler)
-- [Annotations & input examples](https://mcp-toolkit.nuxt.dev/tools/annotations)
-- [Errors & response caching](https://mcp-toolkit.nuxt.dev/tools/errors-caching)
-- [Groups, files & dynamic registration](https://mcp-toolkit.nuxt.dev/tools/groups-organization)
-- [Limit available tools (`X-MCP-Tools`)](https://mcp-toolkit.nuxt.dev/getting-started/connection#limit-available-tools)
+Annotations describe behavior but never grant authorization. Use typed `group`, `tags`, and `scopes` properties; do not hand-build their generated `_meta` entries. For private catalog metadata, use independently authenticated endpoints.

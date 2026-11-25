@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { url } from '@nuxt/test-utils/e2e'
+import { getServerLogs, url } from '@nuxt/test-utils/e2e'
 
 let mcpClient: Client | undefined
 let mcpUrl: URL | undefined
@@ -26,17 +26,15 @@ export async function setupMcpClient(mcpEndpointUrl: URL) {
     version: '1.0.0',
   })
 
-  // Try to connect - if it fails, we'll skip the MCP-specific tests
+  const transport = new StreamableHTTPClientTransport(mcpEndpointUrl)
   try {
-    const transport = new StreamableHTTPClientTransport(mcpEndpointUrl)
     await mcpClient.connect(transport)
   }
   catch (error) {
-    // If connection fails, we'll skip MCP tests but continue with basic endpoint test
-    console.error('Failed to connect to MCP server:', error)
-    mcpClient = undefined
+    throw new Error(`MCP connection failed. Server output:\n${getServerLogs().join('\n')}`, { cause: error })
   }
 
+  if (!mcpClient) throw new Error('The MCP client has not connected.')
   return mcpClient
 }
 
@@ -49,6 +47,7 @@ export async function cleanupMcpTests() {
 }
 
 export function getMcpClient() {
+  if (!mcpClient) throw new Error('The MCP client has not connected.')
   return mcpClient
 }
 

@@ -11,7 +11,6 @@ export default defineMcpTool({
     destructiveHint: false,
     openWorldHint: false,
   },
-  inputSchema: {},
   handler: async () => {
     const event = useEvent()
     const userId = event.context.userId as string

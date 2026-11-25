@@ -1,13 +1,11 @@
-import { defineMcpResource } from '../../../../../../src/runtime/server/types'
+import { defineMcpResource } from '../../../../../../src/runtime/server/index'
 
 export default defineMcpResource({
   name: 'test_resource',
   title: 'Test Resource',
   uri: 'test://resource/test',
-  metadata: {
-    description: 'A simple test resource for MCP testing',
-    mimeType: 'text/plain',
-  },
+  description: 'A simple test resource for MCP testing',
+  mimeType: 'text/plain',
   handler: async (uri: URL) => {
     return {
       contents: [{

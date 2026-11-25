@@ -1,31 +1,16 @@
 import { z } from 'zod'
 
-interface Note {
-  text: string
-  createdAt: string
-}
-
-interface NotesSession {
-  notes: Note[]
-}
-
 export default defineMcpTool({
   name: 'add_note',
-  title: 'Add Note',
-  description: 'Add a note to the current session notepad. Notes persist across tool calls within the same MCP session.',
-  annotations: {
-    readOnlyHint: false,
-    destructiveHint: false,
-  },
-  inputSchema: {
-    note: z.string().describe('The note content to add'),
-  },
-  handler: async ({ note }) => {
-    const session = useMcpSession<NotesSession>()
-    const notes = await session.get('notes') ?? []
-    notes.push({ text: note, createdAt: new Date().toISOString() })
-    await session.set('notes', notes)
-
-    return `Note added (${notes.length} total in this session).`
+  description: 'Store a note for the authenticated user across MCP connections.',
+  inputSchema: z.object({ note: z.string() }),
+  handler: async ({ note }, event) => {
+    const userId = event.context.userId
+    if (typeof userId !== 'string') throw new Error('Authentication required.')
+    const key = `notes:${encodeURIComponent(userId)}`
+    const storage = useStorage()
+    const notes = await storage.getItem<string[]>(key) ?? []
+    await storage.setItem(key, [...notes, note])
+    return `Note added (${notes.length + 1} total).`
   },
 })

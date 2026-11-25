@@ -24,9 +24,6 @@ describe('Tools', async () => {
 
   it('should list tools via MCP client', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const tools = await client.listTools()
 
@@ -37,9 +34,6 @@ describe('Tools', async () => {
 
   it('should include the test_tool in the tools list', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const tools = await client.listTools()
     const testTool = tools.tools.find(tool => tool.name === 'test_tool')
@@ -51,9 +45,6 @@ describe('Tools', async () => {
 
   it('should be able to call the test_tool', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const inputValue = 'Hello from test'
 
@@ -76,9 +67,6 @@ describe('Tools', async () => {
 
   it('should auto-wrap a string return into CallToolResult', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.callTool({
       name: 'string_tool',
@@ -94,9 +82,6 @@ describe('Tools', async () => {
 
   it('should auto-wrap a number return into CallToolResult', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.callTool({
       name: 'number_tool',
@@ -112,9 +97,6 @@ describe('Tools', async () => {
 
   it('should auto-wrap a plain object return into JSON CallToolResult', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.callTool({
       name: 'object_tool',
@@ -133,9 +115,6 @@ describe('Tools', async () => {
 
   it('should convert a thrown H3 error into an isError result', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.callTool({
       name: 'error_tool',
@@ -149,9 +128,6 @@ describe('Tools', async () => {
 
   it('should include H3 error data in the isError result', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.callTool({
       name: 'error_tool',
@@ -167,9 +143,6 @@ describe('Tools', async () => {
 
   it('should convert a thrown plain Error into an isError result', async () => {
     const client = getMcpClient()
-    if (!client) {
-      return
-    }
 
     const result = await client.callTool({
       name: 'error_tool',
