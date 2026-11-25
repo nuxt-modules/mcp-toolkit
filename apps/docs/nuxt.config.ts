@@ -29,7 +29,7 @@ export default defineNuxtConfig({
     '/core-concepts/resources': { redirect: { to: '/resources/overview', statusCode: 301 } },
     '/core-concepts/prompts': { redirect: { to: '/prompts/overview', statusCode: 301 } },
     '/core-concepts/handlers': { redirect: { to: '/handlers/overview', statusCode: 301 } },
-    '/core-concepts/apps': { redirect: { to: '/apps/overview', statusCode: 301 } },
+    '/core-concepts/apps': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
     // Section roots (no `0.overview` in Examples) → sensible landing page
     '/getting-started': { redirect: { to: '/getting-started/introduction', statusCode: 301 } },
     '/examples': { redirect: { to: '/examples/common-patterns', statusCode: 301 } },
@@ -38,14 +38,18 @@ export default defineNuxtConfig({
     '/resources': { redirect: { to: '/resources/overview', statusCode: 301 } },
     '/prompts': { redirect: { to: '/prompts/overview', statusCode: 301 } },
     '/handlers': { redirect: { to: '/handlers/overview', statusCode: 301 } },
-    '/apps': { redirect: { to: '/apps/overview', statusCode: 301 } },
+    '/apps': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
+    '/apps/**': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
+    '/advanced/mcp-apps-internals': { redirect: { to: '/getting-started/beta-migration', statusCode: 301 } },
     // Legacy "core-concepts" raw markdown (e.g. LLM / IDE deep links)
     '/raw/core-concepts/configuration.md': { redirect: { to: '/raw/getting-started/configuration.md', statusCode: 301 } },
     '/raw/core-concepts/tools.md': { redirect: { to: '/raw/tools/overview.md', statusCode: 301 } },
     '/raw/core-concepts/resources.md': { redirect: { to: '/raw/resources/overview.md', statusCode: 301 } },
     '/raw/core-concepts/prompts.md': { redirect: { to: '/raw/prompts/overview.md', statusCode: 301 } },
     '/raw/core-concepts/handlers.md': { redirect: { to: '/raw/handlers/overview.md', statusCode: 301 } },
-    '/raw/core-concepts/apps.md': { redirect: { to: '/raw/apps/overview.md', statusCode: 301 } },
+    '/raw/core-concepts/apps.md': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
+    '/raw/apps/**': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
+    '/raw/advanced/mcp-apps-internals.md': { redirect: { to: '/raw/getting-started/beta-migration.md', statusCode: 301 } },
   },
 
   experimental: {
